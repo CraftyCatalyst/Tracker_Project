@@ -8,9 +8,13 @@ cursor = conn.cursor()
 cursor.execute("""
 CREATE TABLE parts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    description TEXT,
-    source_level INTEGER
+    part_name TEXT NOT NULL,
+    level INTEGER,
+    category TEXT,
+    base_production_type TEXT,
+    produced_in_automated TEXT,
+    produced_in_manual TEXT,
+    production_type TEXT
 );
 """)
 
@@ -19,47 +23,60 @@ CREATE TABLE recipes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     part_id INTEGER NOT NULL,
     recipe_name TEXT NOT NULL,
-    produced_in TEXT,
+    ingredient_count INTEGER,
+    source_level INTEGER,
     base_input TEXT,
-    base_demand REAL,
-    base_supply REAL,
-    power_shard_efficiency REAL,
+    base_demand_pm REAL,
+    base_supply_pm REAL,
+    byproduct TEXT,
+    byproduct_supply_pm REAL,
     FOREIGN KEY(part_id) REFERENCES parts(id)
 );
 """)
 
 cursor.execute("""
-CREATE TABLE miner_supplies (
+CREATE TABLE alternate_recipes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     part_id INTEGER NOT NULL,
-    supply_rate REAL,
-    FOREIGN KEY(part_id) REFERENCES parts(id)
+    recipe_id INTEGER NOT NULL,
+    selected INTEGER DEFAULT 0 CHECK (selected IN (0, 1)),
+    FOREIGN KEY(part_id) REFERENCES parts(id),
+    FOREIGN KEY(recipe_id) REFERENCES recipes(id)
+);
+""")
+
+cursor.execute("""
+CREATE TABLE node_purity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_purity TEXT NOT NULL
+);
+""")
+
+cursor.execute("""
+CREATE TABLE miner_type (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    miner_type TEXT NOT NULL
+);
+""")
+
+cursor.execute("""
+CREATE TABLE miner_supply (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_purity_id INTEGER NOT NULL,
+    miner_type_id INTEGER NOT NULL,
+    base_supply_pm REAL NOT NULL,
+    FOREIGN KEY(node_purity_id) REFERENCES node_purity(id),
+    FOREIGN KEY(miner_type_id) REFERENCES miner_type(id)
 );
 """)
 
 cursor.execute("""
 CREATE TABLE power_shards (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    recipe_id INTEGER NOT NULL,
-    efficiency_modifier REAL,
-    FOREIGN KEY(recipe_id) REFERENCES recipes(id)
+    quantity INTEGER NOT NULL,
+    output_increase REAL NOT NULL
 );
 """)
-
-cursor.execute("""
-CREATE TABLE dependencies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    parent_part_id INTEGER NOT NULL,
-    child_part_id INTEGER NOT NULL,
-    required_quantity REAL,
-    recipe_id INTEGER,
-    FOREIGN KEY(parent_part_id) REFERENCES parts(id),
-    FOREIGN KEY(child_part_id) REFERENCES parts(id),
-    FOREIGN KEY(recipe_id) REFERENCES recipes(id)
-);
-""")
-
-print("Tables created successfully!")
 
 # Close the connection
 conn.commit()
