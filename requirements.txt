@@ -15,3 +15,8 @@ pytest
 python-dotenv
 requests
 numpy
+pandas
+matplotlib
+statsmodels
+seaborn
+excel

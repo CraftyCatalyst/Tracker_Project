@@ -1,2 +1,14 @@
 When installed packages aren't recognised - Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
-pip install -r requirements.txt
+Virtual environment:
+    Create:
+        python -m venv venv
+        .\venv\Scripts\activate
+        pip install -r requirements.txt
+    Delete:
+        deactivate
+        Remove-Item -Recurse -Force .\venv
+            (Alternatively, you can manually delete the venv directory using File Explorer.)
+    Turn on virtual environment:
+        .\venv\Scripts\activate
+    Turn off virtual environment:
+        deactivate
