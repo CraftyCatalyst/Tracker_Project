@@ -1,0 +1,2 @@
+When installed packages aren't recognised - Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
+pip install -r requirements.txt

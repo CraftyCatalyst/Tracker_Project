@@ -30,23 +30,23 @@ def get_or_create(cursor, table, unique_column, value, additional_data=None):
     return cursor.lastrowid
 
 # Load data from the spreadsheet
-# parts_df = pd.read_excel(excel_path, sheet_name="Part_Data")
-# recipes_df = pd.read_excel(excel_path, sheet_name="Recipes")
-# alternate_recipes_df = pd.read_excel(excel_path, sheet_name="Alternate_Recipes")
-# node_purity_df = pd.read_excel(excel_path, sheet_name="Node_Purity")
-# miner_type_df = pd.read_excel(excel_path, sheet_name="Miner_Type")
-# miner_supply_df = pd.read_excel(excel_path, sheet_name="Miner_Supply")
+parts_df = pd.read_excel(excel_path, sheet_name="Part_Data")
+recipes_df = pd.read_excel(excel_path, sheet_name="Recipes")
+alternate_recipes_df = pd.read_excel(excel_path, sheet_name="Alternate_Recipes")
+node_purity_df = pd.read_excel(excel_path, sheet_name="Node_Purity")
+miner_type_df = pd.read_excel(excel_path, sheet_name="Miner_Type")
+miner_supply_df = pd.read_excel(excel_path, sheet_name="Miner_Supply")
 power_shards_df = pd.read_excel(excel_path, sheet_name="Power_Shards")
 
 print("Data loaded from Excel")
 
-# Replace "N/A" with None (treated as NULL in SQLite)
-# parts_df.replace("N/A", None, inplace=True)
-# recipes_df.replace("N/A", None, inplace=True)
-# alternate_recipes_df.replace("N/A", None, inplace=True)
-# node_purity_df.replace("N/A", None, inplace=True)
-# miner_type_df.replace("N/A", None, inplace=True)
-# miner_supply_df.replace("N/A", None, inplace=True)
+#Replace "N/A" with None (treated as NULL in SQLite)
+parts_df.replace("N/A", None, inplace=True)
+recipes_df.replace("N/A", None, inplace=True)
+alternate_recipes_df.replace("N/A", None, inplace=True)
+node_purity_df.replace("N/A", None, inplace=True)
+miner_type_df.replace("N/A", None, inplace=True)
+miner_supply_df.replace("N/A", None, inplace=True)
 power_shards_df.replace("N/A", None, inplace=True)
 
 print("Replaced 'N/A' with None")

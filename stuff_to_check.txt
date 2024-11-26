@@ -1,1 +1,0 @@
-Check >Python Interpreter in Command Palette when installed packages aren't recognised.
