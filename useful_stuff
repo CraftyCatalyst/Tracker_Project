@@ -12,3 +12,8 @@ Virtual environment:
         .\venv\Scripts\activate
     Turn off virtual environment:
         deactivate
+
+npm commands:
+    npm run build
+    npm start
+    serve -s build

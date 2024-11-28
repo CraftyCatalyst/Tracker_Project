@@ -10,15 +10,19 @@ migrate = Migrate()
 login_manager = LoginManager()
 
 def create_app():
-    print("Creating app...")
+    #print("Creating app...")
     app = Flask(__name__)
 
     # Load configurations from config.py
     app.config.from_object('config')
-    print("Loading configurations...")
+    #print("Loading configurations...")
 
     # Initialize extensions
     db.init_app(app)
+
+    with app.app_context():
+        db.create_all()  # Ensure tables are created
+    #print("Creating tables...")
     migrate.init_app(app, db)
     
     # Import models to ensure they are registered
