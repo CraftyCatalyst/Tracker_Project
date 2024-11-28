@@ -1,0 +1,4 @@
+npm
+concurrently
+react-scripts
+-g serve
