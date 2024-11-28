@@ -7,11 +7,17 @@ import logging
 from .models import User
 from . import db
 from config import REACT_BUILD_DIR
+from config import REACT_STATIC_DIR
 
 logger = logging.getLogger(__name__)
 
 # print("Loading routes...")
-main = Blueprint('main', __name__)
+#main = Blueprint('main', __name__)
+main = Blueprint(
+    'main',
+    __name__,
+    static_folder="C:/Users/catst/OneDrive/Documents/repos/SatisfactoryExcelPY/react_stuff/satisfactory_tracker/build/static"
+)
 
 @main.route('/')
 def serve_react_app():
@@ -20,22 +26,32 @@ def serve_react_app():
     return send_from_directory(REACT_BUILD_DIR, 'index.html')
 #print (loading index.html...")
 
+
+# from werkzeug.middleware.shared_data import SharedDataMiddleware
+
+# # Serve React static files directly
+# app.wsgi_app = SharedDataMiddleware(app.wsgi_app, {
+#     '/static': os.path.join(REACT_BUILD_DIR, 'static')
+# })
 @main.route('/static/<path:path>')
 def serve_static_files(path):
-    static_dir = (os.path.join(REACT_BUILD_DIR, 'static'), path)
-    logger.info(f"Serving static file: {static_dir}")
+    """STATIC ROUTE - Serve static files from React's build directory."""
+    logger.info(f"Serving static file: {path}")
     return send_from_directory(os.path.join(REACT_BUILD_DIR, 'static'), path)
 #print("Loading static files...")
 
 @main.route('/<path:path>')
 def catchall(path):
+    """Catch-all route to serve React app or fallback."""
+    if path.startswith("static/"):
+        logger.info(f"CATCHALL - Skipping static route for: {path}")
+        return "", 404  # Ensure Flask doesn't interfere with /static
     file_path = os.path.join(REACT_BUILD_DIR, path)
-    logger.info(f"Checking file path: {file_path}")
-    print(f"Checking file path: {file_path}")
     if os.path.exists(file_path):
+        logger.info(f"CATCHALL - Serving file: {file_path}")
         return send_from_directory(REACT_BUILD_DIR, path)
-    else:
-        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+    logger.info("CATCHALL - Serving React app index.html")
+    return send_from_directory(REACT_BUILD_DIR, 'index.html')
 #print("Loading catchall...")
 
 @main.route('/login', methods=['GET', 'POST'])

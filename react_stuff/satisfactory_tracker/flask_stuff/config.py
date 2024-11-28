@@ -11,7 +11,8 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.info(SQLALCHEMY_DATABASE_URI)
+# logger.info(SQLALCHEMY_DATABASE_URI)
 
 REACT_BUILD_DIR = "C:/Users/catst/OneDrive/Documents/repos/SatisfactoryExcelPY/react_stuff/satisfactory_tracker/build/"
+REACT_STATIC_DIR = os.path.join(REACT_BUILD_DIR, 'static')
 #print(REACT_BUILD_DIR)

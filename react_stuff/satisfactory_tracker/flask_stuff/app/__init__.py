@@ -11,7 +11,7 @@ login_manager = LoginManager()
 
 def create_app():
     #print("Creating app...")
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=None)
 
     # Load configurations from config.py
     app.config.from_object('config')
@@ -37,4 +37,8 @@ def create_app():
     app.register_blueprint(main)
     #print("Registering blueprints...")
 
+    print("Registered Routes:")
+    for rule in app.url_map.iter_rules():
+        print(rule)
+    
     return app

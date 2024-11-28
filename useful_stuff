@@ -5,7 +5,6 @@ Virtual environment:
         .\venv\Scripts\activate
         pip install -r requirements.txt
     Delete:
-        deactivate
         Remove-Item -Recurse -Force .\venv
             (Alternatively, you can manually delete the venv directory using File Explorer.)
     Turn on virtual environment:
@@ -17,3 +16,9 @@ npm commands:
     npm run build
     npm start
     serve -s build
+
+Start the front-end and back-end servers:
+    // "client": 
+        npm start
+    // "server": 
+        python flask_stuff\\run.py

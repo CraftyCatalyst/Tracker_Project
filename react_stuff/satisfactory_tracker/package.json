@@ -13,7 +13,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "npm run client",
+    "start": "react-scripts start",
     "stop": "node bar.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
