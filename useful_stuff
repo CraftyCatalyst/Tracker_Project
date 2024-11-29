@@ -32,13 +32,16 @@ Project relative paths:
     react_stuff\satisfactory_tracker\SQLite_stuff
     excel_stuff
 
-Flask db commands:
+db commands:
     Blow away the database and start over:
+        # in react_stuff\satisfactory_tracker\flask_stuff
         rm satisfactory_parts.db
         flask db stamp head
         flask db migrate -m "Fix table names with explicit tablename"
         flask db upgrade
-    General commands:
+        #in react_stuff\satisfactory_tracker\sqlite_stuff
+        python migrate_data.py
+Flask commands:
         flask db init # Initialize the migration environment.
         flask db migrate -m "Initial migration." # Change the message as needed.
         flask db upgrade # Upgrade to the latest migration.
