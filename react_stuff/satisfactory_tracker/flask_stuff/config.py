@@ -14,5 +14,13 @@ logger = logging.getLogger(__name__)
 # logger.info(SQLALCHEMY_DATABASE_URI)
 
 REACT_BUILD_DIR = "C:/Users/catst/OneDrive/Documents/repos/SatisfactoryExcelPY/react_stuff/satisfactory_tracker/build/"
-REACT_STATIC_DIR = os.path.join(REACT_BUILD_DIR, 'static')
+REACT_STATIC_DIR = "C:/Users/catst/OneDrive/Documents/repos/SatisfactoryExcelPY/react_stuff/satisfactory_tracker/build/static"
 #print(REACT_BUILD_DIR)
+
+# Email server config values
+MAIL_SERVER = 'smtp.gmail.com' # Gmail SMTP server
+MAIL_PORT = 587 # Port for TLS
+MAIL_USE_TLS = True # Use TLS for security
+MAIL_USERNAME = os.environ.get('ST_MAIL_USER') # Load email username from environment variable
+MAIL_PASSWORD = os.environ.get('ST_MAIL_PW')  # Load email password from environment variable
+MAIL_DEFAULT_SENDER = os.environ.get('ST_MAIL_SENDER') # Load email sender from environment variable

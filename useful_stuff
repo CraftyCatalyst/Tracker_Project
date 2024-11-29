@@ -22,3 +22,33 @@ Start the front-end and back-end servers:
         npm start
     // "server": 
         python flask_stuff\\run.py
+
+Code stuff:
+    formatting of TODOs:
+        #TODO:
+
+Project relative paths:
+    react_stuff\satisfactory_tracker\flask_stuff
+    react_stuff\satisfactory_tracker\SQLite_stuff
+    excel_stuff
+
+Flask db commands:
+    Blow away the database and start over:
+        rm satisfactory_parts.db
+        flask db stamp head
+        flask db migrate -m "Fix table names with explicit tablename"
+        flask db upgrade
+    General commands:
+        flask db init # Initialize the migration environment.
+        flask db migrate -m "Initial migration." # Change the message as needed.
+        flask db upgrade # Upgrade to the latest migration.
+        flask db downgrade # Downgrade to the previous migration.
+        flask db history # Show the migration history.
+        flask db heads # Show the current migration.
+        flask db stamp head # Stamp the current migration.
+
+SQLite Installation Folder:
+    F:\Programs\SQLite3\sqlite3.exe
+    
+SQLite commands:
+    sqlite3 satisfactory_parts.db .dump > backup.sql # Backup the database.

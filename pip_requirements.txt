@@ -11,6 +11,7 @@ flask-restplus
 flask-jwt-extended
 Flask-Security
 Flask-SQLAlchemy
+Flask-Script
 pytest
 python-dotenv
 requests
@@ -20,7 +21,10 @@ matplotlib
 statsmodels
 seaborn
 excel
+openpyxl
 axios
 gunicorn
 networkx
+itsdangerous
+six
 --upgrade typing_extensions
