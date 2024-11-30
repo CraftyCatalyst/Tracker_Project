@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_mail import Mail
-from six import text_type
 
 print("Loading extensions...")
 login_manager = LoginManager()
