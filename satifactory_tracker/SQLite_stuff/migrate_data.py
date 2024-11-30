@@ -2,6 +2,9 @@ import sqlite3
 import pandas as pd
 import os
 
+# Import the whitelist from the config file
+from config import VALID_TABLES, VALID_COLUMNS
+
 # Load Excel data
 file_name = 'Satisfactory Parts Data v1.xlsx'
 excel_path = os.path.join(os.getcwd(), file_name)
@@ -14,8 +17,12 @@ print("Connected to the database")
 
 # Helper function to get or insert a record and return its ID
 def get_or_create(cursor, table, unique_column, value, additional_data=None):
+    if table not in VALID_TABLES or unique_column not in VALID_COLUMNS:
+        raise ValueError("Invalid table or column name")
+    
     # Check if the record already exists
-    cursor.execute(f"SELECT id FROM {table} WHERE {unique_column} = ?", (value,))
+    query = f"SELECT id FROM {table} WHERE {unique_column} = ?"
+    cursor.execute(query, (value,))
     result = cursor.fetchone()
     if result:
         return result[0]
@@ -24,9 +31,11 @@ def get_or_create(cursor, table, unique_column, value, additional_data=None):
         columns = f"{unique_column}, " + ", ".join(additional_data.keys())
         placeholders = ", ".join(["?"] * (1 + len(additional_data)))
         values = [value] + list(additional_data.values())
-        cursor.execute(f"INSERT INTO {table} ({columns}) VALUES ({placeholders})", values)
+        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+        cursor.execute(query, values)
     else:
-        cursor.execute(f"INSERT INTO {table} ({unique_column}) VALUES (?)", (value,))
+        query = f"INSERT INTO {table} ({unique_column}) VALUES (?)"
+        cursor.execute(query, value,)
     return cursor.lastrowid
 
 # Load data from the spreadsheet

@@ -18,10 +18,7 @@ npm commands:
     serve -s build
 
 Start the front-end and back-end servers:
-    // "client": 
-        npm start
-    // "server": 
-        python flask_stuff\\run.py
+    npm start # uses concurrently to start the both react and flask servers in the package.json script
 
 Code stuff:
     formatting of TODOs:
