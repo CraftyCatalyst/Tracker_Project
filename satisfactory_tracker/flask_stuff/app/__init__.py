@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -12,8 +13,11 @@ login_manager = LoginManager()
 mail = Mail()
 
 def create_app():
+    # Construct the absolute path to the config file
+    config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../config.py'))
+    #print(config_path)
     app = Flask(__name__, static_folder=None) # Explicity set static_folder to None to disable static file serving from default location
-    app.config.from_object('config')
+    app.config.from_pyfile(config_path)
     print("App created")
 
     print("Initializing extensions...")

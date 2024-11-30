@@ -6,9 +6,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_default_secret_key'
 
 # base directory of the project
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
+print(basedir)
 # DB config values
-SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "SQLite_stuff", "satisfactory_parts.db")}'
+SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "Tracker_Project", "satisfactory_tracker", "SQLite_stuff", "satisfactory_parts.db")}'
+print(SQLALCHEMY_DATABASE_URI)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 logging.basicConfig(level=logging.INFO)

@@ -7,8 +7,8 @@ import os
 import logging
 from .models import User
 from . import db
-from config import REACT_BUILD_DIR
-from config import REACT_STATIC_DIR
+#from config import REACT_BUILD_DIR
+#from config import REACT_STATIC_DIR
 from flask import request, flash, redirect, url_for
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
@@ -16,6 +16,19 @@ from itsdangerous import URLSafeTimedSerializer
 from flask import current_app
 from flask_mail import Message
 from . import mail
+import importlib.util
+
+# Construct the absolute path to the config file
+config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../config.py'))
+
+# Load the config module dynamically
+spec = importlib.util.spec_from_file_location("config", config_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+
+# Now you can use the imported config variables
+REACT_BUILD_DIR = config.REACT_BUILD_DIR
+REACT_STATIC_DIR = config.REACT_STATIC_DIR
 
 logger = logging.getLogger(__name__)
 

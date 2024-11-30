@@ -19,7 +19,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "client": "react-scripts start",
-    "server": "python flask_stuff\\run.py"
+    "server": "python ../flask_stuff/run.py"
   },
   "eslintConfig": {
     "extends": [
