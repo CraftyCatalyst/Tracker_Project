@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import text
+from sqlalchemy import inspect
 from flask import send_from_directory
 import os
 import logging
@@ -150,6 +151,35 @@ def verify_email(token):
     db.session.commit()
     flash('Your account has been verified! You can now log in.', 'success')
     return redirect(url_for('login'))
+
+@main.route('/api/tables', methods=['GET'])
+def get_tables():
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()  # Fetch all table names
+    print(tables)
+    return jsonify({"tables": tables})
+    
+@main.route('/api/tables/<table_name>', methods=['GET'])
+def get_table_data(table_name):
+    query = text(f"SELECT * FROM {table_name}")
+    rows = db.session.execute(query).fetchall()
+    return jsonify({"rows": [dict(row._mapping) for row in rows]})
+
+@main.route('/api/tables/<table_name>/<int:row_id>', methods=['PUT'])
+def update_row(table_name, row_id):
+    data = request.json
+    update_query = text(f"UPDATE {table_name} SET {', '.join(f'{key} = :{key}' for key in data.keys())} WHERE id = :id")
+    db.session.execute(update_query, {**data, "id": row_id})
+    db.session.commit()
+    return jsonify({"message": "Row updated successfully"})
+
+@main.route('/api/tables/<table_name>/<int:row_id>', methods=['DELETE'])
+def delete_row(table_name, row_id):
+    delete_query = text(f"DELETE FROM {table_name} WHERE id = :id")
+    db.session.execute(delete_query, {"id": row_id})
+    db.session.commit()
+    return jsonify({"message": "Row deleted successfully"})
+
 
 @main.route('/api/parts', methods=['GET'])
 def get_parts():
