@@ -1,4 +1,10 @@
-When installed packages aren't recognised - Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
+Troubleshoting:
+    When installed packages aren't recognised - Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
+Run Application:
+    # This will activate the virtual env, run the npm build, start the flask server, the react server and open the browser to the react server.
+    # Application will be running at http://localhost:3000/
+    python run_app.py # in root directory. 
+    
 Virtual environment:
     Create:
         python -m venv venv
@@ -15,7 +21,6 @@ Virtual environment:
 npm commands:
     npm run build
     npm start
-    serve -s build
 
 Start the front-end and back-end servers:
     npm start # uses concurrently to start the both react and flask servers in the package.json script
@@ -25,18 +30,19 @@ Code stuff:
         #TODO:
 
 Project relative paths:
-    react_stuff\satisfactory_tracker\flask_stuff
-    react_stuff\satisfactory_tracker\SQLite_stuff
-    excel_stuff
+    \satisfactory_tracker\flask_stuff
+    \satisfactory_tracker\SQLite_stuff
+    \satisfactory_tracker\react_stuff
+    \satisfactory_tracker\excel_stuff
 
 db commands:
     Blow away the database and start over:
-        # in react_stuff\satisfactory_tracker\flask_stuff
+        # in satisfactory_tracker\flask_stuff
         rm satisfactory_parts.db
         flask db stamp head
         flask db migrate -m "Fix table names with explicit tablename"
         flask db upgrade
-        #in react_stuff\satisfactory_tracker\sqlite_stuff
+        # in satisfactory_tracker\sqlite_stuff
         python migrate_data.py
 Flask commands:
         flask db init # Initialize the migration environment.
@@ -48,7 +54,7 @@ Flask commands:
         flask db stamp head # Stamp the current migration.
 
 SQLite Installation Folder:
-    F:\Programs\SQLite3\sqlite3.exe
+    F:\Programs\SQLite3\sqlite3.exe # Handy for me. Change path as needed.
     
 SQLite commands:
-    sqlite3 satisfactory_parts.db .dump > backup.sql # Backup the database.
+    sqlite3 satisfactory_parts.db .dump > backup.sql # Backup the database. Preferably before you make massive changes! :P

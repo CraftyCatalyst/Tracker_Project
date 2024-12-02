@@ -1,5 +1,5 @@
 npm
 concurrently
 react-scripts
--g serve
 react-router-dom
+-g serve

@@ -159,12 +159,14 @@ def get_tables():
     print(tables)
     return jsonify({"tables": tables})
     
+# Adding a GET route for fetching all rows from a table    
 @main.route('/api/tables/<table_name>', methods=['GET'])
 def get_table_data(table_name):
     query = text(f"SELECT * FROM {table_name}")
     rows = db.session.execute(query).fetchall()
     return jsonify({"rows": [dict(row._mapping) for row in rows]})
 
+# Adding a PUT route for updating a row
 @main.route('/api/tables/<table_name>/<int:row_id>', methods=['PUT'])
 def update_row(table_name, row_id):
     data = request.json
@@ -173,6 +175,33 @@ def update_row(table_name, row_id):
     db.session.commit()
     return jsonify({"message": "Row updated successfully"})
 
+# Adding a POST route for creating a new row
+@main.route('/api/tables/<table_name>', methods=['POST'])
+def create_row(table_name):
+    if table_name not in config.VALID_TABLES:
+        return jsonify({"error": f"Table '{table_name}' is not valid."}), 400
+
+    data = request.json
+
+    # Validate columns
+    invalid_columns = [key for key in data.keys() if key not in config.VALID_COLUMNS]
+    if invalid_columns:
+        return jsonify({"error": f"Invalid column(s): {', '.join(invalid_columns)}"}), 400
+
+    # Build the SQL INSERT query
+    columns = ", ".join(data.keys())
+    values = ", ".join(f":{key}" for key in data.keys())
+    query = text(f"INSERT INTO {table_name} ({columns}) VALUES ({values})")
+
+    try:
+        db.session.execute(query, data)
+        db.session.commit()
+        return jsonify({"message": "Row created successfully"}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# Adding a DELETE route for deleting a row
 @main.route('/api/tables/<table_name>/<int:row_id>', methods=['DELETE'])
 def delete_row(table_name, row_id):
     delete_query = text(f"DELETE FROM {table_name} WHERE id = :id")

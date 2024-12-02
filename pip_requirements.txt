@@ -26,5 +26,3 @@ axios
 gunicorn
 networkx
 itsdangerous
-six
---upgrade typing_extensions

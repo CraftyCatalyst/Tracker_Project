@@ -6,6 +6,7 @@ class User(db.Model, UserMixin):
     __tablename__ = 'user'  # Explicit table name
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), nullable=False, unique=True)
+    role = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(200), nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
@@ -63,6 +64,14 @@ class Miner_Supply(db.Model):
     node_purity_id = db.Column(db.Integer, db.ForeignKey('node_purity.id'), nullable=False)
     miner_type_id = db.Column(db.Integer, db.ForeignKey('miner_type.id'), nullable=False)
     base_supply_pm = db.Column(db.Float)                                                    
+
+class Data_Verification(db.Model):
+    __tablename__ = 'data_verification'
+    id = db.Column(db.Integer, primary_key=True)
+    table_name = db.Column(db.String(100), nullable=False)
+    column_name = db.Column(db.String(100), nullable=False)
+    value = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(200), nullable=True)
 
 @login_manager.user_loader
 def load_user(user_id):
