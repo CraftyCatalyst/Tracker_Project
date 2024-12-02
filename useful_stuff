@@ -1,5 +1,10 @@
 Troubleshoting:
-    When installed packages aren't recognised - Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
+    When installed packages aren't recognised:
+        Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
+    Issues with conflicting package version:
+        Remove-Item -Recurse -Force .\node_modules
+        Remove-Item -Force .\package-lock.json
+        npm install
 Run Application:
     # This will activate the virtual env, run the npm build, start the flask server, the react server and open the browser to the react server.
     # Application will be running at http://localhost:3000/
@@ -55,6 +60,31 @@ Flask commands:
 
 SQLite Installation Folder:
     F:\Programs\SQLite3\sqlite3.exe # Handy for me. Change path as needed.
-    
 SQLite commands:
     sqlite3 satisfactory_parts.db .dump > backup.sql # Backup the database. Preferably before you make massive changes! :P
+
+Key files:
+    General:
+        \config.py
+        \run_app.py
+        \pip_requirements.txt
+        \npm_requirements.txt
+        \useful_stuff
+    SQLite:
+        \satisfactory_tracker\SQLite_stuff\satisfactory_parts.db
+        \satisfactory_tracker\SQLite_stuff\Satifactory Parts Data v1.xlsx
+        \satisfactory_tracker\SQLite_stuff\migrate_data.py
+        \satisfactory_tracker\SQLite_stuff\satisfactory_parts.db
+    Flask:
+        \satisfactory_tracker\flask_stuff\app\__init__.py #
+        \satisfactory_tracker\flask_stuff\app\models.py #
+        \satisfactory_tracker\flask_stuff\app\routes.py #
+    React:
+        \satisfactory_tracker\react_stuff\src\pages\DataManagementPage.js #
+        \satisfactory_tracker\react_stuff\src\pages\EditModal.js #
+        \satisfactory_tracker\react_stuff\src\pages\HomePage.js #
+        \satisfactory_tracker\react_stuff\src\pages\LoginPage.js
+        \satisfactory_tracker\react_stuff\src\services\api.js #
+        \satisfactory_tracker\react_stuff\App.js #
+        
+

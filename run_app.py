@@ -18,6 +18,7 @@ def run_command(command):
 
 if __name__ == "__main__":
     # Activate the virtual environment 
+    print("Activating virtual environment...")
     activate_command = activate_virtualenv()
     
     # Change to the react_stuff directory

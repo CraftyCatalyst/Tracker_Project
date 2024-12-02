@@ -1,4 +1,22 @@
+
+// #### This is a test page using Material-UI. ####
+// import React from 'react';
+// import { Typography } from '@mui/material';
+
+// const DataManagementPage = () => {
+//   return (
+//     <div>
+//       <Typography variant="h4">Data Management Page</Typography>
+//       <Typography variant="body1">This is a test page using Material-UI.</Typography>
+//     </div>
+//   );
+//};
+// ################################################
+
+// #### Target Code ####
 import React, { useState, useEffect } from "react";
+import { Grid2, Paper, Typography } from '@mui/material';
+import { SimpleTreeView , TreeItem } from '@mui/x-tree-view';
 import axios from "axios";
 import EditModal from "./EditModal";
 
@@ -106,9 +124,45 @@ const DataManagementPage = () => {
     }
   };
 
+  const ExampleGrid = () => (
+    <Grid2 container spacing={2}>
+      {[1, 2, 3, 4, 5].map((item) => (
+        <Grid2 item xs={12} sm={6} md={4} key={item}>
+          <Paper style={{ padding: '20px', textAlign: 'center' }}>
+            <Typography variant="h6">Item {item}</Typography>
+          </Paper>
+        </Grid2>
+      ))}
+    </Grid2>
+  );
+
+  const ExampleTreeView = () => (
+    <SimpleTreeView>
+      <TreeItem nodeId="1" label="Parent">
+        <TreeItem nodeId="2" label="Child 1" />
+        <TreeItem nodeId="3" label="Child 2">
+          <TreeItem nodeId="4" label="Subchild" />
+        </TreeItem>
+      </TreeItem>
+    </SimpleTreeView>
+  );
+
   return (
     <div>
       <h1>Data Management</h1>
+      <div>
+        <Typography variant="h4" style={{ marginBottom: '20px' }}>
+          Data Management Page
+        </Typography>
+      <div style={{ marginBottom: '40px' }}>
+        <Typography variant="h5">Example Grid:</Typography>
+        <ExampleGrid />
+      </div>
+      <div>
+        <Typography variant="h5">Example Tree View:</Typography>
+        <ExampleTreeView />
+      </div>
+    </div>
 
       {/* Dropdown for table selection */}
       <div>
@@ -175,5 +229,6 @@ const DataManagementPage = () => {
     </div>
   );
 };
+// ################################################
 
 export default DataManagementPage;

@@ -2,4 +2,12 @@ npm
 concurrently
 react-scripts
 react-router-dom
+react@18.2.0 
+react-dom@18.2.0
 -g serve
+@mui/material
+@emotion/react
+@emotion/styled
+@mui/icons-material
+@mui/lab
+@mui/x-tree-view
