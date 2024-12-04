@@ -1,21 +1,5 @@
-
-// #### This is a test page using Material-UI. ####
-// import React from 'react';
-// import { Typography } from '@mui/material';
-
-// const DataManagementPage = () => {
-//   return (
-//     <div>
-//       <Typography variant="h4">Data Management Page</Typography>
-//       <Typography variant="body1">This is a test page using Material-UI.</Typography>
-//     </div>
-//   );
-//};
-// ################################################
-
-// #### Target Code ####
 import React, { useState, useEffect } from "react";
-import { Grid2, Paper, Typography } from '@mui/material';
+import { Grid2, Paper, Typography, Button } from '@mui/material';
 import { SimpleTreeView , TreeItem } from '@mui/x-tree-view';
 import axios from "axios";
 import EditModal from "./EditModal";
@@ -124,46 +108,35 @@ const DataManagementPage = () => {
     }
   };
 
-  const ExampleGrid = () => (
-    <Grid2 container spacing={2}>
-      {[1, 2, 3, 4, 5].map((item) => (
-        <Grid2 item xs={12} sm={6} md={4} key={item}>
-          <Paper style={{ padding: '20px', textAlign: 'center' }}>
-            <Typography variant="h6">Item {item}</Typography>
-          </Paper>
-        </Grid2>
-      ))}
-    </Grid2>
-  );
+  // const ExampleGrid = () => (
+  //   <Grid2 container spacing={2}>
+  //     {[1, 2, 3, 4, 5].map((item) => (
+  //       <Grid2 item xs={12} sm={6} md={4} key={item}>
+  //         <Paper style={{ padding: '20px', textAlign: 'center' }}>
+  //           <Typography variant="h6" color="secondary">Item {item}</Typography>
+  //         </Paper>
+  //       </Grid2>
+  //     ))}
+  //   </Grid2>
+  // );
 
-  const ExampleTreeView = () => (
-    <SimpleTreeView>
-      <TreeItem nodeId="1" label="Parent">
-        <TreeItem nodeId="2" label="Child 1" />
-        <TreeItem nodeId="3" label="Child 2">
-          <TreeItem nodeId="4" label="Subchild" />
-        </TreeItem>
-      </TreeItem>
-    </SimpleTreeView>
-  );
+  // const ExampleTreeView = () => (
+  //   <SimpleTreeView>
+  //     <TreeItem nodeId="1" label="Parent">
+  //       <TreeItem nodeId="2" label="Child 1" />
+  //       <TreeItem nodeId="3" label="Child 2">
+  //         <TreeItem nodeId="4" label="Subchild" />
+  //       </TreeItem>
+  //     </TreeItem>
+  //   </SimpleTreeView>
+  // );
 
   return (
     <div>
-      <h1>Data Management</h1>
-      <div>
-        <Typography variant="h4" style={{ marginBottom: '20px' }}>
-          Data Management Page
-        </Typography>
-      <div style={{ marginBottom: '40px' }}>
-        <Typography variant="h5">Example Grid:</Typography>
-        <ExampleGrid />
-      </div>
-      <div>
-        <Typography variant="h5">Example Tree View:</Typography>
-        <ExampleTreeView />
-      </div>
-    </div>
-
+      <Typography variant="h1" color="primary">
+        Data Management Page
+      </Typography>
+      
       {/* Dropdown for table selection */}
       <div>
         <label>Select Table:</label>
@@ -181,7 +154,18 @@ const DataManagementPage = () => {
       {selectedTable && (
         <div>
           <h2>Table: {selectedTable}</h2>
-          <button onClick={handleCreate}>Create New Row</button>
+          <Button
+            variant="contained"
+            color="secondary"
+            sx={{
+              marginTop: 2,
+              color: 'secondary.contrastText', // Ensures text matches theme
+              backgroundColor: 'secondary.main', // Ensures background matches theme
+              }}
+              onClick={handleCreate}
+          >
+            Create New Row
+          </Button>
           <table border="1">
             <thead>
               <tr>
@@ -198,8 +182,30 @@ const DataManagementPage = () => {
                     <td key={col}>{row[col]}</td>
                   ))}
                   <td>
-                    <button onClick={() => handleEdit(row)}>Edit</button>
-                    <button onClick={() => handleDelete(row.id)}>Delete</button>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      sx={{
+                        marginTop: 2,
+                        color: 'secondary.contrastText', // Ensures text matches theme
+                        backgroundColor: 'secondary.main', // Ensures background matches theme
+                        }}
+                        onClick={() => handleEdit(row)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      sx={{
+                        marginTop: 2,
+                        color: 'secondary.contrastText', // Ensures text matches theme
+                        backgroundColor: 'secondary.main', // Ensures background matches theme
+                        }}
+                        onClick={() => handleDelete(row)}
+                    >
+                      Delete
+                    </Button>
                   </td>
                 </tr>
               ))}

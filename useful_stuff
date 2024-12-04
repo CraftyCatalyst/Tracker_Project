@@ -1,11 +1,23 @@
 Troubleshoting:
     When installed packages aren't recognised:
         Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
-    Issues with conflicting package version:
+    Issues with conflicting package versions:
+        # This will blow away the node_modules directory, the package-lock.json file, and reinstall the all packages.
+        # Make sure any dependencies on specific versions are updated in the package.json file.
         Remove-Item -Recurse -Force .\node_modules
         Remove-Item -Force .\package-lock.json
         npm install
-Run Application:
+
+Use Hot Reloading to see changes in real-time:
+    # The scripts in package.json have been updated to start the client and server by calling start.
+    # Make sure you've run npm install concurrently --save-dev 
+    # This will start the flask server and the react server in watch mode and changes will be reflected in the browser in real-time.
+    # Application will be running at http://localhost:3000/
+    .\venv\Scripts\activate # if not already in the virtual environment
+    cd satisfactory_tracker\react_stuff # if not already in the react_stuff directory
+    npm start
+
+Build and Run Application:
     # This will activate the virtual env, run the npm build, start the flask server, the react server and open the browser to the react server.
     # Application will be running at http://localhost:3000/
     python run_app.py # in root directory. 
@@ -14,7 +26,8 @@ Virtual environment:
     Create:
         python -m venv venv
         .\venv\Scripts\activate
-        pip install -r requirements.txt
+        pip install -r pip_requirements.txt
+        npm install # and copy the line from npm_requirements.txt to install the required packages.
     Delete:
         Remove-Item -Recurse -Force .\venv
             (Alternatively, you can manually delete the venv directory using File Explorer.)
@@ -43,12 +56,12 @@ Project relative paths:
 db commands:
     Blow away the database and start over:
         # in satisfactory_tracker\flask_stuff
-        rm satisfactory_parts.db
-        flask db stamp head
-        flask db migrate -m "Fix table names with explicit tablename"
-        flask db upgrade
+            rm satisfactory_parts.db
+            flask db stamp head
+            flask db migrate -m "Fix table names with explicit tablename"
+            flask db upgrade
         # in satisfactory_tracker\sqlite_stuff
-        python migrate_data.py
+            python migrate_data.py
 Flask commands:
         flask db init # Initialize the migration environment.
         flask db migrate -m "Initial migration." # Change the message as needed.

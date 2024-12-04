@@ -162,6 +162,7 @@ def get_tables():
 # Adding a GET route for fetching all rows from a table    
 @main.route('/api/tables/<table_name>', methods=['GET'])
 def get_table_data(table_name):
+    print("Getting table data" + table_name)
     query = text(f"SELECT * FROM {table_name}")
     rows = db.session.execute(query).fetchall()
     return jsonify({"rows": [dict(row._mapping) for row in rows]})
@@ -204,6 +205,7 @@ def create_row(table_name):
 # Adding a DELETE route for deleting a row
 @main.route('/api/tables/<table_name>/<int:row_id>', methods=['DELETE'])
 def delete_row(table_name, row_id):
+    print("Deleting row" + table_name + row_id)
     delete_query = text(f"DELETE FROM {table_name} WHERE id = :id")
     db.session.execute(delete_query, {"id": row_id})
     db.session.commit()

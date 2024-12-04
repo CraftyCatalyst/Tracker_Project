@@ -1,13 +1,6 @@
-npm
-concurrently
-react-scripts
-react-router-dom
-react@18.2.0 
-react-dom@18.2.0
--g serve
-@mui/material
-@emotion/react
-@emotion/styled
-@mui/icons-material
-@mui/lab
-@mui/x-tree-view
+# Copy the following line to your terminal to install the required packages. Then go make a cup of tea. :)
+npm install npm concurrently react-scripts react-router-dom react@18.2.0 react-dom@18.2.0 web-vitals @mui/material @emotion/react @emotion/styled @mui/icons-material @mui/lab @mui/x-tree-view
+
+# You may need to run these separately
+npm install -g serve
+npm install concurrently --save-dev
