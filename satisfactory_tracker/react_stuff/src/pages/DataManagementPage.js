@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Grid2, Paper, Typography, Button } from '@mui/material';
+import { Grid2, Paper, Typography, Button, Table } from '@mui/material';
 import { SimpleTreeView , TreeItem } from '@mui/x-tree-view';
 import axios from "axios";
 import EditModal from "./EditModal";
@@ -166,7 +166,7 @@ const DataManagementPage = () => {
           >
             Create New Row
           </Button>
-          <table border="1">
+          <Table border="1">
             <thead>
               <tr>
                 {columns.map((col) => (
@@ -210,7 +210,7 @@ const DataManagementPage = () => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
       )}
 
