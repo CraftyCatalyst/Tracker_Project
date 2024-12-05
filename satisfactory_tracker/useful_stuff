@@ -9,18 +9,18 @@ Troubleshoting:
         npm install
 
 Use Hot Reloading to see changes in real-time:
-    # The scripts in package.json have been updated to start the client and server by calling start.
+    # The scripts in package.json have been updated to start the client and server by calling npm start.
     # Make sure you've run npm install concurrently --save-dev 
     # This will start the flask server and the react server in watch mode and changes will be reflected in the browser in real-time.
     # Application will be running at http://localhost:3000/
+    cd satisfactory_tracker # if not already in the directory
     .\venv\Scripts\activate # if not already in the virtual environment
-    cd satisfactory_tracker\react_stuff # if not already in the react_stuff directory
     npm start
 
 Build and Run Application:
     # This will activate the virtual env, run the npm build, start the flask server, the react server and open the browser to the react server.
     # Application will be running at http://localhost:3000/
-    python run_app.py # in root directory. 
+    python run_app.py # in satisfactory_tracker directory. 
     
 Virtual environment:
     Create:
@@ -48,14 +48,13 @@ Code stuff:
         #TODO:
 
 Project relative paths:
-    \satisfactory_tracker\flask_stuff
+    \satisfactory_tracker\
     \satisfactory_tracker\SQLite_stuff
-    \satisfactory_tracker\react_stuff
     \satisfactory_tracker\excel_stuff
 
 db commands:
     Blow away the database and start over:
-        # in satisfactory_tracker\flask_stuff
+        # in satisfactory_tracker
             rm satisfactory_parts.db
             flask db stamp head
             flask db migrate -m "Fix table names with explicit tablename"
@@ -89,15 +88,15 @@ Key files:
         \satisfactory_tracker\SQLite_stuff\migrate_data.py
         \satisfactory_tracker\SQLite_stuff\satisfactory_parts.db
     Flask:
-        \satisfactory_tracker\flask_stuff\app\__init__.py #
-        \satisfactory_tracker\flask_stuff\app\models.py #
-        \satisfactory_tracker\flask_stuff\app\routes.py #
+        \satisfactory_tracker\app\__init__.py #
+        \satisfactory_tracker\app\models.py #
+        \satisfactory_tracker\app\routes.py #
     React:
-        \satisfactory_tracker\react_stuff\src\pages\DataManagementPage.js #
-        \satisfactory_tracker\react_stuff\src\pages\EditModal.js #
-        \satisfactory_tracker\react_stuff\src\pages\HomePage.js #
-        \satisfactory_tracker\react_stuff\src\pages\LoginPage.js
-        \satisfactory_tracker\react_stuff\src\services\api.js #
-        \satisfactory_tracker\react_stuff\App.js #
+        \satisfactory_tracker\src\pages\DataManagementPage.js #
+        \satisfactory_tracker\src\pages\EditModal.js #
+        \satisfactory_tracker\src\pages\HomePage.js #
+        \satisfactory_tracker\src\pages\LoginPage.js
+        \satisfactory_tracker\src\services\api.js #
+        \satisfactory_tracker\App.js #
         
 

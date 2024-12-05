@@ -20,7 +20,9 @@ from . import mail
 import importlib.util
 
 # Construct the absolute path to the config file
-config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../config.py'))
+config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../config.py'))
+logging.INFO, f"Loading config from: {config_path}"
+print (config_path)
 
 # Load the config module dynamically
 spec = importlib.util.spec_from_file_location("config", config_path)

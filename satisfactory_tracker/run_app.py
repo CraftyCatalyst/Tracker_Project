@@ -21,8 +21,8 @@ if __name__ == "__main__":
     print("Activating virtual environment...")
     activate_command = activate_virtualenv()
     
-    # Change to the react_stuff directory
-    react_path = os.path.join(os.getcwd(), 'satisfactory_tracker', 'react_stuff')
+    # Ensure you're in the project directory
+    react_path = os.path.join(os.getcwd(), 'satisfactory_tracker')
     os.chdir(react_path)
          
     # Run npm run build

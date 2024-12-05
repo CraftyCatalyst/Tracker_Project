@@ -8,7 +8,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_default_secret_key'
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 print(basedir)
 # DB config values
-SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "Tracker_Project", "satisfactory_tracker", "SQLite_stuff", "satisfactory_parts.db")}'
+SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "satisfactory_tracker", "SQLite_stuff", "satisfactory_parts.db")}'
 print(SQLALCHEMY_DATABASE_URI)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # logger.info(SQLALCHEMY_DATABASE_URI)
 
 # React build directory
-REACT_BUILD_DIR = f'{os.path.join(basedir,"Tracker_Project", "satisfactory_tracker", "react_stuff", "build")}'
-REACT_STATIC_DIR = f'{os.path.join(basedir,"Tracker_Project", "satisfactory_tracker", "react_stuff", "build", "static")}'
+REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
+REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
 
 # Email server config values
 MAIL_SERVER = 'smtp.gmail.com' # Gmail SMTP server

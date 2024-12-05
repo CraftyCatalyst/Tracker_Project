@@ -4,18 +4,21 @@
   "private": true,
   "homepage": "/",
   "dependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "7.21.0-placeholder-for-preset-env.2",
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
-    "@mui/icons-material": "^6.1.9",
-    "@mui/material": "^6.1.9",
+    "@mui/icons-material": "^6.1.10",
+    "@mui/lab": "^6.0.0-beta.18",
+    "@mui/material": "^6.1.10",
     "@mui/x-tree-view": "^7.23.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "@babel/plugin-proposal-private-property-in-object": "7.21.0-placeholder-for-preset-env.2",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-router-dom": "^7.0.1",
+    "axios": "^1.7.9",
+    "npm": "^10.9.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.0.2",
     "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4"
   },
@@ -26,7 +29,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "client": "react-scripts start",
-    "server": "python ../flask_stuff/run.py"
+    "server": "python run.py"
   },
   "eslintConfig": {
     "extends": [
