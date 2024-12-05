@@ -1,0 +1,30 @@
+# version: "3.8"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - C:\repos\satisfactory_parts.db:\app\satisfactory_tracker\SQLite_stuff_satisfactory_parts.db
+    environment:
+      FLASK_ENV: development
+    # Remove the depends_on line if you're not using PostgreSQL anymore
+    # depends_on:
+    #   - db
+
+# Uncomment if switching back to PostgreSQL
+#   db:
+#     image: postgres:14
+#     container_name: postgres
+#     environment:
+#       FLASK_ENV: ${FLASK_ENV}
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - db_data:/var/lib/postgresql/data
+
+# Define the volumes section as a mapping
+volumes: {}
+  # db_data: # Uncomment if PostgreSQL is used

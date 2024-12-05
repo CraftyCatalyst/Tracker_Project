@@ -26,3 +26,4 @@ axios
 gunicorn
 networkx
 itsdangerous
+psycopg2

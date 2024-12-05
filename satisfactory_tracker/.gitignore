@@ -24,3 +24,6 @@ yarn-error.log*
 
 # Virtual Environment
 /venv
+
+# Environment variables
+#.env

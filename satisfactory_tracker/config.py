@@ -8,7 +8,15 @@ SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_default_secret_key'
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 print(basedir)
 # DB config values
+
+##############################################################################################################################
 SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "satisfactory_tracker", "SQLite_stuff", "satisfactory_parts.db")}'
+##############################################################################################################################
+
+##############################################################################################################################
+#SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.abspath(os.path.join(basedir, "app", "SQLite_stuff", "satisfactory_parts.db"))}'
+##############################################################################################################################
+
 print(SQLALCHEMY_DATABASE_URI)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
