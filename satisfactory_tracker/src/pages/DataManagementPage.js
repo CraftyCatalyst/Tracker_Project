@@ -3,6 +3,7 @@ import { Grid2, Paper, Typography, Button, Table } from '@mui/material';
 import { SimpleTreeView , TreeItem } from '@mui/x-tree-view';
 import axios from "axios";
 import EditModal from "./EditModal";
+import { API_ENDPOINTS } from "../apiConfig";
 
 const DataManagementPage = () => {
   const [tables, setTables] = useState([]); // List of tables
@@ -18,7 +19,7 @@ const DataManagementPage = () => {
   useEffect(() => {
     const fetchTables = async () => {
       try {
-        const response = await axios.get("/api/tables"); // Endpoint to get table names
+        const response = await axios.get(API_ENDPOINTS.tables); // Endpoint to get table names
         setTables(response.data.tables);
       } catch (error) {
         console.error("Error fetching table names:", error);
@@ -30,7 +31,7 @@ const DataManagementPage = () => {
   // Fetch data for the selected table
   const fetchTableData = async (tableName) => {
     try {
-      const response = await axios.get(`/api/tables/${tableName}`);
+      const response = await axios.get(`${API_ENDPOINTS.tables}/${tableName}`);
       setTableData(response.data.rows);
       setColumns(Object.keys(response.data.rows[0] || {}));
     } catch (error) {
@@ -76,7 +77,7 @@ const DataManagementPage = () => {
   // Handle save changes
   const handleSaveChanges = async (updatedRow) => {
     try {
-      await axios.put(`/api/tables/${selectedTable}/${updatedRow.id}`, updatedRow);
+      await axios.put(`${API_ENDPOINTS.tables}/${selectedTable}/${updatedRow.id}`, updatedRow);
       alert("Row updated successfully!");
       fetchTableData(selectedTable); // Refresh table data
       handleModalClose();
@@ -88,7 +89,7 @@ const DataManagementPage = () => {
   // Handle save new row
   const handleSaveNewRow = async (row) => {
     try {
-      await axios.post(`/api/tables/${selectedTable}`, row);
+      await axios.post(`${API_ENDPOINTS.tables}/${selectedTable}`, row);
       alert("Row created successfully!");
       fetchTableData(selectedTable);
       handleCreateModalClose();
@@ -100,7 +101,7 @@ const DataManagementPage = () => {
    // Handle row deletion
    const handleDelete = async (rowId) => {
     try {
-      await axios.delete(`/api/tables/${selectedTable}/${rowId}`);
+      await axios.delete(`${API_ENDPOINTS.tables}/${selectedTable}/${rowId}`);
       alert("Row deleted successfully!");
       fetchTableData(selectedTable); // Refresh table data
     } catch (error) {

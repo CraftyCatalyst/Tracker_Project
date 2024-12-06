@@ -48,11 +48,9 @@ Docker:
     # Useful commands:
     docker ps # Confirm the containers are running
     docker logs satisfactory_tracker-app-1 # Check for the Flask app
-    docker logs postgres # Check logs for PostgreSQ
     docker-compose --env-file .env up -d # Use the .env file to set environment variables
     docker exec -it satisfactory_tracker-app-1 bash # Access the bash shell in the app container
-        ps aux | grep node # Check for the React app
-        netstat -tuln | grep 5000 # Check for the Flask app
+    docker debug satisfactory_tracker-app-1 # Debug the app container
     
     
     
