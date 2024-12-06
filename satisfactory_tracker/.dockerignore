@@ -7,3 +7,7 @@ __pycache__
 .DS_Store
 .git
 .gitignore
+Dockerfile.flask
+Dockerfile.react
+file_list.txt
+FileAttributes.txt

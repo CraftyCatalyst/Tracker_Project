@@ -37,16 +37,25 @@ Virtual environment:
         deactivate
 
 Docker:
-    docker-compose build # Build the Docker images    
+    docker-compose build # Build the Docker images
+    docker-compose build --no-cache # Build the Docker images without using the cache (useful for debugging)    
     docker-compose up # Start the containers
+    docker-compose down # Stop the containers
+
+    docker exec -it satisfactory_tracker-app-1 bash # Access the bash shell in the app container
+        curl http://localhost:3000 # Test the React app
+    
+    # Useful commands:
     docker ps # Confirm the containers are running
     docker logs satisfactory_tracker-app-1 # Check for the Flask app
     docker logs postgres # Check logs for PostgreSQ
     docker-compose --env-file .env up -d # Use the .env file to set environment variables
+    docker exec -it satisfactory_tracker-app-1 bash # Access the bash shell in the app container
+        ps aux | grep node # Check for the React app
+        netstat -tuln | grep 5000 # Check for the Flask app
     
-    # Restart the containers:
-    docker-compose down
-    docker-compose up -d
+    
+    
     
 
 npm commands:
@@ -111,5 +120,9 @@ Key files:
         \satisfactory_tracker\src\pages\LoginPage.js
         \satisfactory_tracker\src\services\api.js #
         \satisfactory_tracker\App.js #
+
+Visual Studio:
+    # Exclude venv and node_modules from search. Copy into files to exclude in the search tab.
+    satisfactory_tracker\venv\**\, satisfactory_tracker\node_modules\**\
         
 

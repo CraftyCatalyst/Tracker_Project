@@ -1,12 +1,28 @@
 # version: "3.8"
+# Uncomment the version line if you're creating separate services for the frontend and backend, also comment out the services: app: section
+#   services:
+#   frontend:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile.react
+#     ports:
+#       - "3000:3000"
+#   backend:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile.flask
+#     ports:
+#       - "5000:5000"  
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:3000" # React
+      - "5000:5000" # Flask
     volumes:
+      - .:/app
       - C:\repos\satisfactory_parts.db:\app\satisfactory_tracker\SQLite_stuff_satisfactory_parts.db
     environment:
       FLASK_ENV: development
@@ -26,5 +42,5 @@ services:
 #       - db_data:/var/lib/postgresql/data
 
 # Define the volumes section as a mapping
-volumes: {}
-  # db_data: # Uncomment if PostgreSQL is used
+# volumes:
+#   db_data: # Uncomment if PostgreSQL is used

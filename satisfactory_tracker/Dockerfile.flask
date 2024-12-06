@@ -1,0 +1,24 @@
+# Use an official Python runtime as a parent image
+FROM python:3.10-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the flask app code
+COPY /app /app/
+COPY /instance /app/
+COPY /migrations /app/
+COPY /SQLite_stuff /app/
+COPY debug.py /app/
+COPY manage.py /app/
+COPY run.py /app/
+COPY pip_requirements.txt /app/
+
+# Install pip requirements
+RUN pip install --no-cache-dir -r pip_requirements.txt
+
+# Expose the port the app runs on
+EXPOSE 5000
+
+# Start the Flask app
+CMD ["python", "run.py"]
