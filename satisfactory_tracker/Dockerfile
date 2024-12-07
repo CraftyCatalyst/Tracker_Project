@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Set the working directory in the container
-WORKDIR /app
+#WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -28,8 +28,8 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key ad
     apt-get update && apt-get install -y nodejs
 
 # Verify Node.js and npm installation
-RUN node -v
-RUN npm -v
+# RUN node -v
+# RUN npm -v
 
 # Copy the rest of the application code
 COPY . /app/
@@ -37,10 +37,10 @@ COPY . /app/
 # Install pip requirements no cache
 RUN pip install --no-cache-dir -r pip_requirements.txt
 
-
-
 # Install npm dependencies
-RUN npm install npm concurrently react-scripts react-router-dom react@18.2.0 react-dom@18.2.0 web-vitals axios @mui/material @emotion/react @emotion/styled @mui/icons-material @mui/lab @mui/x-tree-view
+# Install npm dependencies from npm_requirements.txt
+RUN xargs -a npm_requirements.txt npm install
+#RUN npm install npm concurrently react-scripts react-router-dom react@18.2.0 react-dom@18.2.0 web-vitals axios @mui/material @emotion/react @emotion/styled @mui/icons-material @mui/lab @mui/x-tree-view
 RUN npm install
 RUN npm install concurrently --save-dev
 
@@ -52,4 +52,4 @@ EXPOSE 3000
 EXPOSE 5000
 
 # Run the application
-CMD ["npm", "start"]
+#CMD ["npm", "start"]

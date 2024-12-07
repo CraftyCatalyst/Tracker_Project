@@ -1,9 +1,18 @@
-# Copy the npm install line to your terminal to install the required packages. 
-# Then go make a cup of tea. :)
-npm install npm concurrently react-scripts react-router-dom react@18.2.0 react-dom@18.2.0 web-vitals axios @mui/material @emotion/react @emotion/styled @mui/icons-material @mui/lab @mui/x-tree-view
-
-# You may need to run this separately
-npm install concurrently --save-dev
-
-# run after npm run build
-npm install -g serve
+axios@1.7.9
+concurrently@9.1.0
+npm@10.9.2
+react-dom@18.2.0
+react-router-dom@7.0.2
+react-scripts@5.0.1
+react@18.2.0
+web-vitals@2.1.4
+@babel/plugin-proposal-private-property-in-object@7.21.0-placeholder-for-preset-env.2
+@mui/material@6.1.10
+@emotion/react@11.13.5
+@emotion/styled@11.13.5
+@mui/icons-material@6.1.10
+@mui/lab@6.0.0-beta.18
+@mui/x-tree-view@7.23.0
+@testing-library/jest-dom@5.17.0
+@testing-library/react@13.4.0
+@testing-library/user-event@13.5.0

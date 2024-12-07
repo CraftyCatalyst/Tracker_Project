@@ -1,18 +1,4 @@
 # version: "3.8"
-# Uncomment the version line if you're creating separate services for the frontend and backend, also comment out the services: app: section
-#   services:
-#   frontend:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile.react
-#     ports:
-#       - "3000:3000"
-#   backend:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile.flask
-#     ports:
-#       - "5000:5000"  
 services:
   app:
     build:
@@ -23,24 +9,16 @@ services:
       - "5000:5000" # Flask
     volumes:
       - .:/app
-      - C:\repos\satisfactory_parts.db:\app\satisfactory_tracker\SQLite_stuff_satisfactory_parts.db
     environment:
       FLASK_ENV: development
-    # Remove the depends_on line if you're not using PostgreSQL anymore
-    # depends_on:
-    #   - db
-
-# Uncomment if switching back to PostgreSQL
-#   db:
-#     image: postgres:14
-#     container_name: postgres
-#     environment:
-#       FLASK_ENV: ${FLASK_ENV}
-#     ports:
-#       - "5432:5432"
-#     volumes:
-#       - db_data:/var/lib/postgresql/data
-
-# Define the volumes section as a mapping
-# volumes:
-#   db_data: # Uncomment if PostgreSQL is used
+      NODE_ENV: development
+    command: npm start
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: .
+    #       target: /app
+    #       ignore:
+    #         - node_modules/
+    #     - action: rebuild
+    #       path: package.json

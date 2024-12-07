@@ -12,6 +12,7 @@ flask-jwt-extended
 Flask-Security
 Flask-SQLAlchemy
 Flask-Script
+Flask-CORS
 pytest
 python-dotenv
 requests

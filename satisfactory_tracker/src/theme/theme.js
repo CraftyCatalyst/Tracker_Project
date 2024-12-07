@@ -3,7 +3,7 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#00FFCC', // Standard primary color (Light green)
+      main: '#FF0000', // Standard primary color (Light green) - swapping #00FFCC with red #FF0000, blue #0000FF, or yellow #FFFF00
       contrastText: '#CCFFFF', // Sky blue text color on primary background
     },
     secondary: {

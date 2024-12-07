@@ -11,8 +11,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_default_secret_key'
 # base directory of the project
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 print(basedir)
-# DB config values
 
+# DB config values
 ##############################################################################################################################
 # SQLite DB path when running locally - Uncomment this block and comment the next block if running locally
 #SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "satisfactory_tracker", "SQLite_stuff", "satisfactory_parts.db")}'

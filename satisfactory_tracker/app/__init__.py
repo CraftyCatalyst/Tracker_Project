@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_mail import Mail
+from flask_cors import CORS
 
 print("Loading extensions...")
 login_manager = LoginManager()
@@ -17,40 +18,41 @@ def create_app():
     config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../config.py'))
     #print(config_path)
     app = Flask(__name__, static_folder=None) # Explicity set static_folder to None to disable static file serving from default location
+    CORS(app)
     app.config.from_pyfile(config_path)
-    print("App created")
+    #print("App created")
 
-    print("Initializing extensions...")
+    #print("Initializing extensions...")
     db.init_app(app)
-    print("DB initialized")
+    #print("DB initialized")
     migrate.init_app(app, db)
-    print("Migrate initialized")
+    #print("Migrate initialized")
     login_manager.init_app(app)
-    print("Login Manager initialized")
+    #print("Login Manager initialized")
     login_manager.login_view = 'login'
-    print("Login view set")
+    #print("Login view set")
     mail.init_app(app)
-    print("Mail initialized")
+    #print("Mail initialized")
 
     with app.app_context():
-        print("Importing models...")
+        #print("Importing models...")
         # Import models to ensure they are registered
         from .models import User, Parts, Recipes, Alternate_Recipes, Miner_Type, Node_Purity, Power_Shards, Miner_Supply
-        print("Models imported")
+        #print("Models imported")
         
-        print("Inspecting metadata...")
-        for table_name, table_obj in db.metadata.tables.items():
-            print(f"Table: {table_name}, Columns: {list(table_obj.columns.keys())}")
+        #print("Inspecting metadata...")
+        #for table_name, table_obj in db.metadata.tables.items():
+            #print(f"Table: {table_name}, Columns: {list(table_obj.columns.keys())}")
 
-        print("Creating tables...")
+        #print("Creating tables...")
         db.create_all()  # Ensure tables are created
-        print("Tables created")
+        #print("Tables created")
 
     # Register blueprints
-    print("Registering blueprints...")
+    #print("Registering blueprints...")
     from .routes import main
     app.register_blueprint(main)
-    print("Blueprints registered")
+    #print("Blueprints registered")
     
     # print("Registered Routes:")
     # for rule in app.url_map.iter_rules():

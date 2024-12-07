@@ -4,32 +4,32 @@
   "private": true,
   "homepage": "/",
   "dependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "7.21.0-placeholder-for-preset-env.2",
-    "@emotion/react": "^11.13.5",
-    "@emotion/styled": "^11.13.5",
-    "@mui/icons-material": "^6.1.10",
-    "@mui/lab": "^6.0.0-beta.18",
-    "@mui/material": "^6.1.10",
-    "@mui/x-tree-view": "^7.23.0",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.7.9",
-    "npm": "^10.9.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^7.0.2",
-    "react-scripts": "^5.0.1",
-    "web-vitals": "^2.1.4"
+        "@emotion/react": "^11.13.5",
+        "@emotion/styled": "^11.13.5",
+        "@mui/icons-material": "^6.1.10",
+        "@mui/lab": "^6.0.0-beta.18",
+        "@mui/material": "^6.1.10",
+        "@mui/x-tree-view": "^7.23.0",
+        "@testing-library/jest-dom": "^5.17.0",
+        "@testing-library/react": "^13.4.0",
+        "@testing-library/user-event": "^13.5.0",
+        "axios": "^1.7.9",
+        "concurrently": "^@9.1.0",
+        "npm": "^10.9.2",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-router-dom": "^7.0.2",
+        "react-scripts": "^5.0.1",
+        "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "concurrently -k -n \"CLIENT,SERVER\" -c \"bgBlue.bold,bgGreen.bold\" \"npm run client\" \"npm run server\"",
+    "client": "react-scripts start",
+    "server": "python run.py",
     "stop": "node bar.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "client": "react-scripts start --host 0.0.0.0 --port 3000",
-    "server": "python run.py"
+    "eject": "react-scripts eject"    
   },
   "eslintConfig": {
     "extends": [
@@ -50,6 +50,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.0-placeholder-for-preset-env.2",
     "concurrently": "^9.1.0"
   }
 }
