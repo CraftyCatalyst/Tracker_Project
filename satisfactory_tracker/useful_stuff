@@ -20,12 +20,12 @@ Build & Run the Application:
     .\venv\Scripts\activate # if not already in the virtual environment
     npm run build # Build the React app if needed.
     npm start # Start the servers. Ctrl C to stop the servers.
-    # The application built using npm buil will be running at http://localhost:5000/
+    # The application built using npm build will be running at http://localhost:5000/
     # The development server will be running at http://localhost:3000/
 
 Auto Build and Run Application:
     # This will activate the virtual env, run the npm build, start the flask server, the react server and open the browser to the react server.
-    # The application built using npm buil will be running at http://localhost:5000/
+    # The application built using npm build will be running at http://localhost:5000/
     # The development server will be running at http://localhost:3000/
     python run_app.py # in satisfactory_tracker directory. 
     # Ctrl C to stop the servers. Doesn't exit as gracefully as npm start.
@@ -42,7 +42,7 @@ Virtual environment:
         # 3) Install the required pip packages
             # pip package installation
                 pip install -r pip_requirements.txt
-        # 4 Install the required npm packages
+        # 4) Install the required npm packages
             # LINUX command to install the required packages.
                 xargs -a npm_requirements.txt npm install 
             # WINDOWS command to install the required packages.
