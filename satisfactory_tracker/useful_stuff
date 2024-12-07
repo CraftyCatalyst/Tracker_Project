@@ -10,7 +10,7 @@ Troubleshoting:
 
 
 Build & Run the Application:
-    # IMPORTANT: Make sure you set the RUN_MODE variables in the .env file depending on your environment.
+    # IMPORTANT: Make sure you set the RUN_MODE variables in the .env file before proceding.
         # local - for local development on your machine
         # docker - for running the application in Docker
     # The scripts in package.json have been updated to start the client and server by calling npm start.
@@ -20,13 +20,15 @@ Build & Run the Application:
     .\venv\Scripts\activate # if not already in the virtual environment
     npm run build # Build the React app if needed.
     npm start # Start the servers. Ctrl C to stop the servers.
-    # Application will be running at http://localhost:5000/
+    # The application built using npm buil will be running at http://localhost:5000/
+    # The development server will be running at http://localhost:3000/
 
-Build and Run Application:
+Auto Build and Run Application:
     # This will activate the virtual env, run the npm build, start the flask server, the react server and open the browser to the react server.
-    # Application will be running at http://localhost:5000/
+    # The application built using npm buil will be running at http://localhost:5000/
+    # The development server will be running at http://localhost:3000/
     python run_app.py # in satisfactory_tracker directory. 
-    # Ctrl C to stop the servers.
+    # Ctrl C to stop the servers. Doesn't exit as gracefully as npm start.
     
 Virtual environment:
     Set Up:
@@ -37,14 +39,14 @@ Virtual environment:
                 source venv/bin/activate 
             # WINDOWS command to activate the virtual environment.
                 .\venv\Scripts\activate
-        # 3) Install the required packages
+        # 3) Install the required pip packages
             # pip package installation
                 pip install -r pip_requirements.txt
-            # npm package installation
-                # LINUX command to install the required packages.
-                    xargs -a npm_requirements.txt npm install 
-                # WINDOWS command to install the required packages.
-                    Get-Content -Path npm_requirements.txt | ForEach-Object {npm install $_}
+        # 4 Install the required npm packages
+            # LINUX command to install the required packages.
+                xargs -a npm_requirements.txt npm install 
+            # WINDOWS command to install the required packages.
+                Get-Content -Path npm_requirements.txt | ForEach-Object {npm install $_}
         
     Delete:
         # LINUX command to delete the virtual environment.

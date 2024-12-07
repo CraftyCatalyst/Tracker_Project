@@ -1,45 +1,39 @@
 import os
 import logging
+from dotenv import load_dotenv
 
 # Logging config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load SECRET_KEY from the environment variable, or use a default value for development
-SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_default_secret_key'
-
-# base directory of the project
+# Base directory of the project
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-print(basedir)
+#print(basedir)
 
-# DB config values
-##############################################################################################################################
-# SQLite DB path when running locally - Uncomment this block and comment the next block if running locally
-#SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "satisfactory_tracker", "SQLite_stuff", "satisfactory_parts.db")}'
-##############################################################################################################################
+# Load environment variables from .env file
+load_dotenv()
 
-##############################################################################################################################
-# SQLite DB path for Docker - Uncomment this block and comment the previous block if running in Docker
-SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.abspath(os.path.join(basedir, "app", "SQLite_stuff", "satisfactory_parts.db"))}'
-##############################################################################################################################
+class Config:
+    RUN_MODE = os.getenv('RUN_MODE')
+    SECRET_KEY = os.getenv('SECRET_KEY') or 'dev_default_secret_key'
 
+# Set DB config values based on RUN_MODE
+if Config.RUN_MODE == 'local':
+    SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "satisfactory_tracker", "SQLite_stuff", "satisfactory_parts.db")}'
+    REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
+    REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
+elif Config.RUN_MODE == 'docker':
+    SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.abspath(os.path.join(basedir, "app", "SQLite_stuff", "satisfactory_parts.db"))}' 
+    REACT_BUILD_DIR = f'{os.path.join(basedir, "app", "build")}'
+    REACT_STATIC_DIR = f'{os.path.join(basedir, "app", "build", "static")}'
+else:
+    # Throw an error if the run_mode is not set
+    raise ValueError('RUN_MODE environment variable not set. Please set RUN_MODE to "local" or "docker"')
+
+#print(f'SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}')
+#print(f'React Build: {REACT_BUILD_DIR}')
+#print(f'React Static: {REACT_STATIC_DIR}')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
-print(f'SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}')
-
-
-##############################################################################################################################
-# React build directory when running locally - Uncomment this block and comment the next block if running locally
-#REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
-#REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
-##############################################################################################################################
-
-#############################################################################################################################
-# React build directory for Docker - Uncomment this block and comment the previous block if running in Docker
-REACT_BUILD_DIR = f'{os.path.join(basedir, "app", "build")}'
-REACT_STATIC_DIR = f'{os.path.join(basedir, "app", "build", "static")}'
-##############################################################################################################################
-print(f'React Build: {REACT_BUILD_DIR}')
-print(f'React Static: {REACT_STATIC_DIR}')
 
 # Email server config values
 MAIL_SERVER = 'smtp.gmail.com' # Gmail SMTP server

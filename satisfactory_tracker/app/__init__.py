@@ -59,4 +59,4 @@ def create_app():
     #     print(rule)
     
     print("App successfully created")
-    return app
+    return app 
