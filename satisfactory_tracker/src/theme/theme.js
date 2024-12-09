@@ -13,7 +13,7 @@ const theme = createTheme({
     background: {
       default: '#000000', // Replacing #0F705C Dark green with #000000 Black for background
       mid: '#008080', // Replaceing #0F705C Dark green with Teal. Background for mid-level components
-      paper: '#FFFFFF', // Default white for paper components
+      paper: '#000000', // Default white for paper components
     },
     text: {
       primary: '#CCFFFF', // Light text for general use

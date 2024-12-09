@@ -29,7 +29,7 @@ spec = importlib.util.spec_from_file_location("config", config_path)
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 
-# Now you can use the imported config variables
+# Use the imported config variables
 REACT_BUILD_DIR = config.REACT_BUILD_DIR
 REACT_STATIC_DIR = config.REACT_STATIC_DIR
 
@@ -237,10 +237,9 @@ def get_parts():
 @main.route('/api/part_names', methods=['GET'])
 def get_parts_names():
     """GET PART NAMES Fetch all parts from the database."""
-    parts_query = db.session.execute(text("SELECT id, part_name FROM parts")).fetchall()
+    parts_query = db.session.execute(text("SELECT id, part_name FROM parts WHERE category = 'Parts'")).fetchall()
     parts = [{"id": row.id, "name": row.part_name} for row in parts_query]
     return jsonify(parts)
-
 
 @main.route('/api/recipes', methods=['GET'])
 def get_recipes():
@@ -251,10 +250,13 @@ def get_recipes():
 
 @main.route('/api/alternate_recipes', methods=['GET'])
 def get_alternate_recipes():
-    """GET ALTERNATE RECIPES - Retrieve all alternate recipes from the database."""
-    query = text('SELECT * FROM alternate_recipes')
-    alternate_recipes = db.session.execute(query).fetchall()
-    return jsonify([dict(row._mapping) for row in alternate_recipes])
+    """
+    Fetch all alternate recipes with part and recipe names.
+    """
+    query = text('SELECT ar.id, ar.part_id, ar.recipe_id, ar.selected, p.part_name, r.recipe_name FROM alternate_recipes ar JOIN parts p ON ar.part_id = p.id JOIN recipes r ON ar.recipe_id = r.id')
+    result = db.session.execute(query).fetchall()
+    alternate_recipes = [dict(row._mapping) for row in result]
+    return jsonify(alternate_recipes)
 
 @main.route('/api/dependencies', methods=['GET'])
 def get_dependencies():
