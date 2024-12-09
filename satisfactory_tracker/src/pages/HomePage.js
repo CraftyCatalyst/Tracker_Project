@@ -16,7 +16,7 @@ const HomePage = () => (
       </Button>
     </Box>
     <nav>
-      <Link to="/login">Login</Link> | <Link to="/data">Manage Data</Link>
+      <Link to="/login">Login</Link> | <Link to="/data">Manage Data</Link> | <Link to="/dependencies">View Dependencies</Link>
     </nav>
   </>
 );

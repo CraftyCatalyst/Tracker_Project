@@ -4,8 +4,8 @@ Troubleshoting:
     Issues with conflicting package versions:
         # This will blow away the node_modules directory, the package-lock.json file, and reinstall the all packages.
         # Make sure any dependencies on specific versions are updated in the package.json file.
-        Remove-Item -Recurse -Force .\node_modules
-        Remove-Item -Force .\package-lock.json
+        Remove-Item -Recurse -Force ./node_modules
+        Remove-Item -Force ./package-lock.json
         npm install
 
 
@@ -17,7 +17,7 @@ Build & Run the Application:
     # Make sure you've run npm install concurrently --save-dev 
     # This will start the flask server and the react server in watch mode and changes will be reflected in the browser in real-time.
     cd satisfactory_tracker # if not already in the directory
-    .\venv\Scripts\activate # if not already in the virtual environment
+    ./venv/Scripts/activate # if not already in the virtual environment
     npm run build # Build the React app if needed.
     npm start # Start the servers. Ctrl C to stop the servers.
     # The application built using npm build will be running at http://localhost:5000/
@@ -38,7 +38,7 @@ Virtual environment:
             # LINUX command to activate the virtual environment.
                 source venv/bin/activate 
             # WINDOWS command to activate the virtual environment.
-                .\venv\Scripts\activate
+                ./venv/Scripts/activate
         # 3) Install the required pip packages
             # pip package installation
                 pip install -r pip_requirements.txt
@@ -52,13 +52,13 @@ Virtual environment:
         # LINUX command to delete the virtual environment.
             rm -rf venv
         # WINDOWS command to delete the virtual environment.
-            Remove-Item -Recurse -Force .\venv
+            Remove-Item -Recurse -Force ./venv
         # Alternatively, you can manually delete the venv directory using File Explorer.
     Turn on virtual environment:
         # LINUX command to activate the virtual environment.
             source venv/bin/activate
         # WINDOWS command to activate the virtual environment.
-        .\venv\Scripts\activate
+            ./venv/Scripts/activate
     Turn off virtual environment:
         deactivate
 
@@ -86,9 +86,9 @@ Code stuff:
         #TODO:
 
 Project relative paths:
-    \satisfactory_tracker\
-    \satisfactory_tracker\SQLite_stuff
-    \satisfactory_tracker\excel_stuff
+    /satisfactory_tracker/
+    /satisfactory_tracker/SQLite_stuff
+    /satisfactory_tracker/excel_stuff
 
 db commands:
     Blow away the database and start over:
@@ -112,35 +112,40 @@ Other Flask commands:
         flask db stamp head # Stamp the current migration.
 
 SQLite Installation Folder:
-    F:\Programs\SQLite3\sqlite3.exe # Handy for me. Change path as needed.
+    F:/Programs/SQLite3/sqlite3.exe # Handy for me. Change path as needed.
 SQLite commands:
     sqlite3 satisfactory_parts.db .dump > backup.sql # Backup the database. Preferably BEFORE you make massive changes! :P
 
 Key files:
     General:
-        \config.py
-        \run_app.py
-        \pip_requirements.txt
-        \npm_requirements.txt
-        \useful_stuff
+        /config.py # Configuration file for both the Flask and React apps *******
+        /run_app.py # Script to activate the virtual environment, build the React app, start the Flask app, and open the browser to the React app.
+        /pip_requirements.txt # List of pip packages for the virtual environment 
+        /npm_requirements.txt # List of npm packages for the React app 
+        /useful_stuff # File containing useful information for the project
     SQLite:
-        \satisfactory_tracker\SQLite_stuff\satisfactory_parts.db # Database file
-        \satisfactory_tracker\SQLite_stuff\Satifactory Parts Data v1.xlsx # Excel file containing the initial data
-        \satisfactory_tracker\SQLite_stuff\migrate_data.py # Migration script to move data from Excel to SQLite database.
+        /satisfactory_tracker/SQLite_stuff/satisfactory_parts.db # Database file for the SQLite database
+        /satisfactory_tracker/SQLite_stuff/Satifactory Parts Data v1.xlsx # Excel file containing the initial data
+        /satisfactory_tracker/SQLite_stuff/migrate_data.py # Migration script to move data from Excel to SQLite database.
     Flask:
-        \satisfactory_tracker\app\__init__.py # App initialization and configuration
-        \satisfactory_tracker\app\models.py # Database models and relationships
-        \satisfactory_tracker\app\routes.py # Routes and views
+        /satisfactory_tracker/app/__init__.py # App initialization and configuration 
+        /satisfactory_tracker/app/models.py # Database models and relationships *******
+        /satisfactory_tracker/app/routes.py # Routes and views *******
     React:
-        \satisfactory_tracker\src\pages\DataManagementPage.js # Data Management Page for the React app
-        \satisfactory_tracker\src\pages\EditModal.js # Edit Modal form for the React app
-        \satisfactory_tracker\src\pages\HomePage.js # Home Page for the React app
-        \satisfactory_tracker\src\pages\LoginPage.js # Login Page for the React app
-        \satisfactory_tracker\src\services\api.js # API service for the React app
-        \satisfactory_tracker\App.js # Main App component for the React app
+        /satisfactory_tracker/src/pages/DataManagementPage.js # Data Management Page for the React app *******
+        /satisfactory_tracker/src/pages/EditModal.js # Edit Modal form for the React app *******
+        /satisfactory_tracker/src/pages/HomePage.js # Home Page for the React app
+        /satisfactory_tracker/src/pages/LoginPage.js # Login Page for the React app
+        /satisfactory_tracker/src/services/api.js # API service for the React app *******
+        /satisfactory_tracker/App.js # Main App component for the React app *******
+        /satisfactory_tracker/src/theme/theme.js # Theme file for the React app *******
+        /satisfactory_tracker/package.json # Package file for the React app *******
+    Docker:
+        /satisfactory_tracker/Dockerfile # Dockerfile for the Flask app *******
+        /satisfactory_tracker/docker-compose.yml # Docker Compose file for the Flask and React apps *******
 
 Visual Studio:
     # Exclude venv and node_modules from search. Copy into the files to exclude text box in the search tab.
-        satisfactory_tracker\venv\**\, satisfactory_tracker\node_modules\**\
+        satisfactory_tracker/venv/**/, satisfactory_tracker/node_modules/**/
         
 

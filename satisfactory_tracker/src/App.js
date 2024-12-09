@@ -6,6 +6,7 @@ import theme from './theme/theme'; // Import your theme file
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import DataManagementPage from './pages/DataManagementPage';
+import DependencyTreePage from "./pages/DependencyTreePage";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/data" element={<DataManagementPage />} />
+          <Route path="/dependencies" element={<DependencyTreePage />} />
         </Routes>
       </Router>
     </ThemeProvider>

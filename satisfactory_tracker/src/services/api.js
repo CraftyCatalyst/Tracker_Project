@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance with the base URL
 const apiClient = axios.create({
-  baseURL: 'http://localhost:3000/api', // Replace with your backend's URL
+  baseURL: process.env.REACT_CLIENT_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -158,3 +158,17 @@ export const deleteNodePurity = async (nodePurityId) => {
   return response.data;
 };
 
+// Build Dependency Tree API
+export const buildDependencyTree = async (partId, recipeType = '_Standard', targetQuantity = 1) => {
+  try {
+    const response = await apiClient.get('/build_tree', {
+      part_id: partId,
+      recipe_type: recipeType,
+      target_quantity: targetQuantity,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error building dependency tree:', error);
+    throw error;
+  }
+}

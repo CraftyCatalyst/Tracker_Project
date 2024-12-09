@@ -3,13 +3,13 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import text
 from sqlalchemy import inspect
+from sqlalchemy.orm import sessionmaker
 from flask import send_from_directory
 import os
 import logging
 from .models import User
 from . import db
-#from config import REACT_BUILD_DIR
-#from config import REACT_STATIC_DIR
+from .build_tree import build_tree
 from flask import request, flash, redirect, url_for
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
@@ -154,6 +154,20 @@ def verify_email(token):
     flash('Your account has been verified! You can now log in.', 'success')
     return redirect(url_for('login'))
 
+@main.route('/api/build_tree', methods=['GET'])
+def build_tree_route():
+    part_id = request.args.get('part_id')
+    recipe_type = request.args.get('recipe_type', '_Standard')
+    target_quantity = request.args.get('target_quantity', 1, type=int)
+    visited = request.args.get('visited')
+
+    if not part_id:
+        return jsonify({"error": "part_id is required"}), 400
+
+    result = build_tree(part_id, recipe_type, target_quantity, visited)
+
+    return jsonify(result)
+
 @main.route('/api/tables', methods=['GET'])
 def get_tables():
     inspector = inspect(db.engine)
@@ -213,13 +227,20 @@ def delete_row(table_name, row_id):
     db.session.commit()
     return jsonify({"message": "Row deleted successfully"})
 
-
 @main.route('/api/parts', methods=['GET'])
 def get_parts():
-    """GET PARTS - Retrieve all parts from the database."""
+    """GET ALL PARTS - Retrieve all parts from the database."""
     query = text('SELECT * FROM parts')  # Wrap the query in text()
     parts = db.session.execute(query).fetchall()  # Execute the query
     return jsonify([dict(row._mapping) for row in parts])  # Convert rows to JSON-friendly dictionaries
+
+@main.route('/api/part_names', methods=['GET'])
+def get_parts_names():
+    """GET PART NAMES Fetch all parts from the database."""
+    parts_query = db.session.execute(text("SELECT id, part_name FROM parts")).fetchall()
+    parts = [{"id": row.id, "name": row.part_name} for row in parts_query]
+    return jsonify(parts)
+
 
 @main.route('/api/recipes', methods=['GET'])
 def get_recipes():
