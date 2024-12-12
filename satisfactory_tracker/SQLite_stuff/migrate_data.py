@@ -1,12 +1,26 @@
 import sqlite3
 import pandas as pd
 import os
+import importlib.util
+
+# Construct the absolute path to the config file
+config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../config.py'))
+print (config_path)
+
+# Load the config module dynamically
+spec = importlib.util.spec_from_file_location("config", config_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+
+# Use the imported config variables
+VALID_TABLES = config.VALID_TABLES
+VALID_COLUMNS = config.VALID_COLUMNS
 
 # Import the whitelist from the config file
-from config import VALID_TABLES, VALID_COLUMNS
+#from config import VALID_TABLES, VALID_COLUMNS
 
 # Load Excel data
-file_name = 'Satisfactory Parts Data v1.xlsx'
+file_name = 'SQLite_stuff/Satisfactory Parts Data v2.xlsx'
 excel_path = os.path.join(os.getcwd(), file_name)
 
 # Connect to the SQLite database
@@ -22,20 +36,24 @@ def get_or_create(cursor, table, unique_column, value, additional_data=None):
     
     # Check if the record already exists
     query = f"SELECT id FROM {table} WHERE {unique_column} = ?"
+    print("Record check query: ", query)
     cursor.execute(query, (value,))
     result = cursor.fetchone()
     if result:
         return result[0]
+    
     # Insert the record if it doesn't exist
     if additional_data:
         columns = f"{unique_column}, " + ", ".join(additional_data.keys())
         placeholders = ", ".join(["?"] * (1 + len(additional_data)))
-        values = [value] + list(additional_data.values())
+        value = [value] + list(additional_data.values())
         query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-        cursor.execute(query, values)
+        print("additional_data query: ", query)
+        cursor.execute(query, value)
     else:
         query = f"INSERT INTO {table} ({unique_column}) VALUES (?)"
-        cursor.execute(query, value,)
+        print("Insert query: ", query)
+        cursor.execute(query, (value,))
     return cursor.lastrowid
 
 # Load data from the spreadsheet
@@ -46,6 +64,7 @@ node_purity_df = pd.read_excel(excel_path, sheet_name="Node_Purity")
 miner_type_df = pd.read_excel(excel_path, sheet_name="Miner_Type")
 miner_supply_df = pd.read_excel(excel_path, sheet_name="Miner_Supply")
 power_shards_df = pd.read_excel(excel_path, sheet_name="Power_Shards")
+valid_values_df = pd.read_excel(excel_path, sheet_name="Valid_Values")
 
 print("Data loaded from Excel")
 
@@ -62,29 +81,38 @@ print("Replaced 'N/A' with None")
 
 
 # Migrate parts
+print("Migrating parts")
 for _, row in parts_df.iterrows():
     get_or_create(cursor, "parts", "part_name", row["part_name"], {
         "level": row["level"],
-        "category": row["category"],
-        "base_production_type": row["base_production_type"],
-        "produced_in_automated": row["produced_in_automated"],
-        "produced_in_manual": row["produced_in_manual"],
-        "production_type": row["production_type"]
+        "category": row["category"]              
     })
 
-print("Migrated parts")
+print("Migrated parts" )
+
+# Migrate data validation
+print("Migrating data validation")
+for _, row in valid_values_df.iterrows():
+    get_or_create(cursor, "data_validation", "table_name", row["table_name"], {
+        "column_name": row["column_name"],
+        "value": row["value"],
+        "description": row["description"]
+    })
+print("Migrated data validation")
 
 # Migrate recipes
+print("Migrating recipes")
 for _, row in recipes_df.iterrows():
     part_id = get_or_create(cursor, "parts", "part_name", row["part_name"])
     cursor.execute("""
-    INSERT INTO recipes (part_id, recipe_name, ingredient_count, source_level, base_input, base_demand_pm, base_supply_pm, byproduct, byproduct_supply_pm)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (part_id, row["recipe_name"], row["ingredient_count"], row["source_level"], row["base_input"], row["base_demand_pm"], row["base_supply_pm"], row["byproduct"], row["byproduct_supply_pm"]))
+    INSERT INTO recipes (part_id, recipe_name, ingredient_count, source_level, base_input, base_production_type, produced_in_automated, produced_in_manual, base_demand_pm, base_supply_pm, byproduct, byproduct_supply_pm)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (part_id, row["recipe_name"], row["ingredient_count"], row["source_level"], row["base_input"], row["base_production_type"], row["produced_in_automated"], row["produced_in_manual"], row["base_demand_pm"], row["base_supply_pm"], row["byproduct"], row["byproduct_supply_pm"]))
 
 print("Migrated recipes")
 
 # Migrate alternate recipes
+print("Migrating alternate recipes")
 for _, row in alternate_recipes_df.iterrows():
     part_id = get_or_create(cursor, "parts", "part_name", row["part_name"])
     recipe_id = get_or_create(cursor, "recipes", "recipe_name", row["recipe_name"])
@@ -96,6 +124,7 @@ for _, row in alternate_recipes_df.iterrows():
 print("Migrated alternate recipes")
 
 # Migration of node purity
+print("Migrating node purity")
 for _, row in node_purity_df.iterrows():
     cursor.execute("""
     INSERT INTO node_purity (node_purity)
@@ -105,6 +134,7 @@ for _, row in node_purity_df.iterrows():
 print("Migrated node purity")
 
 # Migrate miner types
+print("Migrating miner types")
 for _, row in miner_type_df.iterrows():
     cursor.execute("""
     INSERT INTO miner_type (miner_type)
@@ -114,6 +144,7 @@ for _, row in miner_type_df.iterrows():
 print("Migrated miner types")
 
 # Migrate miner supplies
+print("Migrating miner supplies")
 for _, row in miner_supply_df.iterrows():
     node_purity_id = get_or_create(cursor, "node_purity", "node_purity", row["node_purity"])
     miner_type_id = get_or_create(cursor, "miner_type", "miner_type", row["miner_type"])
@@ -125,6 +156,7 @@ for _, row in miner_supply_df.iterrows():
 print("Migrated miner supplies")
 
 # Migrate power shards
+print("Migrating power shards")
 for _, row in power_shards_df.iterrows():
     cursor.execute("""
     INSERT INTO power_shards (quantity, output_increase)

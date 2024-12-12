@@ -10,11 +10,17 @@ CREATE TABLE parts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     part_name TEXT NOT NULL,
     level INTEGER,
-    category TEXT,
-    base_production_type TEXT,
-    produced_in_automated TEXT,
-    produced_in_manual TEXT,
-    production_type TEXT
+    category TEXT    
+);
+""")
+
+cursor.execute("""
+CREATE TABLE data_validation (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+table_name TEXT NOT NULL,
+column_name TEXT NOT NULL,
+value TEXT NOT NULL,
+description TEXT
 );
 """)
 
@@ -26,6 +32,9 @@ CREATE TABLE recipes (
     ingredient_count INTEGER,
     source_level INTEGER,
     base_input TEXT,
+    base_production_type TEXT,
+    produced_in_automated TEXT,
+    produced_in_manual TEXT,
     base_demand_pm REAL,
     base_supply_pm REAL,
     byproduct TEXT,
@@ -78,6 +87,17 @@ CREATE TABLE power_shards (
 );
 """)
 
+cursor.execute("""
+CREATE TABLE user (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    is_verified BOOLEAN
+    UNIQUE(username, email)
+);
+""")
 # Close the connection
 conn.commit()
 conn.close()

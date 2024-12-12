@@ -30,10 +30,12 @@ const DependencyTreePage = () => {
     const [treeData, setTreeData] = useState(null);
     const [flattenedData, setFlattenedData] = useState([]);
     const [error, setError] = useState("");
+    
 
     // Filter states
     const [partFilter, setPartFilter] = useState("");
     const [recipeFilter, setRecipeFilter] = useState("");
+    const [recipes, setRecipes] = useState(filteredRecipes);
 
     // Fetch parts and alternate recipes on component mount
     useEffect(() => {
@@ -115,19 +117,19 @@ const DependencyTreePage = () => {
         });    
         return rows;
     };
-
+    
     const handleCheckboxChange = (id) => {
         setSelectedRecipes((prev) =>
-            prev.includes(id) ? prev.filter((recipeId) => recipeId !== id) : [...prev, id]
+            prev.includes(id) ? prev.filter((recipeId) => recipeId !== id) : [...prev, id]            
         );
     };
 
     // Extract unique filter options
     const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
     const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
-
+    
     return (
-        <div style={{ display: "flex", flexDirection: "row", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "row", gap: "8px" }}>
             {/* Left Side: Dependency Tree */}
             <div style={{ flex: 3 }}>
             <Typography variant="h1" color="primary" gutterBottom>
@@ -149,7 +151,7 @@ const DependencyTreePage = () => {
                 placeholder="Target Quantity"
                 value={targetQuantity}
                 onChange={(e) => setTargetQuantity(e.target.value)}
-                style={{ marginRight: "16px" }}
+                style={{ marginRight: "8px" }}
             />
             <Button
                 variant="contained"
@@ -239,7 +241,11 @@ const DependencyTreePage = () => {
                                 <TableRow key={recipe.id}>
                                     <TableCell>{recipe.recipe_name}</TableCell>
                                     <TableCell>{recipe.part_name}</TableCell>
-                                    <TableCell>{/* Add your select logic here */}</TableCell>
+                                    <TableCell>
+                                        <Checkbox
+                                            onChange={() => handleCheckboxChange(recipe.id)}
+                                        />
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -250,4 +256,4 @@ const DependencyTreePage = () => {
     );
 };
 
-export default DependencyTreePage;
+            export default DependencyTreePage;

@@ -17,10 +17,7 @@ class Parts(db.Model):
     part_name = db.Column(db.String(200), nullable=False)
     level = db.Column(db.Integer)
     category = db.Column(db.String(100))
-    base_production_type = db.Column(db.String(100))
-    produced_in_automated = db.Column(db.String(100))
-    produced_in_manual = db.Column(db.String(100))
-    production_type = db.Column(db.String(100))
+    
 
 class Recipes(db.Model):
     __tablename__ = 'recipes'
@@ -29,6 +26,9 @@ class Recipes(db.Model):
     recipe_name = db.Column(db.String(200), nullable=False)
     ingredient_count = db.Column(db.Integer)
     source_level = db.Column(db.Integer)
+    base_production_type = db.Column(db.String(100))
+    produced_in_automated = db.Column(db.String(100))
+    produced_in_manual = db.Column(db.String(100))
     base_input = db.Column(db.String(100))
     base_demand_pm = db.Column(db.Float)
     base_supply_pm = db.Column(db.Float)
@@ -65,12 +65,12 @@ class Miner_Supply(db.Model):
     miner_type_id = db.Column(db.Integer, db.ForeignKey('miner_type.id'), nullable=False)
     base_supply_pm = db.Column(db.Float)                                                    
 
-class Data_Verification(db.Model):
-    __tablename__ = 'data_verification'
+class Data_Validation(db.Model):
+    __tablename__ = 'data_validation'
     id = db.Column(db.Integer, primary_key=True)
     table_name = db.Column(db.String(100), nullable=False)
     column_name = db.Column(db.String(100), nullable=False)
-    value = db.Column(db.String(100), nullable=False)
+    value = db.Column(db.String(100), nullable=True)
     description = db.Column(db.String(200), nullable=True)
 
 @login_manager.user_loader

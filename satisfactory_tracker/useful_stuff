@@ -71,6 +71,9 @@ Docker:
         # Add --force-recreate to force the recreation of the containers
         # Add --remove-orphans to remove containers for services not defined in the Compose file
         # Add --renew-anon-volumes to recreate anonymous volumes instead of retrieving data from the previous containers
+    Run an image in a container:
+        # replace image_name with the name of the image you want to run
+        docker run -p 3000:3000 -p 5000:5000 -v "$(pwd):/app" -e FLASK_ENV=development -e NODE_ENV=development image_name npm start
     # Useful commands:
         docker exec -it satisfactory_tracker-app-1 bash # Access the bash shell in the app container
         docker ps # Confirm the containers are running
@@ -81,16 +84,21 @@ npm commands:
     npm run build
     npm start # uses concurrently to start the both react and flask servers in the package.json scripts
 
-Code stuff:
-    formatting of TODOs:
-        #TODO:
+Table Maintenance:
+    # Run refresh_data.py in SQLite_stuff directory to delete all data and reload either a specific table or all tables.
+    # Command line arguments as follows: all_tables, parts, recipes, alternate_recipes, node_purity, miner_type, miner_supply, power_shards, data_validation
+    # Or just copy and paste one of the following commands into the command line.
+        python refresh_data.py all_tables # Refresh all the data from the Excel file
+        python refresh_data.py parts # Refresh the parts data from the Excel file
+        python refresh_data.py recipes # Refresh the recipes data from the Excel file
+        python refresh_data.py alternate_recipes # Refresh the alternate recipes data from the Excel file
+        python refresh_data.py node_purity # Refresh the node purity data from the Excel file
+        python refresh_data.py miner_type # Refresh the miner type data from the Excel file
+        python refresh_data.py miner_supply # Refresh the miner supply data from the Excel file
+        python refresh_data.py power_shards # Refresh the power shards data from the Excel file
+        python refresh_data.py data_validation # Refresh the data validation data from the Excel file
 
-Project relative paths:
-    /satisfactory_tracker/
-    /satisfactory_tracker/SQLite_stuff
-    /satisfactory_tracker/excel_stuff
-
-db commands:
+Flask Commands:
     Blow away the database and start over:
         # 1) Delete the database file.
             # LINUX command to remove the database.
@@ -104,7 +112,7 @@ db commands:
             flask db upgrade # Upgrade to the latest migration.
         # 3) Migrate the data from the Excel file to the database.
             cd SQLite_stuff # if not already in the directory
-            python migrate_data.py # Migration script to move data from Excel to SQLite database.
+            python -m SQLite_stuff.migrate_data # Migration script to move data from Excel to SQLite database.
 Other Flask commands:
         flask db downgrade # Downgrade to the previous migration.
         flask db history # Show the migration history.
@@ -125,24 +133,34 @@ Key files:
         /useful_stuff # File containing useful information for the project
     SQLite:
         /satisfactory_tracker/SQLite_stuff/satisfactory_parts.db # Database file for the SQLite database
-        /satisfactory_tracker/SQLite_stuff/Satifactory Parts Data v1.xlsx # Excel file containing the initial data
+        /satisfactory_tracker/SQLite_stuff/Satifactory Parts Data v2.xlsx # Excel file containing the initial data
         /satisfactory_tracker/SQLite_stuff/migrate_data.py # Migration script to move data from Excel to SQLite database.
     Flask:
         /satisfactory_tracker/app/__init__.py # App initialization and configuration 
         /satisfactory_tracker/app/models.py # Database models and relationships *******
         /satisfactory_tracker/app/routes.py # Routes and views *******
     React:
-        /satisfactory_tracker/src/pages/DataManagementPage.js # Data Management Page for the React app *******
-        /satisfactory_tracker/src/pages/EditModal.js # Edit Modal form for the React app *******
-        /satisfactory_tracker/src/pages/HomePage.js # Home Page for the React app
-        /satisfactory_tracker/src/pages/LoginPage.js # Login Page for the React app
-        /satisfactory_tracker/src/services/api.js # API service for the React app *******
-        /satisfactory_tracker/App.js # Main App component for the React app *******
-        /satisfactory_tracker/src/theme/theme.js # Theme file for the React app *******
-        /satisfactory_tracker/package.json # Package file for the React app *******
+        /satisfactory_tracker/src/pages/DataManagementPage.js # Data Management Page *******
+        /satisfactory_tracker/src/pages/EditModal.js # Edit Modal form *******
+        /satisfactory_tracker/src/pages/DependencyTreePage.js # Dependency Tree Page *******
+        /satisfactory_tracker/src/pages/HomePage.js # Home Page
+        /satisfactory_tracker/src/pages/LoginPage.js # Login Page 
+        /satisfactory_tracker/src/services/api.js # API service *******
+        /satisfactory_tracker/App.js # Main App component *******
+        /satisfactory_tracker/src/theme/theme.js # Theme file *******
+        /satisfactory_tracker/package.json # Package file *******
     Docker:
-        /satisfactory_tracker/Dockerfile # Dockerfile for the Flask app *******
+        /satisfactory_tracker/Dockerfile # Dockerfile *******
         /satisfactory_tracker/docker-compose.yml # Docker Compose file for the Flask and React apps *******
+
+Code stuff:
+    formatting of TODOs:
+        #TODO:
+
+Project relative paths:
+    /satisfactory_tracker/
+    /satisfactory_tracker/SQLite_stuff
+    /satisfactory_tracker/excel_stuff
 
 Visual Studio:
     # Exclude venv and node_modules from search. Copy into the files to exclude text box in the search tab.
