@@ -30,6 +30,8 @@ const DependencyTreePage = () => {
     const [treeData, setTreeData] = useState(null);
     const [flattenedData, setFlattenedData] = useState([]);
     const [error, setError] = useState("");
+    const [isCollapsed, setIsCollapsed] = useState(false); // Track collapse state
+    const [activeTab, setActiveTab] = useState("alternateRecipes"); // Track active tab
 
 
     // Filter states
@@ -124,6 +126,36 @@ const DependencyTreePage = () => {
         );
     };
 
+    const toggleCollapse = () => {
+        setIsCollapsed((prev) => !prev); // Toggle collapse state
+    };
+
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case "alternateRecipes":
+                return (
+                    <Typography>
+                        <strong>Alternate Recipes:</strong> Your alternate recipes content goes here.
+                    </Typography>
+                );
+            case "visualiseTree":
+                return (
+                    <Typography>
+                        <strong>Visualise Tree:</strong> Your visualisation content goes here.
+                    </Typography>
+                );
+            case "tracker":
+                return (
+                    <Typography>
+                        <strong>Tracker:</strong> Your tracker content goes here.
+                    </Typography>
+                );
+            default:
+                return null;
+        }
+    };
+    
     // Extract unique filter options
     const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
     const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
@@ -245,91 +277,113 @@ const DependencyTreePage = () => {
             {/* Right Side: Alternate Recipes */}
             <Box
                 sx={{
-                    flex: 1,
-                    border: "2px solid #ccc", // Border style
-                    borderRadius: "8px", // Rounded corners
-                    padding: "16px", // Inner padding
-                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)", // Optional shadow for aesthetics
-                    //backgroundColor: "#fff", // Optional background for contrast
+                    flex: isCollapsed ? 0.2 : 1, // Adjust flex size when collapsed
+                    border: "2px solid #ccc", // Border for visual clarity
+                    borderRadius: "8px",
+                    padding: "2px",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                    //backgroundColor: "#fff",
+                    overflow: "hidden", // Prevent overflow when collapsed
+                    transition: "flex 0.3s ease, max-height 0.3s ease", // Smooth transitions
+                    maxHeight: isCollapsed ? "50px" : "1000px", // Control height dynamically
                 }}
             >
-                <Typography variant="h2" color="primary" gutterBottom>
-                    Alternate Recipes
-                </Typography>
-                {/* Filters */}
-                <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px", alignItems: "center" }}>
-                    {/* Part Filter */}
-                    <div>
-                        <label>Filter by Part:</label>
-                        <select
-                            value={partFilter}
-                            onChange={(e) => setPartFilter(e.target.value)}
-                            style={{
-                                marginLeft: "8px",
-                                padding: "8px",
-                                borderRadius: "4px",
-                                border: "1px solid #ccc",
-                                background: "#fff",
-                            }}
-                        >
-                            <option value="">-- Select Part --</option>
-                            {uniqueParts.map((part, index) => (
-                                <option key={index} value={part}>
-                                    {part}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                {/* Toggle Button */}
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={toggleCollapse}
+                    sx={{ 
+                        marginBottom: "8px", 
+                        fontSize: "12px", 
+                        textAlign: "left",
+                        //transform: isCollapsed ? "rotate(90deg)" : "rotate(0deg)", // Rotate icon
+                     }} // Adjust the font size and text alignment
+                >
+                    {isCollapsed ? "< Alternate Recipes" : ">"}
+                </Button>
 
-                    {/* Recipe Filter */}
-                    <div>
-                        <label>Filter by Recipe:</label>
-                        <select
-                            value={recipeFilter}
-                            onChange={(e) => setRecipeFilter(e.target.value)}
-                            style={{
-                                marginLeft: "8px",
-                                padding: "8px",
-                                borderRadius: "4px",
-                                border: "1px solid #ccc",
-                                background: "#fff",
-                            }}
-                        >
-                            <option value="">-- Select Recipe --</option>
-                            {uniqueRecipes.map((recipe, index) => (
-                                <option key={index} value={recipe}>
-                                    {recipe}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </Box>
+                {!isCollapsed && (
+                    <>
+                        <Typography variant="h2" color="primary" gutterBottom>
+                            Alternate Recipes
+                        </Typography>
+                        {/* Filters */}
+                        <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px", alignItems: "center" }}>
+                            {/* Part Filter */}
+                            <div>
+                                <label>Filter by Part:</label>
+                                <select
+                                    value={partFilter}
+                                    onChange={(e) => setPartFilter(e.target.value)}
+                                    style={{
+                                        marginLeft: "8px",
+                                        padding: "8px",
+                                        borderRadius: "4px",
+                                        border: "1px solid #ccc",
+                                        background: "#fff",
+                                    }}
+                                >
+                                    <option value="">-- Select Part --</option>
+                                    {uniqueParts.map((part, index) => (
+                                        <option key={index} value={part}>
+                                            {part}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                {/* Filtered Table */}
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Part</TableCell>
-                                <TableCell>Recipe</TableCell>
-                                <TableCell>Select</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {filteredRecipes.map((recipe) => (
-                                <TableRow key={recipe.id}>
-                                    <TableCell>{recipe.recipe_name}</TableCell>
-                                    <TableCell>{recipe.part_name}</TableCell>
-                                    <TableCell>
-                                        <Checkbox
-                                            onChange={() => handleCheckboxChange(recipe.id)}
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                            {/* Recipe Filter */}
+                            <div>
+                                <label>Filter by Recipe:</label>
+                                <select
+                                    value={recipeFilter}
+                                    onChange={(e) => setRecipeFilter(e.target.value)}
+                                    style={{
+                                        marginLeft: "8px",
+                                        padding: "8px",
+                                        borderRadius: "4px",
+                                        border: "1px solid #ccc",
+                                        background: "#fff",
+                                    }}
+                                >
+                                    <option value="">-- Select Recipe --</option>
+                                    {uniqueRecipes.map((recipe, index) => (
+                                        <option key={index} value={recipe}>
+                                            {recipe}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </Box>
+
+                        {/* Filtered Table */}
+                        <TableContainer component={Paper}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Part</TableCell>
+                                        <TableCell>Recipe</TableCell>
+                                        <TableCell>Select</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {filteredRecipes.map((recipe) => (
+                                        <TableRow key={recipe.id}>
+                                            <TableCell>{recipe.recipe_name}</TableCell>
+                                            <TableCell>{recipe.part_name}</TableCell>
+                                            <TableCell>
+                                                <Checkbox
+                                                    onChange={() => handleCheckboxChange(recipe.id)}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </>
+                )}
             </Box>
         </div>
     );

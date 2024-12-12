@@ -59,16 +59,18 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
         logger.info(f"Ingredient supply: {ingredient_supply}, ingredient_id: {ingredient_input_id}, recipe: {ingredient_recipe}")
 
         ingredient_production_machine = db.session.execute(
-            text("SELECT produced_in_automated FROM recipes WHERE id = :base_input_id AND recipe_name = :base_recipe"),
+            text("SELECT produced_in_automated FROM recipes WHERE part_id = :base_input_id AND recipe_name = :base_recipe"),
             {"base_input_id": ingredient_input_id, "base_recipe": ingredient_recipe}
         ).scalar()
+        sql_query = f"SELECT produced_in_automated FROM recipes WHERE part_id = {ingredient_input_id} AND recipe_name = '{ingredient_recipe}'"
+        logger.info(f"SQL Query: {sql_query}")
+        logger.info(f"Ingredient production machine: {ingredient_production_machine}")
         #TODO - # Incorporate the Alternate_Recipes table and determine the correct recipe type for the ingredient input (default to _Standard if no alternate specified)
         
-        logger.info(f"ingredient_production_machine: {ingredient_production_machine}, ingredient_id: {ingredient_input_id}, recipe: {ingredient_recipe}")
+        
 
-
-        # Skip parts with source_level == 11
-        if source_level == 11:
+        # Skip parts with source_level == -2
+        if source_level == -2:
             continue
 
         # Calculate the number of machines needed to produce the required amount
