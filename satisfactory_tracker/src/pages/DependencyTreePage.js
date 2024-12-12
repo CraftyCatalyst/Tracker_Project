@@ -126,6 +126,10 @@ const DependencyTreePage = () => {
         );
     };
 
+    const toggleTab = (tab) => {
+        setActiveTab((prev) => (prev === tab ? "" : tab)); // Collapse if the same tab is clicked
+    };
+
     const toggleCollapse = () => {
         setIsCollapsed((prev) => !prev); // Toggle collapse state
     };
@@ -135,9 +139,83 @@ const DependencyTreePage = () => {
         switch (activeTab) {
             case "alternateRecipes":
                 return (
-                    <Typography>
-                        <strong>Alternate Recipes:</strong> Your alternate recipes content goes here.
+                  <div>
+                    <Typography variant="h2" color="primary" gutterBottom>
+                        Alternate Recipes
                     </Typography>
+                    <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px", alignItems: "center" }}>
+                        {/* Part Filter */}
+                        <div>
+                            <label>Filter by Part:</label>
+                            <select
+                                value={partFilter}
+                                onChange={(e) => setPartFilter(e.target.value)}
+                                style={{
+                                    marginLeft: "8px",
+                                    padding: "8px",
+                                    borderRadius: "4px",
+                                    border: "1px solid #ccc",
+                                    background: "#fff",
+                                }}
+                            >
+                                <option value="">-- Select Part --</option>
+                                {uniqueParts.map((part, index) => (
+                                    <option key={index} value={part}>
+                                        {part}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Recipe Filter */}
+                        <div>
+                            <label>Filter by Recipe:</label>
+                            <select
+                                value={recipeFilter}
+                                onChange={(e) => setRecipeFilter(e.target.value)}
+                                style={{
+                                    marginLeft: "8px",
+                                    padding: "8px",
+                                    borderRadius: "4px",
+                                    border: "1px solid #ccc",
+                                    background: "#fff",
+                                }}
+                            >
+                                <option value="">-- Select Recipe --</option>
+                                {uniqueRecipes.map((recipe, index) => (
+                                    <option key={index} value={recipe}>
+                                        {recipe}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </Box>
+                    {/* Filtered Table */}
+                    <TableContainer component={Paper}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Part</TableCell>
+                                    <TableCell>Recipe</TableCell>
+                                    <TableCell>Select</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {filteredRecipes.map((recipe) => (
+                                    <TableRow key={recipe.id}>
+                                        <TableCell>{recipe.recipe_name}</TableCell>
+                                        <TableCell>{recipe.part_name}</TableCell>
+                                        <TableCell>
+                                            <Checkbox
+                                                onChange={() => handleCheckboxChange(recipe.id)}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </div> 
                 );
             case "visualiseTree":
                 return (
@@ -155,237 +233,201 @@ const DependencyTreePage = () => {
                 return null;
         }
     };
-    
-    // Extract unique filter options
-    const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
-    const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
 
-    return (
-        <div style={{ display: "flex", flexDirection: "row", gap: "8px" }}>
-            {/* Left Side: Dependency Tree */}
+// Extract unique filter options
+const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
+const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
+
+return (
+    <div style={{ display: "flex", flexDirection: "row", gap: "8px" }}>
+        {/* Left Side: Dependency Tree */}
+        <Box
+            sx={{
+                flex: 3,
+                border: "2px solid #ccc", // Border style
+                borderRadius: "8px", // Rounded corners
+                padding: "16px", // Inner padding
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)", // Optional shadow for aesthetics
+                //backgroundColor: "#fff", // Optional background for contrast
+            }}
+        >
+            <Typography variant="h1" color="primary" gutterBottom>
+                Dependency Tree Table
+            </Typography>
+
             <Box
                 sx={{
-                    flex: 3,
-                    border: "2px solid #ccc", // Border style
-                    borderRadius: "8px", // Rounded corners
-                    padding: "16px", // Inner padding
-                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)", // Optional shadow for aesthetics
-                    //backgroundColor: "#fff", // Optional background for contrast
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: "16px",
+                    marginBottom: "16px",
                 }}
             >
-                <Typography variant="h1" color="primary" gutterBottom>
-                    Dependency Tree Table
-                </Typography>
-
-                <Box
-                    sx={{
-                        display: "flex",
-                        flexDirection: "row",
-                        alignItems: "flex-start",
-                        gap: "16px",
-                        marginBottom: "16px",
-                    }}
-                >
-                    {/* Select Part */}
-                    <Box sx={{ display: "flex", flexDirection: "column" }}>
-                        <label style={{ marginBottom: "4px" }}>Select Part:</label>
-                        <select
-                            value={selectedPart}
-                            onChange={(e) => setSelectedPart(e.target.value)}
-                            style={{
-                                padding: "8px",
-                                borderRadius: "4px",
-                                border: "1px solid #ccc",
-                                background: "#fff",
-                            }}
-                        >
-                            <option value="">-- Select a Part --</option>
-                            {parts.map((part) => (
-                                <option key={part.id} value={part.id}>
-                                    {part.name}
-                                </option>
-                            ))}
-                        </select>
-                    </Box>
-
-                    {/* Target Quantity */}
-                    <Box sx={{ display: "flex", flexDirection: "column" }}>
-                        <label style={{ marginBottom: "4px" }}>Target Quantity:</label>
-                        <input
-                            type="number"
-                            placeholder="Enter Quantity"
-                            value={targetQuantity}
-                            onChange={(e) => setTargetQuantity(e.target.value)}
-                            style={{
-                                padding: "8px",
-                                borderRadius: "4px",
-                                border: "1px solid #ccc",
-                                background: "#fff",
-                            }}
-                        />
-                    </Box>
+                {/* Select Part */}
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <label style={{ marginBottom: "4px" }}>Select Part:</label>
+                    <select
+                        value={selectedPart}
+                        onChange={(e) => setSelectedPart(e.target.value)}
+                        style={{
+                            padding: "8px",
+                            borderRadius: "4px",
+                            border: "1px solid #ccc",
+                            background: "#fff",
+                        }}
+                    >
+                        <option value="">-- Select a Part --</option>
+                        {parts.map((part) => (
+                            <option key={part.id} value={part.id}>
+                                {part.name}
+                            </option>
+                        ))}
+                    </select>
                 </Box>
 
-                <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleFetchTree}
-                    disabled={!selectedPart}
-                    sx={{ marginBottom: "16px" }}
-                >
-                    Fetch Dependency Tree
-                </Button>
-
-                {error && <Typography color="error">{error}</Typography>}
-
-                <Box sx={{ marginTop: 4 }}>
-                    {flattenedData.length > 0 ? (
-                        <TableContainer component={Paper}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Parent</TableCell>
-                                        <TableCell>Node</TableCell>
-                                        <TableCell>Level</TableCell>
-                                        <TableCell>Required Quantity</TableCell>
-                                        <TableCell>Produced In</TableCell>
-                                        <TableCell>No. of Machines</TableCell>
-                                        <TableCell>Recipe</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {flattenedData.map((row, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{row.Parent}</TableCell>
-                                            <TableCell>{row.Node}</TableCell>
-                                            <TableCell>{row.Level}</TableCell>
-                                            <TableCell>{row["Required Quantity"]}</TableCell>
-                                            <TableCell>{row["Produced In"]}</TableCell>
-                                            <TableCell>{row["No. of Machines"]}</TableCell>
-                                            <TableCell>{row.Recipe}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    ) : (
-                        <Typography>No data to display</Typography>
-                    )}
+                {/* Target Quantity */}
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <label style={{ marginBottom: "4px" }}>Target Quantity:</label>
+                    <input
+                        type="number"
+                        placeholder="Enter Quantity"
+                        value={targetQuantity}
+                        onChange={(e) => setTargetQuantity(e.target.value)}
+                        style={{
+                            padding: "8px",
+                            borderRadius: "4px",
+                            border: "1px solid #ccc",
+                            background: "#fff",
+                        }}
+                    />
                 </Box>
             </Box>
 
-            {/* Right Side: Alternate Recipes */}
-            <Box
-                sx={{
-                    flex: isCollapsed ? 0.2 : 1, // Adjust flex size when collapsed
-                    border: "2px solid #ccc", // Border for visual clarity
-                    borderRadius: "8px",
-                    padding: "2px",
-                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                    //backgroundColor: "#fff",
-                    overflow: "hidden", // Prevent overflow when collapsed
-                    transition: "flex 0.3s ease, max-height 0.3s ease", // Smooth transitions
-                    maxHeight: isCollapsed ? "50px" : "1000px", // Control height dynamically
-                }}
+            <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleFetchTree}
+                disabled={!selectedPart}
+                sx={{ marginBottom: "16px" }}
             >
-                {/* Toggle Button */}
-                <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={toggleCollapse}
-                    sx={{ 
-                        marginBottom: "8px", 
-                        fontSize: "12px", 
-                        textAlign: "left",
-                        //transform: isCollapsed ? "rotate(90deg)" : "rotate(0deg)", // Rotate icon
-                     }} // Adjust the font size and text alignment
-                >
-                    {isCollapsed ? "< Alternate Recipes" : ">"}
-                </Button>
+                Fetch Dependency Tree
+            </Button>
 
-                {!isCollapsed && (
-                    <>
-                        <Typography variant="h2" color="primary" gutterBottom>
-                            Alternate Recipes
-                        </Typography>
-                        {/* Filters */}
-                        <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px", alignItems: "center" }}>
-                            {/* Part Filter */}
-                            <div>
-                                <label>Filter by Part:</label>
-                                <select
-                                    value={partFilter}
-                                    onChange={(e) => setPartFilter(e.target.value)}
-                                    style={{
-                                        marginLeft: "8px",
-                                        padding: "8px",
-                                        borderRadius: "4px",
-                                        border: "1px solid #ccc",
-                                        background: "#fff",
-                                    }}
-                                >
-                                    <option value="">-- Select Part --</option>
-                                    {uniqueParts.map((part, index) => (
-                                        <option key={index} value={part}>
-                                            {part}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+            {error && <Typography color="error">{error}</Typography>}
 
-                            {/* Recipe Filter */}
-                            <div>
-                                <label>Filter by Recipe:</label>
-                                <select
-                                    value={recipeFilter}
-                                    onChange={(e) => setRecipeFilter(e.target.value)}
-                                    style={{
-                                        marginLeft: "8px",
-                                        padding: "8px",
-                                        borderRadius: "4px",
-                                        border: "1px solid #ccc",
-                                        background: "#fff",
-                                    }}
-                                >
-                                    <option value="">-- Select Recipe --</option>
-                                    {uniqueRecipes.map((recipe, index) => (
-                                        <option key={index} value={recipe}>
-                                            {recipe}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </Box>
-
-                        {/* Filtered Table */}
-                        <TableContainer component={Paper}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Part</TableCell>
-                                        <TableCell>Recipe</TableCell>
-                                        <TableCell>Select</TableCell>
+            <Box sx={{ marginTop: 4 }}>
+                {flattenedData.length > 0 ? (
+                    <TableContainer component={Paper}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Parent</TableCell>
+                                    <TableCell>Node</TableCell>
+                                    <TableCell>Level</TableCell>
+                                    <TableCell>Required Quantity</TableCell>
+                                    <TableCell>Produced In</TableCell>
+                                    <TableCell>No. of Machines</TableCell>
+                                    <TableCell>Recipe</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {flattenedData.map((row, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{row.Parent}</TableCell>
+                                        <TableCell>{row.Node}</TableCell>
+                                        <TableCell>{row.Level}</TableCell>
+                                        <TableCell>{row["Required Quantity"]}</TableCell>
+                                        <TableCell>{row["Produced In"]}</TableCell>
+                                        <TableCell>{row["No. of Machines"]}</TableCell>
+                                        <TableCell>{row.Recipe}</TableCell>
                                     </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {filteredRecipes.map((recipe) => (
-                                        <TableRow key={recipe.id}>
-                                            <TableCell>{recipe.recipe_name}</TableCell>
-                                            <TableCell>{recipe.part_name}</TableCell>
-                                            <TableCell>
-                                                <Checkbox
-                                                    onChange={() => handleCheckboxChange(recipe.id)}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                ) : (
+                    <Typography>No data to display</Typography>
                 )}
             </Box>
-        </div>
+        </Box>
+
+        {/* Right Side: Alternate Recipes */}
+        <Box sx={{ display: "flex", height: "100vh" }}>
+            {/* Tabs Section */}
+            <Box
+                sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    borderRight: "2px solid #ccc",
+                    width: "150px",
+                    backgroundColor: "#0A4B3E",
+                }}
+            >
+                <Button
+                    onClick={() => setActiveTab("alternateRecipes")}
+                    sx={{
+                        textAlign: "left",
+                        padding: "8px",
+                        borderRadius: 0,
+                        backgroundColor: activeTab === "alternateRecipes" ? "#00FFCC" : "#0A4B3E",
+                        color: activeTab === "alternateRecipes" ? "#000" : "#CCFFFF",
+                        "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
+                    }}
+                >
+                    Alternate Recipes
+                </Button>
+                <Button
+                    onClick={() => setActiveTab("visualiseTree")}
+                    sx={{
+                        textAlign: "left",
+                        padding: "8px",
+                        borderRadius: 0,
+                        backgroundColor: activeTab === "visualiseTree" ? "#00FFCC" : "#0A4B3E",
+                        color: activeTab === "visualiseTree" ? "#000" : "#CCFFFF",
+                        "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
+                    }}
+                >
+                    Visualise Tree
+                </Button>
+                <Button
+                    onClick={() => setActiveTab("tracker")}
+                    sx={{
+                        textAlign: "left",
+                        padding: "8px",
+                        borderRadius: 0,
+                        backgroundColor: activeTab === "tracker" ? "#00FFCC" : "#0A4B3E",
+                        color: activeTab === "tracker" ? "#000" : "#CCFFFF",
+                        "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
+                    }}
+                >
+                    Tracker
+                </Button>
+            </Box>
+
+            {/* Content Section */}
+            <Box
+                sx={{
+                    flex: 1,
+                    padding: "16px",
+                    backgroundColor: "#000000",
+                    color: "#CCFFFF",
+                    overflowY: "auto",
+                }}
+            >
+                <Paper
+                    sx={{
+                        padding: "16px",
+                        backgroundColor: "#0A4B3E",
+                        color: "#CCFFFF",
+                        borderRadius: "8px",
+                    }}
+                >
+                    {renderContent()}
+                </Paper>
+            </Box>
+        </Box>
+    </div>
     );
 };
 
