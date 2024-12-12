@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Grid2, Paper, Typography, Button, Table } from '@mui/material';
-import { SimpleTreeView , TreeItem } from '@mui/x-tree-view';
+import { Link } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Button,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Paper,
+} from "@mui/material";
+import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
 import axios from "axios";
 import EditModal from "./EditModal";
 import { API_ENDPOINTS } from "../apiConfig";
@@ -98,8 +110,8 @@ const DataManagementPage = () => {
     }
   };
 
-   // Handle row deletion
-   const handleDelete = async (rowId) => {
+  // Handle row deletion
+  const handleDelete = async (rowId) => {
     try {
       await axios.delete(`${API_ENDPOINTS.tables}/${selectedTable}/${rowId}`);
       alert("Row deleted successfully!");
@@ -109,110 +121,113 @@ const DataManagementPage = () => {
     }
   };
 
-  // const ExampleGrid = () => (
-  //   <Grid2 container spacing={2}>
-  //     {[1, 2, 3, 4, 5].map((item) => (
-  //       <Grid2 item xs={12} sm={6} md={4} key={item}>
-  //         <Paper style={{ padding: '20px', textAlign: 'center' }}>
-  //           <Typography variant="h6" color="secondary">Item {item}</Typography>
-  //         </Paper>
-  //       </Grid2>
-  //     ))}
-  //   </Grid2>
-  // );
-
-  // const ExampleTreeView = () => (
-  //   <SimpleTreeView>
-  //     <TreeItem nodeId="1" label="Parent">
-  //       <TreeItem nodeId="2" label="Child 1" />
-  //       <TreeItem nodeId="3" label="Child 2">
-  //         <TreeItem nodeId="4" label="Subchild" />
-  //       </TreeItem>
-  //     </TreeItem>
-  //   </SimpleTreeView>
-  // );
-
   return (
-    <div>
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      <Box
+        sx={{
+            flex: 4,
+            padding: "16px",
+            background: "linear-gradient(to right, #000000, #0F705C)",
+            color: "#CCFFFF",                   
+        }}
+      > 
       <Typography variant="h1" color="primary">
         Data Management Page
       </Typography>
-      
-      {/* Dropdown for table selection */}
-      <div>
-        <label>Select Table:</label>
-        <select value={selectedTable} onChange={handleTableChange}>
-          <option value="">-- Select a Table --</option>
-          {tables.map((table) => (
-            <option key={table} value={table}>
-              {table}
-            </option>
-          ))}
-        </select>
-      </div>
+
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center", // Align dropdown and button vertically
+          gap: "16px", // Space between elements
+          marginBottom: "16px",          
+          padding: "16px",
+          borderRadius: "8px",
+        }}
+      >
+        {/* Select Table Dropdown */}
+        <Box sx={{ display: "flex", flexDirection: "column" }}>
+          <label style={{ marginBottom: "4px", color: "#CCFFFF" }}>Select Table:</label>
+          <select
+            value={selectedTable}
+            onChange={(e) => handleTableChange(e)}
+            style={{
+              padding: "8px",
+              borderRadius: "4px",
+              border: "1px solid #ccc",
+              background: "#fff",
+            }}
+          >
+            <option value="">-- Select a Table --</option>
+            {tables.map((table) => (
+              <option key={table} value={table}>
+                {table}
+              </option>
+            ))}
+          </select>
+        </Box>
+        {/* Create New Row Button */}
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleCreate}
+          sx={{
+            height: "fit-content", // Match the height of the dropdown
+            alignSelf: "flex-end", // Align with the dropdown
+          }}
+        >
+          Create New Row
+        </Button>
+      </Box>
 
       {/* Data Grid */}
       {selectedTable && (
-        <div>
-          <h2>Table: {selectedTable}</h2>
-          <Button
-            variant="contained"
-            color="secondary"
-            sx={{
-              marginTop: 2,
-              color: 'secondary.contrastText', // Ensures text matches theme
-              backgroundColor: 'secondary.main', // Ensures background matches theme
-              }}
-              onClick={handleCreate}
-          >
-            Create New Row
-          </Button>
-          <Table border="1">
-            <thead>
-              <tr>
-                {columns.map((col) => (
-                  <th key={col}>{col}</th>
-                ))}
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableData.map((row) => (
-                <tr key={row.id}>
+        <Box>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
                   {columns.map((col) => (
-                    <td key={col}>{row[col]}</td>
+                    <TableCell key={col}>{col}</TableCell>
                   ))}
-                  <td>
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      sx={{
-                        marginTop: 2,
-                        color: 'secondary.contrastText', // Ensures text matches theme
-                        backgroundColor: 'secondary.main', // Ensures background matches theme
-                        }}
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {tableData.map((row) => (
+                  <TableRow key={row.id}>
+                    {columns.map((col) => (
+                      <TableCell key={col}>
+                        {row[col]}
+                      </TableCell>
+                    ))}
+                    <TableCell>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        sx={{ marginRight: 1 }}
                         onClick={() => handleEdit(row)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      sx={{
-                        marginTop: 2,
-                        color: 'secondary.contrastText', // Ensures text matches theme
-                        backgroundColor: 'secondary.main', // Ensures background matches theme
-                        }}
-                        onClick={() => handleDelete(row)}
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() =>
+                          handleDelete(row.id)
+                        }
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Typography>No data to display</Typography>
+        </Box>
       )}
 
       {/* Modal for Editing */}
@@ -224,18 +239,18 @@ const DataManagementPage = () => {
           onClose={handleModalClose}
         />
       )}
-    
+
       {isCreateModalOpen && (
-          <EditModal
-            row={newRow}
-            columns={columns}
-            onSave={handleSaveNewRow}
-            onClose={handleCreateModalClose}
-          />
-        )}
-    </div>
+        <EditModal
+          row={newRow}
+          columns={columns}
+          onSave={handleSaveNewRow}
+          onClose={handleCreateModalClose}
+        />
+      )}
+    </Box>
+    </Box>
   );
 };
-// ################################################
 
 export default DataManagementPage;

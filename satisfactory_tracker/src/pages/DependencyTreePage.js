@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from 'react-router-dom';
 import {
     Typography,
     Button,
@@ -220,13 +221,13 @@ const DependencyTreePage = () => {
             case "visualiseTree":
                 return (
                     <Typography>
-                        <strong>Visualise Tree:</strong> Your visualisation content goes here.
+                        <strong>Visualise Tree:</strong> #TODO: Visualisation.
                     </Typography>
                 );
             case "tracker":
                 return (
                     <Typography>
-                        <strong>Tracker:</strong> Your tracker content goes here.
+                        <strong>Tracker:</strong> #TODO Tracker.
                     </Typography>
                 );
             default:
@@ -245,7 +246,7 @@ return (
                 sx={{
                     flex: activeTab ? 3 : 4, // Shrink when tab content is active
                     padding: "16px",
-                    backgroundColor: "#000000",
+                    background: "linear-gradient(to right, #000000, #0F705C)",
                     color: "#CCFFFF",
                     transition: "flex 0.3s ease", // Smooth resize transition
                     overflowY: "auto",
@@ -311,7 +312,7 @@ return (
                 disabled={!selectedPart}
                 sx={{ marginBottom: "16px" }}
             >
-                Fetch Dependency Tree
+                Fetch Dependencies
             </Button>
 
             {error && <Typography color="error">{error}</Typography>}
@@ -397,10 +398,11 @@ return (
                 <Button
                     onClick={() => toggleTab("alternateRecipes")}
                     sx={{
-                        textAlign: "left",
+                        textAlign: "center",
                         padding: "8px",
-                        borderRadius: 0,
-                        backgroundColor: activeTab === "alternateRecipes" ? "#00FFCC" : "#0A4B3E",
+                        borderRadius: 2,
+                        borderWidth: "0 0 2px 1",
+                        backgroundColor: activeTab === "alternateRecipes" ? "#00FFCC" : "#0A553E",
                         color: activeTab === "alternateRecipes" ? "#000" : "#CCFFFF",
                         "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
                     }}
@@ -410,10 +412,10 @@ return (
                 <Button
                     onClick={() => toggleTab("visualiseTree")}
                     sx={{
-                        textAlign: "left",
+                        textAlign: "center",
                         padding: "8px",
-                        borderRadius: 0,
-                        backgroundColor: activeTab === "visualiseTree" ? "#00FFCC" : "#0A4B3E",
+                        borderRadius: 2,
+                        backgroundColor: activeTab === "visualiseTree" ? "#00FFCC" : "#0A5A3E",
                         color: activeTab === "visualiseTree" ? "#000" : "#CCFFFF",
                         "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
                     }}
@@ -423,10 +425,10 @@ return (
                 <Button
                     onClick={() => toggleTab("tracker")}
                     sx={{
-                        textAlign: "left",
+                        textAlign: "center",
                         padding: "8px",
-                        borderRadius: 0,
-                        backgroundColor: activeTab === "tracker" ? "#00FFCC" : "#0A4B3E",
+                        borderRadius: 2,
+                        backgroundColor: activeTab === "tracker" ? "#00FFCC" : "#0A5F3E",
                         color: activeTab === "tracker" ? "#000" : "#CCFFFF",
                         "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
                     }}

@@ -1,24 +1,57 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Button, Typography, Box } from '@mui/material';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Button, Typography, Box, Stack } from "@mui/material";
+import LoginIcon from "@mui/icons-material/Login";
 
-const HomePage = () => (
-  <>
-    <Box sx={{ backgroundColor: 'background.default', padding: 2 }}>
-      <Typography variant="h1" color="primary">
-        Welcome to the Satisfactory Tracker
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        This page uses the site-wide theme for consistent colors and typography.
-      </Typography>
-      <Button variant="contained" color="secondary" sx={{ marginTop: 2 }}>
-        Don't Click Me!
-      </Button>
-    </Box>
-    <nav>
-      <Link to="/login">Login</Link> | <Link to="/data">Manage Data</Link> | <Link to="/dependencies">View Dependencies</Link>
-    </nav>
-  </>
-);
+const HomePage = () => {
+    const navigate = useNavigate(); // Use navigate for routing
+
+    return (
+        <Box
+            sx={{
+                background: "linear-gradient(to right, #0A4B3E, #000000)",  
+                //backgroundColor: "background.default",
+                padding: 4,
+                minHeight: "100vh",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+            }}
+        >
+            {/* Welcome Message */}
+            <Typography variant="h1" color="primary" gutterBottom>
+                Welcome to the Satisfactory Tracker
+            </Typography>
+
+            {/* Navigation Buttons */}
+            <Stack spacing={2} direction="row">
+                <Button
+                    variant="contained"
+                    startIcon={<LoginIcon />}
+                    color="secondary"
+                    onClick={() => navigate("/login")}
+                >
+                    Login - #TODO
+                </Button>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => navigate("/data")}
+                >
+                    Manage Data
+                </Button>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => navigate("/dependencies")}
+                >
+                    Dependencies
+                </Button>
+            </Stack>
+        </Box>
+    );
+};
 
 export default HomePage;
