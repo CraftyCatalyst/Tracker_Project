@@ -31,7 +31,7 @@ const DependencyTreePage = () => {
     const [flattenedData, setFlattenedData] = useState([]);
     const [error, setError] = useState("");
     const [isCollapsed, setIsCollapsed] = useState(false); // Track collapse state
-    const [activeTab, setActiveTab] = useState("alternateRecipes"); // Track active tab
+    const [activeTab, setActiveTab] = useState(""); // Track active tab ("" means no active tab)
 
 
     // Filter states
@@ -239,17 +239,17 @@ const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_nam
 const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
 
 return (
-    <div style={{ display: "flex", flexDirection: "row", gap: "8px" }}>
-        {/* Left Side: Dependency Tree */}
-        <Box
-            sx={{
-                flex: 3,
-                border: "2px solid #ccc", // Border style
-                borderRadius: "8px", // Rounded corners
-                padding: "16px", // Inner padding
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)", // Optional shadow for aesthetics
-                //backgroundColor: "#fff", // Optional background for contrast
-            }}
+    <Box sx={{ display: "flex", height: "100vh" }}>
+            {/* Main Content Section */}
+            <Box
+                sx={{
+                    flex: activeTab ? 3 : 4, // Shrink when tab content is active
+                    padding: "16px",
+                    backgroundColor: "#000000",
+                    color: "#CCFFFF",
+                    transition: "flex 0.3s ease", // Smooth resize transition
+                    overflowY: "auto",
+                }}
         >
             <Typography variant="h1" color="primary" gutterBottom>
                 Dependency Tree Table
@@ -352,20 +352,50 @@ return (
             </Box>
         </Box>
 
-        {/* Right Side: Alternate Recipes */}
-        <Box sx={{ display: "flex", height: "100vh" }}>
-            {/* Tabs Section */}
+        {/* Right Side: Content and Tabs */}
+        <Box
+                sx={{
+                    width: activeTab ? "700px" : "0px", // Expand/collapse width
+                    transition: "width 0.3s ease", // Smooth width transition
+                    overflow: "hidden", // Prevent content overflow when collapsed
+                    backgroundColor: "#0A4B3E",
+                    color: "#CCFFFF",
+                }}
+            >
+                {activeTab && (
+                    <Box
+                        sx={{
+                            padding: "16px",
+                            height: "100%",
+                            overflowY: "auto",
+                        }}
+                    >
+                        <Paper
+                            sx={{
+                                padding: "16px",
+                                backgroundColor: "#0A4B3E",
+                                color: "#CCFFFF",
+                                borderRadius: "8px",
+                            }}
+                        >
+                            {renderContent()}
+                        </Paper>
+                    </Box>
+                )}
+            </Box>
+
+            {/* Static Tabs Column */}
             <Box
                 sx={{
+                    width: "100px", // Fixed width for tabs
                     display: "flex",
                     flexDirection: "column",
-                    borderRight: "2px solid #ccc",
-                    width: "150px",
                     backgroundColor: "#0A4B3E",
+                    borderLeft: "2px solid #ccc",
                 }}
             >
                 <Button
-                    onClick={() => setActiveTab("alternateRecipes")}
+                    onClick={() => toggleTab("alternateRecipes")}
                     sx={{
                         textAlign: "left",
                         padding: "8px",
@@ -378,7 +408,7 @@ return (
                     Alternate Recipes
                 </Button>
                 <Button
-                    onClick={() => setActiveTab("visualiseTree")}
+                    onClick={() => toggleTab("visualiseTree")}
                     sx={{
                         textAlign: "left",
                         padding: "8px",
@@ -391,7 +421,7 @@ return (
                     Visualise Tree
                 </Button>
                 <Button
-                    onClick={() => setActiveTab("tracker")}
+                    onClick={() => toggleTab("tracker")}
                     sx={{
                         textAlign: "left",
                         padding: "8px",
@@ -403,31 +433,8 @@ return (
                 >
                     Tracker
                 </Button>
-            </Box>
-
-            {/* Content Section */}
-            <Box
-                sx={{
-                    flex: 1,
-                    padding: "16px",
-                    backgroundColor: "#000000",
-                    color: "#CCFFFF",
-                    overflowY: "auto",
-                }}
-            >
-                <Paper
-                    sx={{
-                        padding: "16px",
-                        backgroundColor: "#0A4B3E",
-                        color: "#CCFFFF",
-                        borderRadius: "8px",
-                    }}
-                >
-                    {renderContent()}
-                </Paper>
-            </Box>
         </Box>
-    </div>
+    </Box>
     );
 };
 
