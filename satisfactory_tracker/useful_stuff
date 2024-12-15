@@ -71,21 +71,29 @@ Docker:
         # Add --force-recreate to force the recreation of the containers
         # Add --remove-orphans to remove containers for services not defined in the Compose file
         # Add --renew-anon-volumes to recreate anonymous volumes instead of retrieving data from the previous containers
-    Run an image in a container:
+    Run the app image in a container:
         # replace image_name with the name of the image you want to run
-        docker run -p 3000:3000 -p 5000:5000 -v "$(pwd):/app" -e FLASK_ENV=development -e NODE_ENV=development image_name npm start
-    # Useful commands:
+            docker run -p 3000:3000 -p 5000:5000 -v "$(pwd):/app" -e FLASK_ENV=development -e NODE_ENV=development image_name npm start
+    Useful commands:
         docker exec -it satisfactory_tracker-app-1 bash # Access the bash shell in the app container
         docker ps # Confirm the containers are running
         docker logs satisfactory_tracker-app-1 # Check for the Flask app
         docker debug satisfactory_tracker-app-1 # Debug the app container
+        # How to tag a version of the image prior to pushing to docker hub
+            docker image tag satisfactory_tracker waynen12/satisfactory_tracker:v0.3
+        # How to push to docker hub
+            docker image push waynen12/satisfactory_tracker:v0.3
+        #remove all docker images 
+            docker container rm -f $(docker container ls -aq)
 
 npm commands:
     npm run build
     npm start # uses concurrently to start the both react and flask servers in the package.json scripts
+    npm stop # stops the react server
 
 Table Maintenance:
     # Run refresh_data.py in SQLite_stuff directory to delete all data and reload either a specific table or all tables.
+    # Primary keys are reset to 0 when the data is reloaded. So you shouldn't need to reload foreign key data. But spot check to be sure.
     # Command line arguments as follows: all_tables, parts, recipes, alternate_recipes, node_purity, miner_type, miner_supply, power_shards, data_validation
     # Or just copy and paste one of the following commands into the command line.
         python refresh_data.py all_tables # Refresh all the data from the Excel file
@@ -97,6 +105,7 @@ Table Maintenance:
         python refresh_data.py miner_supply # Refresh the miner supply data from the Excel file
         python refresh_data.py power_shards # Refresh the power shards data from the Excel file
         python refresh_data.py data_validation # Refresh the data validation data from the Excel file
+    # Note that the user table is not included. This is to prevent the loss of user data. If you need to refresh the user table, you will need to do it manually.
 
 Flask Commands:
     Blow away the database and start over:
@@ -109,7 +118,8 @@ Flask Commands:
         # 2) Recreate the database.
             flask db stamp head # Stamp the current migration.
             flask db migrate -m "your description" # Change the message as needed.
-            flask db upgrade # Upgrade to the latest migration.
+            
+             migration.
         # 3) Migrate the data from the Excel file to the database.
             cd SQLite_stuff # if not already in the directory
             python -m SQLite_stuff.migrate_data # Migration script to move data from Excel to SQLite database.
@@ -127,31 +137,41 @@ SQLite commands:
 Key files:
     General:
         /config.py # Configuration file for both the Flask and React apps *******
-        /run_app.py # Script to activate the virtual environment, build the React app, start the Flask app, and open the browser to the React app.
         /pip_requirements.txt # List of pip packages for the virtual environment 
-        /npm_requirements.txt # List of npm packages for the React app 
+        /npm_requirements.txt # List of npm packages for the React app
+        /.env # Environment variables for the project 
         /useful_stuff # File containing useful information for the project
     SQLite:
         /satisfactory_tracker/SQLite_stuff/satisfactory_parts.db # Database file for the SQLite database
         /satisfactory_tracker/SQLite_stuff/Satifactory Parts Data v2.xlsx # Excel file containing the initial data
-        /satisfactory_tracker/SQLite_stuff/migrate_data.py # Migration script to move data from Excel to SQLite database.
+        /satisfactory_tracker/SQLite_stuff/migrate_data.py # Migration script for initial setup to move data from Excel to SQLite database.
+        /satisfactory_tracker/SQLite_stuff/refresh_data.py # Script to delete all data and reload either a specific table or all tables.
+        satisfactory_tracker/SQLite_stuff/create_db.py # Script to create the database
+        satisfactory_tracker/SQLite_stuff/create_schema.py # Script to create the database schema
     Flask:
         /satisfactory_tracker/app/__init__.py # App initialization and configuration 
         /satisfactory_tracker/app/models.py # Database models and relationships *******
         /satisfactory_tracker/app/routes.py # Routes and views *******
-    React:
+        satisfactory_tracker/app/build_tree.py # Script to build the dependency tree
+    React:        
+        /satisfactory_tracker/src/pages/LoginPage.js # Login Page 
+        satisfactory_tracker/src/pages/SignupPage.js # Signup Page
+        /satisfactory_tracker/src/pages/HomePage.js # Home Page
         /satisfactory_tracker/src/pages/DataManagementPage.js # Data Management Page *******
         /satisfactory_tracker/src/pages/EditModal.js # Edit Modal form *******
-        /satisfactory_tracker/src/pages/DependencyTreePage.js # Dependency Tree Page *******
-        /satisfactory_tracker/src/pages/HomePage.js # Home Page
-        /satisfactory_tracker/src/pages/LoginPage.js # Login Page 
+        /satisfactory_tracker/src/pages/DependencyTreePage.js # Dependency Tree Page *******        
         /satisfactory_tracker/src/services/api.js # API service *******
         /satisfactory_tracker/App.js # Main App component *******
         /satisfactory_tracker/src/theme/theme.js # Theme file *******
         /satisfactory_tracker/package.json # Package file *******
+        satisfactory_tracker/src/apiConfig.js # API configuration file
     Docker:
         /satisfactory_tracker/Dockerfile # Dockerfile *******
         /satisfactory_tracker/docker-compose.yml # Docker Compose file for the Flask and React apps *******
+
+
+    Other Files:
+        /run_app.py # Script to activate the virtual environment, build the React app, start the Flask app, and open the browser to the React app.
 
 Code stuff:
     formatting of TODOs:
@@ -166,4 +186,20 @@ Visual Studio:
     # Exclude venv and node_modules from search. Copy into the files to exclude text box in the search tab.
         satisfactory_tracker/venv/**/, satisfactory_tracker/node_modules/**/
         
+Copilot:
+    - copilot-debug python filename.py # Debug a file using copilot-debug
+    - By typing # followed by a symbol, function_name, class_name etc... you'll get suggestions for that type from files you've recently worked on.
+    To reference symbols across your entire project, you can use #sym to open a global symbols picker.
+    Folders can now be added as context by dragging them from the Explorer, Breadcrumbs, or other views into Copilot Chat.
+        - When a folder is dragged into Copilot Edits, all files within the folder are included in the working set.
+    - Copilot usage graph
+        - VS Code extensions can use the VS Code API to build on the capabilities of Copilot. You can now see a graph of an extension's Copilot usage in the Runtime Status view. This graph shows the number of chat requests that were made by the extension over the last 30 days.
+            - The graph is available for extensions that have been granted the copilot.usage permission in their extension manifest.
+    Ctrl + Shift + L - Multi-select
 
+    
+
+
+
+
+    
