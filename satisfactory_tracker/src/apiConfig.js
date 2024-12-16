@@ -9,4 +9,6 @@ export const API_ENDPOINTS = {
   parts: `${flask_port}/api/parts`,
   signup: `${flask_port}/signup`,
   login: `${flask_port}/login`,
+  logout: `${flask_port}/logout`,
+  userinfo: `${flask_port}/api/user_info`,
   };

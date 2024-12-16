@@ -100,10 +100,20 @@ def login():
         email = data.get('email')
         password = data.get('password')
 
+        print(f"Email: {email}, Password: {password}")
+
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
-            return jsonify({"message": "Login successful!"}), 200
+            return jsonify({
+                "message": "Login successful!",
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "role": user.role
+                }
+            }), 200
         else:
             return jsonify({"message": "Invalid email or password."}), 401
     return jsonify({"message": "Login route for API only."}), 404
@@ -152,9 +162,9 @@ def signup():
 @main.route('/logout')
 @login_required
 def logout():
-    logout_user()
+    logout_user()    
     flash('Logged out successfully.', 'info')
-    return redirect(url_for('login'))
+    return jsonify({"message": "Logged out successfully."}), 201
 
 def generate_verification_token(email):
     print(f"********************************************Generating verification token for {email} with secret key: {config.SECRET_KEY}")
@@ -186,6 +196,15 @@ def verify_email(token):
     db.session.commit()
     flash('Your account has been verified! You can now log in.', 'success')
     return redirect(url_for('login'))
+
+@main.route('/api/user_info', methods=['GET'])
+@login_required
+def user_info():
+    return jsonify({
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role
+    })
 
 @main.route('/api/build_tree', methods=['GET'])
 def build_tree_route():

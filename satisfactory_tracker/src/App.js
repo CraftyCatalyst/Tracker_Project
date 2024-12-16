@@ -8,12 +8,14 @@ import LoginPage from './pages/LoginPage';
 import DataManagementPage from './pages/DataManagementPage';
 import DependencyTreePage from "./pages/DependencyTreePage";
 import SignupPage from './pages/SignupPage';
+import Header from './Header';
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline /> {/* Provides default styling reset */}
       <Router>
+        <Header />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />

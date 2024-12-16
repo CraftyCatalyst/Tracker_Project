@@ -18,7 +18,16 @@ const LoginPage = () => {
 
     try {
       const response = await axios.post(API_ENDPOINTS.login, { email, password });
-      //setSuccess(response.data.message || 'Successfully logged in.');
+      // Fetch user info after successful login
+      //const userInfoResponse = await axios.get(API_ENDPOINTS.userinfo, { withCredentials: true });
+
+      // Extract user information from the response
+      const userInfo = response.data.user;
+
+      // Save user info to localStorage
+      localStorage.setItem('user_info', JSON.stringify(userInfo));
+
+
       navigate('/'); // Redirect to dashboard after successful login
     } catch (error) {
       console.error('Login failed:', error, 'email:', email, 'password:', password);

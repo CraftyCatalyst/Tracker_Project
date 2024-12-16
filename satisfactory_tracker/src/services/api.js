@@ -172,3 +172,9 @@ export const buildDependencyTree = async (partId, recipeType = '_Standard', targ
     throw error;
   }
 }
+
+// User API
+export const fetchUserInfo = async () => {
+  const response = await apiClient.get('/user_info');
+  return response.data;
+};
