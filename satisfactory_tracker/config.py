@@ -15,7 +15,7 @@ load_dotenv()
 
 class Config:
     RUN_MODE = os.getenv('RUN_MODE')
-    SECRET_KEY = os.getenv('SECRET_KEY') or 'dev_default_secret_key'
+    print(f'RUN_MODE: {RUN_MODE}')
 
 # Set DB config values based on RUN_MODE
 if Config.RUN_MODE == 'local':
@@ -34,14 +34,22 @@ else:
 #print(f'React Build: {REACT_BUILD_DIR}')
 #print(f'React Static: {REACT_STATIC_DIR}')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
-
+SECRET_KEY = os.getenv('SECRET_KEY') or 'dev_default_secret_key'
+#print(f'SECRET_KEY: {SECRET_KEY}')
 # Email server config values
 MAIL_SERVER = 'smtp.gmail.com' # Gmail SMTP server
 MAIL_PORT = 587 # Port for TLS
 MAIL_USE_TLS = True # Use TLS for security
-MAIL_USERNAME = os.environ.get('ST_MAIL_USER') # Load email username from environment variable
-MAIL_PASSWORD = os.environ.get('ST_MAIL_PW')  # Load email password from environment variable
-MAIL_DEFAULT_SENDER = os.environ.get('ST_MAIL_SENDER') # Load email sender from environment variable
+MAIL_USE_SSL = False # Use SSL for security
+MAIL_USERNAME = os.getenv('ST_MAIL_USER') # Load email username from environment variable
+MAIL_PASSWORD = os.getenv('ST_MAIL_PW')  # Load email password from environment variable
+MAIL_DEFAULT_SENDER = os.getenv('ST_MAIL_SENDER') # Load email sender from environment variable
+
+SERVICE_ACCOUNT_KEY_FILE = os.getenv('SERVICE_ACCOUNT_KEY_FILE')
+REACT_APP_RECAPTCHA_SITE_KEY = os.getenv('REACT_APP_RECAPTCHA_SITE_KEY')
+GOOGLE_PROJECT_ID = os.getenv('GOOGLE_PROJECT_ID')
+RECAPTCHA_API_KEY = os.getenv('RECAPTCHA_API_KEY')
+#print(f'**********************MAIL_USERNAME: {MAIL_USERNAME} MAIL_DEFAULT_SENDER: {MAIL_DEFAULT_SENDER} MAIL_PASSWORD: {MAIL_PASSWORD}')
 
 # Table and column whitelist
 VALID_TABLES = {'parts', 'recipes', 'alternate_recipes', 'node_purity', 'miner_type', 'miner_supply', 'power_shards', "user", "data_validation"}

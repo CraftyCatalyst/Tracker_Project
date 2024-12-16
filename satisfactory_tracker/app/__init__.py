@@ -6,7 +6,7 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_cors import CORS
 
-print("Loading extensions...")
+print("Initializing Flask Application...")
 login_manager = LoginManager()
 db = SQLAlchemy()
 migrate = Migrate()
@@ -16,12 +16,12 @@ mail = Mail()
 def create_app():
     # Construct the absolute path to the config file
     config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../config.py'))
-    #print(config_path)
+    print(f"Loading config from: {config_path}")
+    
     app = Flask(__name__, static_folder=None) # Explicity set static_folder to None to disable static file serving from default location
     CORS(app)
     app.config.from_pyfile(config_path)
     #print("App created")
-
     #print("Initializing extensions...")
     db.init_app(app)
     #print("DB initialized")

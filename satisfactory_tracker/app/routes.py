@@ -18,6 +18,11 @@ from flask import current_app
 from flask_mail import Message
 from . import mail
 import importlib.util
+import requests
+from flask import request, jsonify
+from google.oauth2 import service_account
+from google.auth.transport.requests import AuthorizedSession
+
 
 # Construct the absolute path to the config file
 config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../config.py'))
@@ -40,6 +45,27 @@ main = Blueprint(
     __name__,
     static_folder=REACT_STATIC_DIR
 )
+
+# Load service account credentials
+SERVICE_ACCOUNT_FILE = config.SERVICE_ACCOUNT_KEY_FILE
+PROJECT_ID = config.GOOGLE_PROJECT_ID
+SITE_KEY = config.REACT_APP_RECAPTCHA_SITE_KEY
+SECRET_KEY = config.RECAPTCHA_API_KEY
+
+logger.info(f"**************************************Service account file: {SERVICE_ACCOUNT_FILE}, Project ID: {PROJECT_ID}, Site key: {SITE_KEY}")
+
+# # Load the credentials
+# credentials = service_account.Credentials.from_service_account_file(
+#     SERVICE_ACCOUNT_FILE,
+#     scopes=['https://www.googleapis.com/auth/recaptchaenterprise']
+# )
+
+# # Create an authorized session
+# authed_session = AuthorizedSession(credentials)
+
+# for rule in app.url_map.iter_rules():
+#     print(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")
+
 
 @main.route('/')
 def serve_react_app():
@@ -70,52 +96,58 @@ def catchall(path):
 @main.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
+        data = request.get_json()  # Handle JSON payload from React
+        email = data.get('email')
+        password = data.get('password')
 
-        user = User.query.filter_by(email==email).first()
+        user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
-            flash('Login successful!', 'success')
-            return redirect(url_for('serve_react_app'))
+            return jsonify({"message": "Login successful!"}), 200
         else:
-            flash('Invalid email or password.', 'danger')
-    return render_template('login.html')  #TODO: Implement login.html
+            return jsonify({"message": "Invalid email or password."}), 401
+    return jsonify({"message": "Login route for API only."}), 404
 
 @main.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
+        data = request.get_json()  # Parse JSON payload
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        recaptcha_token = data.get('recaptcha_token')
+        
+        # Verify reCAPTCHA
+        verify_url = 'https://www.google.com/recaptcha/api/siteverify'
+        response = requests.post(verify_url, data={
+            'secret': SECRET_KEY,
+            'response': recaptcha_token
+        })
+        result = response.json()
 
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            flash('Email is already in use.', 'warning')
-            return redirect(url_for('signup'))
+        if not result.get('success'):
+            return jsonify({"message": "reCAPTCHA validation failed. Please try again."}), 400
+        
+        # Verify that the username is unique
+        user = User.query.filter_by(username=username).first()
+        if user:
+            return jsonify({"message": "Username is unavailable."}), 400    
 
+        
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        
         new_user = User(
             username=username,
             email=email,
-            password=generate_password_hash(password, method='sha256')
+            password=hashed_password,
+            role='user'
         )
+        
         db.session.add(new_user)
         db.session.commit()
 
-        # Generate and send verification email
-        token = generate_verification_token(email)
-        verify_url = url_for('verify_email', token=token, _external=True)
-        msg = Message(
-            subject='Verify Your Email',
-            recipients=[email],
-            body=f'Click the link to verify your email: {verify_url}'
-        )
-        mail.send(msg)
-
-        flash('Account created! Check your email to verify your account.', 'info')
-        return redirect(url_for('login'))
-
-    return render_template('signup.html')  #TODO: Implement signup.html
+        flash('Account successfully created!', 'info')        
+    return jsonify({"message": "Account created successfully."}), 201
 
 @main.route('/logout')
 @login_required
@@ -125,11 +157,12 @@ def logout():
     return redirect(url_for('login'))
 
 def generate_verification_token(email):
-    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    print(f"********************************************Generating verification token for {email} with secret key: {config.SECRET_KEY}")
+    serializer = URLSafeTimedSerializer(config.SECRET_KEY)
     return serializer.dumps(email, salt='email-confirm')
 
 def confirm_verification_token(token, expiration=3600):
-    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    serializer = URLSafeTimedSerializer(config.SECRET_KEY)
     try:
         email = serializer.loads(token, salt='email-confirm', max_age=expiration)
     except Exception:

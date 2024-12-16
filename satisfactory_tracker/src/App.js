@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import DataManagementPage from './pages/DataManagementPage';
 import DependencyTreePage from "./pages/DependencyTreePage";
+import SignupPage from './pages/SignupPage';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/data" element={<DataManagementPage />} />
           <Route path="/dependencies" element={<DependencyTreePage />} />
+          <Route path="/signup" element={<SignupPage />} />
         </Routes>
       </Router>
     </ThemeProvider>
