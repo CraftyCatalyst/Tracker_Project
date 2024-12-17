@@ -192,7 +192,7 @@ Copilot:
 
 #TODO:
     - Fix Logout button in the header. It's not working. - DONE
-    - Visualization of Dependency Tree
+    - Visualization of Dependency Tree DONE
         Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
     - Export Tree Data
         Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from 'react-router-dom';
 import {
     Typography,
@@ -16,7 +16,10 @@ import {
     Select,
     FormControl,
     InputLabel,
+    TextField,
 } from "@mui/material";
+import { SimpleTreeView } from "@mui/x-tree-view";
+import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 
@@ -32,13 +35,122 @@ const DependencyTreePage = () => {
     const [flattenedData, setFlattenedData] = useState([]);
     const [error, setError] = useState("");
     const [isCollapsed, setIsCollapsed] = useState(false); // Track collapse state
+    const [isExpanded, setIsExpanded] = useState(false); // Track collapse state
     const [activeTab, setActiveTab] = useState(""); // Track active tab ("" means no active tab)
+    const [expandedNodes, setExpandedNodes] = useState([]); // Track expanded nodes
 
 
     // Filter states
     const [partFilter, setPartFilter] = useState("");
     const [recipeFilter, setRecipeFilter] = useState("");
     const [recipes, setRecipes] = useState(filteredRecipes);
+
+    const fetchTreeData = async () => {
+        try {
+            const response = await axios.get(API_ENDPOINTS.build_tree, {
+                params: { part_id: selectedPart, target_quantity: targetQuantity },
+            });
+
+            const structuredData = buildTreeData(response.data);
+            console.log("Structured Tree Data:", structuredData); // Debug to confirm all nodes
+            setTreeData(structuredData);
+        } catch (error) {
+            console.error("Error fetching dependency tree:", error);
+        }
+    };
+
+
+    const buildTreeData = (node, parentId = "root", counter = { id: 1 }) => {
+        const tree = [];
+
+        if (!node || typeof node !== "object") return tree;
+
+        for (const [key, value] of Object.entries(node)) {
+            if (!value || typeof value !== "object") continue;
+
+            // Generate a unique ID for this node
+            const uniqueId = `${parentId}-${counter.id++}`;
+            console.log(`Generated ID: ${uniqueId} for Node: ${key}`); // Debug log
+
+            // Build the new node structure
+            const newNode = {
+                id: uniqueId,
+                name: key,
+                "Required Quantity": value["Required Quantity"] || "N/A",
+                "Produced In": value["Produced In"] || "N/A",
+                "No. of Machines": value["No. of Machines"] || "N/A",
+                children: value.Subtree && typeof value.Subtree === "object"
+                    ? buildTreeData(value.Subtree, uniqueId, counter)
+                    : [],
+
+            };
+            console.log("Current Node:", key, "Unique id:", uniqueId, "Subtree:", value.Subtree);
+
+            if (!newNode.id || newNode.id === "undefined") {
+                console.error("Node with missing ID:", newNode); // Catch undefined IDs
+            }
+
+            tree.push(newNode);
+        }
+
+        return tree;
+    };
+
+    // Render the tree recursively
+    const renderTree = (nodes) => {
+        return nodes.map((node) => {
+            if (!node.id || node.id === "undefined") {
+                console.error("Attempting to render a node with invalid ID:", node);
+                return null; // Skip invalid nodes
+            }
+
+            console.log("Rendering Node:", node.id, node.name); // Confirm valid node
+
+            return (
+                <TreeItem
+                    itemId={node.id}
+                    key={node.id}
+                    nodeid={node.id}
+                    label={
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                            <strong>{node.name}</strong>
+                            <span>Qty: {node["Required Quantity"]}</span>
+                            <span>Produced In: {node["Produced In"]}</span>
+                            <span>No. of Machines: {node["No. of Machines"]}</span>
+                            <span>Recipe: {node.Recipe}</span>
+                        </div>
+                    }
+                >
+                    {node.children.length > 0 && renderTree(node.children)}
+                </TreeItem>
+            );
+        });
+    };
+
+    // Collect all node IDs in the tree
+    const collectAllNodeIds = (nodes) => {
+        let ids = [];
+        nodes.forEach((node) => {
+            ids.push(node.id); // Add current node ID
+            if (node.children.length > 0) {
+                ids = ids.concat(collectAllNodeIds(node.children)); // Recursively collect child IDs
+            }
+        });
+        return ids;
+    };
+
+    const handleExpandAll = () => {
+        if (treeData) {
+            const allIds = collectAllNodeIds(treeData);
+            setExpandedNodes(allIds);
+            setIsExpanded(true); // Set expanded state
+        }
+    };
+    
+    const handleCollapseAll = () => {
+        setExpandedNodes([]); // Collapse all nodes
+        setIsCollapsed(true); // Set collapsed state
+    };
 
     // Fetch parts and alternate recipes on component mount
     useEffect(() => {
@@ -131,98 +243,129 @@ const DependencyTreePage = () => {
         setActiveTab((prev) => (prev === tab ? "" : tab)); // Collapse if the same tab is clicked
     };
 
-    const toggleCollapse = () => {
-        setIsCollapsed((prev) => !prev); // Toggle collapse state
-    };
+    // const toggleCollapse = () => {
+    //     setIsCollapsed((prev) => !prev); // Toggle collapse state
+    // };
 
 
     const renderContent = () => {
         switch (activeTab) {
             case "alternateRecipes":
                 return (
-                  <div>
-                    <Typography variant="h2" color="primary" gutterBottom>
-                        Alternate Recipes
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px", alignItems: "center" }}>
-                        {/* Part Filter */}
-                        <div>
-                            <label>Filter by Part:</label>
-                            <select
-                                value={partFilter}
-                                onChange={(e) => setPartFilter(e.target.value)}
-                                style={{
-                                    marginLeft: "8px",
-                                    padding: "8px",
-                                    borderRadius: "4px",
-                                    border: "1px solid #ccc",
-                                    background: "#fff",
-                                }}
-                            >
-                                <option value="">-- Select Part --</option>
-                                {uniqueParts.map((part, index) => (
-                                    <option key={index} value={part}>
-                                        {part}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                    <div>
+                        <Typography variant="h2" color="primary" gutterBottom>
+                            Alternate Recipes
+                        </Typography>
+                        <Box sx={{ display: "flex", gap: "16px", marginBottom: "16px", alignItems: "center" }}>
+                            {/* Part Filter */}
+                            <div>
+                                <label>Filter by Part:</label>
+                                <select
+                                    value={partFilter}
+                                    onChange={(e) => setPartFilter(e.target.value)}
+                                    style={{
+                                        marginLeft: "8px",
+                                        padding: "8px",
+                                        borderRadius: "4px",
+                                        border: "1px solid #ccc",
+                                        background: "#fff",
+                                    }}
+                                >
+                                    <option value="">-- Select Part --</option>
+                                    {uniqueParts.map((part, index) => (
+                                        <option key={index} value={part}>
+                                            {part}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                        {/* Recipe Filter */}
-                        <div>
-                            <label>Filter by Recipe:</label>
-                            <select
-                                value={recipeFilter}
-                                onChange={(e) => setRecipeFilter(e.target.value)}
-                                style={{
-                                    marginLeft: "8px",
-                                    padding: "8px",
-                                    borderRadius: "4px",
-                                    border: "1px solid #ccc",
-                                    background: "#fff",
-                                }}
-                            >
-                                <option value="">-- Select Recipe --</option>
-                                {uniqueRecipes.map((recipe, index) => (
-                                    <option key={index} value={recipe}>
-                                        {recipe}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </Box>
-                    {/* Filtered Table */}
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Part</TableCell>
-                                    <TableCell>Recipe</TableCell>
-                                    <TableCell>Select</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {filteredRecipes.map((recipe) => (
-                                    <TableRow key={recipe.id}>
-                                        <TableCell>{recipe.recipe_name}</TableCell>
-                                        <TableCell>{recipe.part_name}</TableCell>
-                                        <TableCell>
-                                            <Checkbox
-                                                onChange={() => handleCheckboxChange(recipe.id)}
-                                            />
-                                        </TableCell>
+                            {/* Recipe Filter */}
+                            <div>
+                                <label>Filter by Recipe:</label>
+                                <select
+                                    value={recipeFilter}
+                                    onChange={(e) => setRecipeFilter(e.target.value)}
+                                    style={{
+                                        marginLeft: "8px",
+                                        padding: "8px",
+                                        borderRadius: "4px",
+                                        border: "1px solid #ccc",
+                                        background: "#fff",
+                                    }}
+                                >
+                                    <option value="">-- Select Recipe --</option>
+                                    {uniqueRecipes.map((recipe, index) => (
+                                        <option key={index} value={recipe}>
+                                            {recipe}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </Box>
+                        {/* Filtered Table */}
+                        <TableContainer component={Paper}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Part</TableCell>
+                                        <TableCell>Recipe</TableCell>
+                                        <TableCell>Select</TableCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </div> 
+                                </TableHead>
+                                <TableBody>
+                                    {filteredRecipes.map((recipe) => (
+                                        <TableRow key={recipe.id}>
+                                            <TableCell>{recipe.recipe_name}</TableCell>
+                                            <TableCell>{recipe.part_name}</TableCell>
+                                            <TableCell>
+                                                <Checkbox
+                                                    onChange={() => handleCheckboxChange(recipe.id)}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </div>
                 );
             case "visualiseTree":
                 return (
-                    <Typography>
-                        <strong>Visualise Tree:</strong> #TODO: Visualisation.
-                    </Typography>
+                    <div>
+                        <Typography> <strong>Visualise Tree:</strong> </Typography>
+                        {/* Buttons for Expand/Collapse */}
+            <           Box sx={{ display: "flex", gap: 2, mb: 2 }}>   
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                onClick={handleExpandAll}                                
+                            >
+                                Expand All
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                onClick={handleCollapseAll}
+                            >
+                                Collapse All
+                            </Button>
+                        </Box>
+                        <Box sx={{ overflowY: "auto" }}>
+                            {treeData.length > 0 ? (
+                                <SimpleTreeView
+                                    defaultCollapseIcon="🔽"
+                                    defaultExpandIcon="▶"
+                                    expandedItems={expandedNodes}
+                                    onExpandedItemsChange={(event, nodeIds) => setExpandedNodes(nodeIds)}
+                                >
+                                    {renderTree(treeData)}
+                                </SimpleTreeView>
+                            ) : (
+                                <Typography>No data to display</Typography>
+                            )}
+                        </Box>
+                    </div>
                 );
             case "tracker":
                 return (
@@ -235,12 +378,12 @@ const DependencyTreePage = () => {
         }
     };
 
-// Extract unique filter options
-const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
-const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
+    // Extract unique filter options
+    const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
+    const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
 
-return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
+    return (
+        <Box sx={{ display: "flex", height: "100vh" }}>
             {/* Main Content Section */}
             <Box
                 sx={{
@@ -251,110 +394,113 @@ return (
                     transition: "flex 0.3s ease", // Smooth resize transition
                     overflowY: "auto",
                 }}
-        >
-            <Typography variant="h1" color="primary" gutterBottom>
-                Dependency Tree Table
-            </Typography>
-
-            <Box
-                sx={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "flex-start",
-                    gap: "16px",
-                    marginBottom: "16px",
-                }}
             >
-                {/* Select Part */}
-                <Box sx={{ display: "flex", flexDirection: "column" }}>
-                    <label style={{ marginBottom: "4px" }}>Select Part:</label>
-                    <select
-                        value={selectedPart}
-                        onChange={(e) => setSelectedPart(e.target.value)}
-                        style={{
-                            padding: "8px",
-                            borderRadius: "4px",
-                            border: "1px solid #ccc",
-                            background: "#fff",
-                        }}
-                    >
-                        <option value="">-- Select a Part --</option>
-                        {parts.map((part) => (
-                            <option key={part.id} value={part.id}>
-                                {part.name}
-                            </option>
-                        ))}
-                    </select>
+                <Typography variant="h1" color="primary" gutterBottom>
+                    Dependency Tree Table
+                </Typography>
+
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: "16px",
+                        marginBottom: "16px",
+                    }}
+                >
+                    {/* Select Part */}
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <label style={{ marginBottom: "4px" }}>Select Part:</label>
+                        <select
+                            value={selectedPart}
+                            onChange={(e) => setSelectedPart(e.target.value)}
+                            style={{
+                                padding: "8px",
+                                borderRadius: "4px",
+                                border: "1px solid #ccc",
+                                background: "#fff",
+                            }}
+                        >
+                            <option value="">-- Select a Part --</option>
+                            {parts.map((part) => (
+                                <option key={part.id} value={part.id}>
+                                    {part.name}
+                                </option>
+                            ))}
+                        </select>
+                    </Box>
+
+                    {/* Target Quantity */}
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <label style={{ marginBottom: "4px" }}>Target Quantity:</label>
+                        <input
+                            type="number"
+                            placeholder="Enter Quantity"
+                            value={targetQuantity}
+                            onChange={(e) => setTargetQuantity(e.target.value)}
+                            style={{
+                                padding: "8px",
+                                borderRadius: "4px",
+                                border: "1px solid #ccc",
+                                background: "#fff",
+                            }}
+                        />
+                    </Box>
                 </Box>
 
-                {/* Target Quantity */}
-                <Box sx={{ display: "flex", flexDirection: "column" }}>
-                    <label style={{ marginBottom: "4px" }}>Target Quantity:</label>
-                    <input
-                        type="number"
-                        placeholder="Enter Quantity"
-                        value={targetQuantity}
-                        onChange={(e) => setTargetQuantity(e.target.value)}
-                        style={{
-                            padding: "8px",
-                            borderRadius: "4px",
-                            border: "1px solid #ccc",
-                            background: "#fff",
-                        }}
-                    />
-                </Box>
-            </Box>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => {
+                        handleFetchTree();
+                        fetchTreeData();
+                    }}
+                    disabled={!selectedPart}
+                    sx={{ marginBottom: "16px" }}
+                >
+                    Fetch Dependencies
+                </Button>
 
-            <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleFetchTree}
-                disabled={!selectedPart}
-                sx={{ marginBottom: "16px" }}
-            >
-                Fetch Dependencies
-            </Button>
+                {error && <Typography color="error">{error}</Typography>}
 
-            {error && <Typography color="error">{error}</Typography>}
-
-            <Box sx={{ marginTop: 4 }}>
-                {flattenedData.length > 0 ? (
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Parent</TableCell>
-                                    <TableCell>Node</TableCell>
-                                    <TableCell>Level</TableCell>
-                                    <TableCell>Required Quantity</TableCell>
-                                    <TableCell>Produced In</TableCell>
-                                    <TableCell>No. of Machines</TableCell>
-                                    <TableCell>Recipe</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {flattenedData.map((row, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell>{row.Parent}</TableCell>
-                                        <TableCell>{row.Node}</TableCell>
-                                        <TableCell>{row.Level}</TableCell>
-                                        <TableCell>{row["Required Quantity"]}</TableCell>
-                                        <TableCell>{row["Produced In"]}</TableCell>
-                                        <TableCell>{row["No. of Machines"]}</TableCell>
-                                        <TableCell>{row.Recipe}</TableCell>
+                <Box sx={{ marginTop: 4 }}>
+                    {flattenedData.length > 0 ? (
+                        <TableContainer component={Paper}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Parent</TableCell>
+                                        <TableCell>Node</TableCell>
+                                        <TableCell>Level</TableCell>
+                                        <TableCell>Required Quantity</TableCell>
+                                        <TableCell>Produced In</TableCell>
+                                        <TableCell>No. of Machines</TableCell>
+                                        <TableCell>Recipe</TableCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                ) : (
-                    <Typography>No data to display</Typography>
-                )}
+                                </TableHead>
+                                <TableBody>
+                                    {flattenedData.map((row, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>{row.Parent}</TableCell>
+                                            <TableCell>{row.Node}</TableCell>
+                                            <TableCell>{row.Level}</TableCell>
+                                            <TableCell>{row["Required Quantity"]}</TableCell>
+                                            <TableCell>{row["Produced In"]}</TableCell>
+                                            <TableCell>{row["No. of Machines"]}</TableCell>
+                                            <TableCell>{row.Recipe}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    ) : (
+                        <Typography>No data to display</Typography>
+                    )}
+                </Box>
             </Box>
-        </Box>
 
-        {/* Right Side: Content and Tabs */}
-        <Box
+            {/* Right Side: Content and Tabs */}
+            <Box
                 sx={{
                     width: activeTab ? "700px" : "0px", // Expand/collapse width
                     transition: "width 0.3s ease", // Smooth width transition
@@ -411,6 +557,7 @@ return (
                 </Button>
                 <Button
                     onClick={() => toggleTab("visualiseTree")}
+                    disabled={!treeData}
                     sx={{
                         textAlign: "center",
                         padding: "8px",
@@ -435,8 +582,8 @@ return (
                 >
                     Tracker
                 </Button>
+            </Box>
         </Box>
-    </Box>
     );
 };
 

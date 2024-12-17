@@ -10,7 +10,7 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
     if visited is None:
         visited = set()
     
-    logger.info(f"Visited: {visited}")
+    #logger.info(f"Visited: {visited}")
     if (part_id, recipe_type) in visited:
         return {"Error": f"Circular dependency detected for part_id {part_id} with recipe_type {recipe_type}"}
 
@@ -48,7 +48,7 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
             {"ingredient_input": ingredient_input}
         ).scalar()
 
-        logger.info(f"Ingredient input: {ingredient_input}, Ingredient input ID: {ingredient_input_id}")
+        #logger.info(f"Ingredient input: {ingredient_input}, Ingredient input ID: {ingredient_input_id}")
 
         #TODO TEST - # Lookup ingredient input data to get its supply rate and produced in machine
         ingredient_supply = db.session.execute(
@@ -56,15 +56,15 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
             {"part_id": ingredient_input_id, "base_recipe": ingredient_recipe}
         ).scalar()
         
-        logger.info(f"Ingredient supply: {ingredient_supply}, ingredient_id: {ingredient_input_id}, recipe: {ingredient_recipe}")
+        #logger.info(f"Ingredient supply: {ingredient_supply}, ingredient_id: {ingredient_input_id}, recipe: {ingredient_recipe}")
 
         ingredient_production_machine = db.session.execute(
             text("SELECT produced_in_automated FROM recipes WHERE part_id = :base_input_id AND recipe_name = :base_recipe"),
             {"base_input_id": ingredient_input_id, "base_recipe": ingredient_recipe}
         ).scalar()
         sql_query = f"SELECT produced_in_automated FROM recipes WHERE part_id = {ingredient_input_id} AND recipe_name = '{ingredient_recipe}'"
-        logger.info(f"SQL Query: {sql_query}")
-        logger.info(f"Ingredient production machine: {ingredient_production_machine}")
+        #logger.info(f"SQL Query: {sql_query}")
+        #logger.info(f"Ingredient production machine: {ingredient_production_machine}")
         #TODO - # Incorporate the Alternate_Recipes table and determine the correct recipe type for the ingredient input (default to _Standard if no alternate specified)
         
         
@@ -76,11 +76,11 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
         # Calculate the number of machines needed to produce the required amount
         no_of_machines = required_quantity / ingredient_supply if ingredient_supply else 0
 
-        logger.info(f"Ingredient input: {ingredient_input}, No. of Machines=: {no_of_machines}, Required Quantity/: {required_quantity} ingredient_supply: {ingredient_supply}")        
+        #logger.info(f"Ingredient input: {ingredient_input}, No. of Machines=: {no_of_machines}, Required Quantity/: {required_quantity} ingredient_supply: {ingredient_supply}")        
 
         # Recursive call for subparts
         subtree = build_tree(ingredient_input_id, ingredient_recipe, target_quantity, visited)
-        logger.info(f"Subtree for part_id {ingredient_input_id} with recipe_type {recipe_type} and target_quantity {target_quantity}: {subtree}")
+        #logger.info(f"Subtree for part_id {ingredient_input_id} with recipe_type {recipe_type} and target_quantity {target_quantity}: {subtree}")
         tree[ingredient_input] = {
             "Required Quantity": required_quantity,
             "Produced In": ingredient_production_machine,

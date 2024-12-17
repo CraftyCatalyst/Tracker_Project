@@ -88,7 +88,7 @@ const SignupPage = () => {
     >
       <Box
         sx={{
-          backgroundColor: 'background.paper',
+          background: 'background.paper',
           padding: 4,
           borderRadius: 2,
           boxShadow: 3,
