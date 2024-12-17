@@ -32,19 +32,6 @@ const HomePage = () => {
             <Stack spacing={2} direction="row">
                 <Button
                     variant="contained"
-                    startIcon={<LoginIcon />}
-                    color="secondary"
-                    onClick={() => navigate("/login")}
-                    disabled={isLoggedIn} // Disable login button if already logged in
-                    sx={{
-                        opacity: !isLoggedIn ? 1 : 0.5,
-                        cursor:!isLoggedIn ? "pointer" : "not-allowed",
-                    }}
-                >
-                    Login
-                </Button>
-                <Button
-                    variant="contained"
                     color="secondary"
                     onClick={() => navigate("/data")}
                     disabled={!isLoggedIn}

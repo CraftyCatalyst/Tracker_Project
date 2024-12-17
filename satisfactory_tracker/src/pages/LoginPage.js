@@ -3,6 +3,7 @@ import { TextField, Button, Box, Typography, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_ENDPOINTS } from "../apiConfig";
+import { useUser } from '../UserContext'; // Import the UserContext
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useUser(); // Access the login function from the context  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,20 +19,19 @@ const LoginPage = () => {
     setError('');
 
     try {
+      // Send login request to the server
       const response = await axios.post(API_ENDPOINTS.login, { email, password });
-      // Fetch user info after successful login
-      //const userInfoResponse = await axios.get(API_ENDPOINTS.userinfo, { withCredentials: true });
-
+      
       // Extract user information from the response
       const userInfo = response.data.user;
 
-      // Save user info to localStorage
-      localStorage.setItem('user_info', JSON.stringify(userInfo));
+      // Update global user state using UserContext
+      login(userInfo);
 
-
-      navigate('/'); // Redirect to dashboard after successful login
+    // Navigate to the home page after successful login
+    navigate('/');
     } catch (error) {
-      console.error('Login failed:', error, 'email:', email, 'password:', password);
+      console.error('Login failed:', error);
       setError(error.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -93,8 +94,11 @@ const LoginPage = () => {
           </Button>
         </form>
         <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
-          Don’t have an account? <Button variant="text" onClick={() => navigate('/signup')} color="secondary">Sign up</Button>
-        </Typography>
+          Don’t have an account?{' '}
+          <Button variant="text" onClick={() => navigate('/signup')} color="secondary">
+            Sign up
+          </Button>
+          </Typography>
       </Box>
     </Box>
   );

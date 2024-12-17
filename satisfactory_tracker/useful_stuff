@@ -20,16 +20,9 @@ Build & Run the Application:
     ./venv/Scripts/activate # if not already in the virtual environment
     npm run build # Build the React app if needed.
     npm start # Start the servers. Ctrl C to stop the servers.
-    # The application built using npm build will be running at http://localhost:5000/
+    # The Flask server and the served application built using npm build will be running at http://localhost:5000/
     # The development server will be running at http://localhost:3000/
 
-Auto Build and Run Application:
-    # This will activate the virtual env, run the npm build, start the flask server, the react server and open the browser to the react server.
-    # The application built using npm build will be running at http://localhost:5000/
-    # The development server will be running at http://localhost:3000/
-    python run_app.py # in satisfactory_tracker directory. 
-    # Ctrl C to stop the servers. Doesn't exit as gracefully as npm start.
-    
 Virtual environment:
     Set Up:
         # 1) Create the virtual environment
@@ -198,11 +191,23 @@ Copilot:
     Ctrl + Shift + L - Multi-select
 
 #TODO:
-    - Fix Logout button in the header. It's not working.    
-    - Implement localStorage cleanup on logout:
-        const handleLogout = () => {
-        localStorage.removeItem('user_info');
-        navigate('/login');
+    - Fix Logout button in the header. It's not working. - DONE
+    - Visualization of Dependency Tree
+        Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
+    - Export Tree Data
+        Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).
+    - Interactive Filtering
+    - Enhance the filtering options for parts and recipes
+        Search bar with autocomplete.
+        Multi-select dropdown for filtering recipes.
+        Sliders for adjusting target quantities dynamically.
+    - Save and Load Configurations
+        Allow users to save their selected recipes, parts, and target quantities into configurations that they can load later.
+    - Machine and Resource Calculations
+        Add summaries for the required machines and resource supply/demand at the bottom of the tree.
+    - Collapsible Tree Nodes
+        Add the ability to collapse/expand individual nodes of the tree for better usability.   
+
 
 
 
