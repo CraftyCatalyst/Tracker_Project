@@ -37,8 +37,8 @@ const HomePage = () => {
                     onClick={() => navigate("/login")}
                     disabled={isLoggedIn} // Disable login button if already logged in
                     sx={{
-                        opacity: isLoggedIn ? 1 : 0.5,
-                        cursor: isLoggedIn ? "pointer" : "not-allowed",
+                        opacity: !isLoggedIn ? 1 : 0.5,
+                        cursor:!isLoggedIn ? "pointer" : "not-allowed",
                     }}
                 >
                     Login

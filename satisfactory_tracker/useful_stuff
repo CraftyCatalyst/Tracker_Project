@@ -197,8 +197,9 @@ Copilot:
             - The graph is available for extensions that have been granted the copilot.usage permission in their extension manifest.
     Ctrl + Shift + L - Multi-select
 
-TODO:
-    Implement localStorage cleanup on logout:
+#TODO:
+    - Fix Logout button in the header. It's not working.    
+    - Implement localStorage cleanup on logout:
         const handleLogout = () => {
         localStorage.removeItem('user_info');
         navigate('/login');

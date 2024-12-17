@@ -35,14 +35,14 @@ const Header = () => {
      const handleLogout = async () => {
         try {
             // Optionally, make a logout request to the server
-            await axios.get(API_ENDPOINTS.logout, { withCredentials: true });
+            //await axios.get(API_ENDPOINTS.logout, { withCredentials: true });
 
             // Clear user info from localStorage
             localStorage.removeItem('user_info');
             console.log("User info removed from localStorage");
 
             // Redirect to login page
-            navigate('/');
+            //navigate('/');
         } catch (error) {
             console.error("Error during logout:", error);
         }
@@ -80,7 +80,7 @@ const Header = () => {
                     </Button>
                 </Box>
             ) : (
-                <Typography variant="h2">Welcome to Satisfactory Tracker!</Typography>
+                <Typography variant="h2">Not Logged In</Typography>
             )}
         </Box>
     );
