@@ -1,3 +1,4 @@
+//Mine
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from 'react-router-dom';
 import {
@@ -20,6 +21,7 @@ import {
 } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view";
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 
@@ -60,13 +62,15 @@ const DependencyTreePage = () => {
     };
 
 
+    // Build the tree data structure
     const buildTreeData = (node, parentId = "root", counter = { id: 1 }) => {
+        console.log("Building Tree Data for Node:", node, "Parent ID:", parentId); // Debug log
         const tree = [];
-
         if (!node || typeof node !== "object") return tree;
 
         for (const [key, value] of Object.entries(node)) {
-            if (!value || typeof value !== "object") continue;
+            console.log("Node Key:", key, "Value:", value); // Debug log
+            if (!value || typeof value !== "object") continue; // Skip invalid nodes
 
             // Generate a unique ID for this node
             const uniqueId = `${parentId}-${counter.id++}`;
@@ -98,6 +102,7 @@ const DependencyTreePage = () => {
 
     // Render the tree recursively
     const renderTree = (nodes) => {
+        console.log("Rendering Tree Data:");
         return nodes.map((node) => {
             if (!node.id || node.id === "undefined") {
                 console.error("Attempting to render a node with invalid ID:", node);
@@ -127,6 +132,30 @@ const DependencyTreePage = () => {
         });
     };
 
+
+     // DataGrid columns
+     const columns = [
+        { field: 'id', headerName: 'ID', flex: 1 },
+        { field: 'parent', headerName: 'Parent', flex: 1 },
+        { field: 'node', headerName: 'Node', flex: 1 },
+        { field: 'level', headerName: 'Level', flex: 1, type: 'number' },
+        { field: 'requiredQuantity', headerName: 'Required Quantity', flex: 1, type: 'number' },
+        { field: 'producedIn', headerName: 'Produced In', flex: 1 },
+        { field: 'machines', headerName: 'No. of Machines', flex: 1, type: 'number' },
+        { field: 'recipe', headerName: 'Recipe', flex: 1 },
+    ];
+    // Flattened data for the DataGrid
+    const rows = flattenedData.map((row, index) => ({
+        id: index, // DataGrid requires a unique ID for each row
+        parent: row.Parent,
+        node: row.Node,
+        level: row.Level,
+        requiredQuantity: row['Required Quantity'],
+        producedIn: row['Produced In'],
+        machines: row['No. of Machines'],
+        recipe: row.Recipe,
+    }));
+
     // Collect all node IDs in the tree
     const collectAllNodeIds = (nodes) => {
         let ids = [];
@@ -146,7 +175,7 @@ const DependencyTreePage = () => {
             setIsExpanded(true); // Set expanded state
         }
     };
-    
+
     const handleCollapseAll = () => {
         setExpandedNodes([]); // Collapse all nodes
         setIsCollapsed(true); // Set collapsed state
@@ -198,8 +227,7 @@ const DependencyTreePage = () => {
                 params: {
                     part_id: selectedPart,
                     recipe_type: recipeType,
-                    target_quantity: targetQuantity,
-                    selected_recipes: selectedRecipes,
+                    target_quantity: targetQuantity,                    
                 },
             });
             const tree = response.data;
@@ -248,6 +276,7 @@ const DependencyTreePage = () => {
     // };
 
 
+    
     const renderContent = () => {
         switch (activeTab) {
             case "alternateRecipes":
@@ -335,11 +364,11 @@ const DependencyTreePage = () => {
                     <div>
                         <Typography> <strong>Visualise Tree:</strong> </Typography>
                         {/* Buttons for Expand/Collapse */}
-            <           Box sx={{ display: "flex", gap: 2, mb: 2 }}>   
+                        <           Box sx={{ display: "flex", gap: 2, mb: 2 }}>
                             <Button
                                 variant="contained"
                                 color="secondary"
-                                onClick={handleExpandAll}                                
+                                onClick={handleExpandAll}
                             >
                                 Expand All
                             </Button>
@@ -461,41 +490,23 @@ const DependencyTreePage = () => {
                     Fetch Dependencies
                 </Button>
 
-                {error && <Typography color="error">{error}</Typography>}
-
-                <Box sx={{ marginTop: 4 }}>
-                    {flattenedData.length > 0 ? (
-                        <TableContainer component={Paper}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Parent</TableCell>
-                                        <TableCell>Node</TableCell>
-                                        <TableCell>Level</TableCell>
-                                        <TableCell>Required Quantity</TableCell>
-                                        <TableCell>Produced In</TableCell>
-                                        <TableCell>No. of Machines</TableCell>
-                                        <TableCell>Recipe</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {flattenedData.map((row, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{row.Parent}</TableCell>
-                                            <TableCell>{row.Node}</TableCell>
-                                            <TableCell>{row.Level}</TableCell>
-                                            <TableCell>{row["Required Quantity"]}</TableCell>
-                                            <TableCell>{row["Produced In"]}</TableCell>
-                                            <TableCell>{row["No. of Machines"]}</TableCell>
-                                            <TableCell>{row.Recipe}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    ) : (
-                        <Typography>No data to display</Typography>
-                    )}
+                {/* DataGrid */}
+                <Box sx={{ height: 600, width: "100%" }}>
+                    <DataGrid
+                        rows={rows}
+                        columns={columns}
+                        pageSize={10}
+                        rowsPerPageOptions={[5, 10, 20]}
+                        checkboxSelection
+                        disableSelectionOnClick
+                        sortingOrder={['asc', 'desc']}
+                        slots={{ toolbar: GridToolbar }}
+                        slotProps={{
+                            toolbar: {
+                                showQuickFilter: true,
+                            },
+                        }}
+                    />
                 </Box>
             </Box>
 

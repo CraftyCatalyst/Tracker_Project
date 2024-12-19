@@ -191,12 +191,10 @@ Copilot:
     Ctrl + Shift + L - Multi-select
 
 #TODO:
-    - Fix Logout button in the header. It's not working. - DONE
-    - Visualization of Dependency Tree DONE
+    - #DONE - Fix Logout button in the header. It's not working. 
+    - #DONE - Visualization of Dependency Tree
         Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
-    - Export Tree Data
-        Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).
-    - Interactive Filtering
+    - IN PROGRESS - Interactive Filtering
     - Enhance the filtering options for parts and recipes
         Search bar with autocomplete.
         Multi-select dropdown for filtering recipes.
@@ -205,8 +203,13 @@ Copilot:
         Allow users to save their selected recipes, parts, and target quantities into configurations that they can load later.
     - Machine and Resource Calculations
         Add summaries for the required machines and resource supply/demand at the bottom of the tree.
-    - Collapsible Tree Nodes
-        Add the ability to collapse/expand individual nodes of the tree for better usability.   
+    - Export Tree Data
+        Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).
+    - #DONE - Collapsible Tree Nodes
+      #  Add the ability to collapse/expand all/individual nodes of the tree for better usability.   
+    
+
+
 
 
 
