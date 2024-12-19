@@ -159,12 +159,19 @@ const DependencyTreePage = () => {
     // Collect all node IDs in the tree
     const collectAllNodeIds = (nodes) => {
         let ids = [];
-        nodes.forEach((node) => {
-            ids.push(node.id); // Add current node ID
-            if (node.children.length > 0) {
-                ids = ids.concat(collectAllNodeIds(node.children)); // Recursively collect child IDs
+        if (Array.isArray(nodes)) {
+            nodes.forEach((node) => {
+                ids.push(node.id); // Add current node ID
+                if (node.children && node.children.length > 0) {
+                    ids = ids.concat(collectAllNodeIds(node.children)); // Recursively collect child IDs
+                }
+            });
+        } else if (nodes && typeof nodes === 'object') {
+            ids.push(nodes.id); // Add current node ID
+            if (nodes.children && nodes.children.length > 0) {
+                ids = ids.concat(collectAllNodeIds(nodes.children)); // Recursively collect child IDs
             }
-        });
+        }
         return ids;
     };
 
