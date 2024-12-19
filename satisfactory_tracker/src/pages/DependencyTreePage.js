@@ -1,5 +1,6 @@
 //Mine
 import React, { useState, useEffect, useMemo } from "react";
+import Tree from "react-d3-tree";
 import { Link } from 'react-router-dom';
 import {
     Typography,
@@ -123,7 +124,7 @@ const DependencyTreePage = () => {
                             <span>Produced In: {node["Produced In"]}</span>
                             <span>No. of Machines: {node["No. of Machines"]}</span>
                             <span>Recipe: {node.Recipe}</span>
-                        </div>
+                            </div>
                     }
                 >
                     {node.children.length > 0 && renderTree(node.children)}
@@ -133,8 +134,45 @@ const DependencyTreePage = () => {
     };
 
 
-     // DataGrid columns
-     const columns = [
+    const SpiderDiagram = ({ selectedPart }) => {
+        const [treeData, setTreeData] = useState(null);
+      
+        useEffect(() => {
+          if (!selectedPart) return;
+      
+          const fetchTreeData = async () => {
+            try {
+              const response = await axios.get(API_ENDPOINTS.build_tree, {
+                params: { part_id: selectedPart },
+              });
+      
+              const structuredData = convertToTree(response.data);
+              setTreeData(structuredData);
+            } catch (error) {
+              console.error("Error fetching dependency tree:", error);
+            }
+          };
+      
+          fetchTreeData();
+        }, [selectedPart]);
+      
+        const convertToTree = (data) => {
+          const processNode = (node, name) => {
+            return {
+              name,
+              children: node.Subtree
+                ? Object.keys(node.Subtree).map((childKey) =>
+                    processNode(node.Subtree[childKey], childKey)
+                  )
+                : [],
+            };
+          };
+      
+          return data ? [processNode(data, "Root")] : [];
+        };
+    };
+    // DataGrid columns
+    const columns = [
         { field: 'id', headerName: 'ID', flex: 1 },
         { field: 'parent', headerName: 'Parent', flex: 1 },
         { field: 'node', headerName: 'Node', flex: 1 },
@@ -228,13 +266,14 @@ const DependencyTreePage = () => {
         applyFilters();
     }, [partFilter, recipeFilter, alternateRecipes]);
 
+    // Build the dependency tree
     const handleFetchTree = async () => {
         try {
             const response = await axios.get(API_ENDPOINTS.build_tree, {
                 params: {
                     part_id: selectedPart,
                     recipe_type: recipeType,
-                    target_quantity: targetQuantity,                    
+                    target_quantity: targetQuantity,
                 },
             });
             const tree = response.data;
@@ -247,6 +286,7 @@ const DependencyTreePage = () => {
         }
     };
 
+    // Flatten the tree structure for the DataGrid
     const flattenTree = (tree, parent = "", level = 0) => {
         const rows = [];
         Object.keys(tree).forEach((key) => {
@@ -268,22 +308,19 @@ const DependencyTreePage = () => {
         return rows;
     };
 
+    // Handle checkbox change
     const handleCheckboxChange = (id) => {
         setSelectedRecipes((prev) =>
             prev.includes(id) ? prev.filter((recipeId) => recipeId !== id) : [...prev, id]
         );
     };
 
+    // Handle tab toggle
     const toggleTab = (tab) => {
         setActiveTab((prev) => (prev === tab ? "" : tab)); // Collapse if the same tab is clicked
     };
 
-    // const toggleCollapse = () => {
-    //     setIsCollapsed((prev) => !prev); // Toggle collapse state
-    // };
-
-
-    
+    // Render the content based on the active tab
     const renderContent = () => {
         switch (activeTab) {
             case "alternateRecipes":
@@ -402,6 +439,19 @@ const DependencyTreePage = () => {
                             )}
                         </Box>
                     </div>
+                );
+            case "spiderDiagram":
+                return (
+                    <div>
+                        <Typography variant="h2" color="primary" gutterBottom>
+                            Dependency Tree Spider Diagram
+                        </Typography>
+                        
+                        <div id="treeWrapper" style={{ width: "100%", height: "600px" }}>
+                            <SpiderDiagram selectedPart={selectedPart} />
+                                <Tree data={treeData} orientation="vertical" />
+                            </div>  
+                        </div>
                 );
             case "tracker":
                 return (
@@ -599,6 +649,19 @@ const DependencyTreePage = () => {
                     }}
                 >
                     Tracker
+                </Button>
+                <Button
+                    onClick={() => toggleTab("spiderDiagram")}
+                    sx={{
+                        textAlign: "center",
+                        padding: "8px",
+                        borderRadius: 2,
+                        backgroundColor: activeTab === "tracker" ? "#00FFCC" : "#0A5F3E",
+                        color: activeTab === "tracker" ? "#000" : "#CCFFFF",
+                        "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
+                    }}
+                >
+                    Spider Diagram
                 </Button>
             </Box>
         </Box>

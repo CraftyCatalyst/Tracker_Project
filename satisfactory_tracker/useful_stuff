@@ -195,6 +195,8 @@ Copilot:
     - #DONE - Visualization of Dependency Tree
         Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
     - IN PROGRESS - Interactive Filtering
+    - Update build_tree to take alternate recipes into account.
+    - 
     - Enhance the filtering options for parts and recipes
         Search bar with autocomplete.
         Multi-select dropdown for filtering recipes.
