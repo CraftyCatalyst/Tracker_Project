@@ -41,59 +41,12 @@ const DependencyTreePage = () => {
     const [isExpanded, setIsExpanded] = useState(false); // Track collapse state
     const [activeTab, setActiveTab] = useState(""); // Track active tab ("" means no active tab)
     const [expandedNodes, setExpandedNodes] = useState([]); // Track expanded nodes
-    const [tabWidth, setTabWidth] = useState(0); // Initial width for the Tab section
-    const [isResizing, setIsResizing] = useState(false);
-    const [startX, setStartX] = useState(0); // Track starting mouse position
-    const [startWidth, setStartWidth] = useState(tabWidth); // Track starting width
+
 
     // Filter states
     const [partFilter, setPartFilter] = useState("");
     const [recipeFilter, setRecipeFilter] = useState("");
     const [recipes, setRecipes] = useState(filteredRecipes);
-
-    const handleMouseDown = (e) => {
-        //console.log("Mouse Down");
-        setIsResizing(true);
-        setStartX(e.clientX);
-        setStartWidth(tabWidth);
-        // Prevent text selection
-        document.body.style.userSelect = "none";
-      };
-    
-      const handleMouseMove = (e) => {
-        if (tabWidth === 0) {return}; // Skip if the tab is collapsed
-        
-        const deltaX = startX - e.clientX; // Calculate the change in X position
-        const newWidth = Math.max(0, startWidth + deltaX); // Calculate the new width
-        setTabWidth(newWidth);
-        //console.log("Mouse Position:", e.clientX, "Start X:", startX, "Tab Width:", tabWidth, "New Width:", newWidth, "Delta X:", deltaX);        
-      };
-    
-    useEffect(() => {
-        //console.log("Updated Tab Width:", tabWidth);
-    }, [tabWidth]);
-
-      const handleMouseUp = () => {
-        //console.log("Mouse Up");
-        setIsResizing(false);
-        document.body.style.userSelect = ""; // Re-enable text selection
-      };
-    
-      useEffect(() => {
-        if (isResizing) {
-          window.addEventListener("mousemove", handleMouseMove);
-          window.addEventListener("mouseup", handleMouseUp);
-        } else {
-          window.removeEventListener("mousemove", handleMouseMove);
-          window.removeEventListener("mouseup", handleMouseUp);
-        }
-    
-        return () => {
-          window.removeEventListener("mousemove", handleMouseMove);
-          window.removeEventListener("mouseup", handleMouseUp);
-        };
-      }, [isResizing]);
-
 
     const fetchTreeData = async () => {
         try {
@@ -181,65 +134,44 @@ const DependencyTreePage = () => {
     };
 
 
-    const renderSpiderDiagram = () => {
-        if (!flattenedData.length) {
-            return <Typography>No data to display</Typography>;
-        }
-    
-        const spiderData = transformSpiderData(flattenedData);
-    
-        return (
-            <div id="treeWrapper" style={{ width: "100%", height: "600px" }}>
-                <Tree
-                    data={spiderData}
-                    orientation="vertical"
-                    translate={{ x: 400, y: 50 }}
-                    nodeSize={{ x: 200, y: 100 }}
-                    pathFunc="straight"
-                />
-            </div>
-        );
-    };
-    
-    const transformSpiderData = (rows) => {
-        const nodeRegistry = {}; // Store references to existing nodes
-    
-        const root = {
-            name: "Root",
-            children: rows
-                //.filter(row => row.Level === 0)
-                .map(row => createSubTree(rows, row, nodeRegistry)),
+    const SpiderDiagram = ({ selectedPart }) => {
+        const [treeData, setTreeData] = useState(null);
+      
+        useEffect(() => {
+          if (!selectedPart) return;
+      
+          const fetchTreeData = async () => {
+            try {
+              const response = await axios.get(API_ENDPOINTS.build_tree, {
+                params: { part_id: selectedPart },
+              });
+      
+              const structuredData = convertToTree(response.data);
+              setTreeData(structuredData);
+            } catch (error) {
+              console.error("Error fetching dependency tree:", error);
+            }
+          };
+      
+          fetchTreeData();
+        }, [selectedPart]);
+      
+        const convertToTree = (data) => {
+          const processNode = (node, name) => {
+            return {
+              name,
+              children: node.Subtree
+                ? Object.keys(node.Subtree).map((childKey) =>
+                    processNode(node.Subtree[childKey], childKey)
+                  )
+                : [],
+            };
+          };
+      
+          return data ? [processNode(data, "Root")] : [];
         };
-        return root;
     };
-    
-    const createSubTree = (rows, currentNode, nodeRegistry) => {
-        // Use Part.id as the unique key
-        const nodeKey = currentNode.id;
-    
-        // If the node already exists in the registry, reuse it
-        if (nodeRegistry[nodeKey]) {
-            return nodeRegistry[nodeKey];
-        }
-    
-        // Otherwise, create a new node and store it in the registry
-        const newNode = {
-            name: currentNode.Node,
-            attributes: {
-                "Required Quantity": currentNode["Required Quantity"],
-                "Produced In": currentNode["Produced In"],
-                "No. of Machines": currentNode["No. of Machines"],
-                Recipe: currentNode.Recipe,
-            },
-            children: rows
-                .filter(row => row.Parent === currentNode.Node)
-                .map(child => createSubTree(rows, child, nodeRegistry)),
-        };
-    
-        nodeRegistry[nodeKey] = newNode; // Save the node to the registry
-        return newNode;
-    };
-    
+    // DataGrid columns
     const columns = [
         { field: 'id', headerName: 'ID', flex: 1 },
         { field: 'parent', headerName: 'Parent', flex: 1 },
@@ -385,17 +317,7 @@ const DependencyTreePage = () => {
 
     // Handle tab toggle
     const toggleTab = (tab) => {
-        setActiveTab((prev) => {
-            if (prev === tab) {
-                setTabWidth(0); // Set tab width to 0 if the same tab is clicked
-                return ""; // Collapse the tab
-            } else {
-                if (tabWidth === 0) {
-                    setTabWidth(700); // Set tab width to 700px
-                }
-                return tab; // Set the active tab
-            }
-        });
+        setActiveTab((prev) => (prev === tab ? "" : tab)); // Collapse if the same tab is clicked
     };
 
     // Render the content based on the active tab
@@ -505,11 +427,8 @@ const DependencyTreePage = () => {
                         <Box sx={{ overflowY: "auto" }}>
                             {treeData.length > 0 ? (
                                 <SimpleTreeView
-                                    sx = {{ defaultCollapseIcon: "🔽", 
-                                        defaultExpandIcon: "▶",                                    
-                                     }}
-                                    // defaultCollapseIcon="🔽"
-                                    // defaultExpandIcon="▶"
+                                    defaultCollapseIcon="🔽"
+                                    defaultExpandIcon="▶"
                                     expandedItems={expandedNodes}
                                     onExpandedItemsChange={(event, nodeIds) => setExpandedNodes(nodeIds)}
                                 >
@@ -525,10 +444,14 @@ const DependencyTreePage = () => {
                 return (
                     <div>
                         <Typography variant="h2" color="primary" gutterBottom>
-                            Spider Diagram
+                            Dependency Tree Spider Diagram
                         </Typography>
-                        {renderSpiderDiagram()}
-                    </div>
+                        
+                        <div id="treeWrapper" style={{ width: "100%", height: "600px" }}>
+                            <SpiderDiagram selectedPart={selectedPart} />
+                                <Tree data={treeData} orientation="vertical" />
+                            </div>  
+                        </div>
                 );
             case "tracker":
                 return (
@@ -545,21 +468,17 @@ const DependencyTreePage = () => {
     const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
     const uniqueRecipes = [...new Set(alternateRecipes.map((recipe) => recipe.recipe_name))];
 
-    // Render the page content
     return (
         <Box sx={{ display: "flex", height: "100vh" }}>
             {/* Main Content Section */}
             <Box
                 sx={{
                     flex: activeTab ? 3 : 4, // Shrink when tab content is active
-                    width: `calc(100% - ${tabWidth}px)`, // Subtract the tab width for the main content
-                    transition: isResizing ? "none" : "width 0.2s ease",
                     padding: "16px",
                     background: "linear-gradient(to right, #000000, #0F705C)",
                     color: "#CCFFFF",
                     transition: "flex 0.3s ease", // Smooth resize transition
-                    // overflowY: "auto",
-                    overflow: "hidden",
+                    overflowY: "auto",
                 }}
             >
                 <Typography variant="h1" color="primary" gutterBottom>
@@ -647,30 +566,15 @@ const DependencyTreePage = () => {
                     />
                 </Box>
             </Box>
-            
-            {/* Resizer */}
+
+            {/* Right Side: Content and Tabs */}
             <Box
                 sx={{
-                width: "5px",
-                cursor: "col-resize",
-                backgroundColor: "#00FFCC",
-                }}
-                onMouseDown={handleMouseDown}
-            ></Box> 
-            
-            {/* Right Side: Content and Tabs Section */}
-            <Box
-                sx={{
-                    //flex: 1, // Expand when tab content is active
-                    // width: activeTab ? "700px" : "0px", // Expand/collapse width
-                    width: activeTab ? `${tabWidth}px` : "0px", // Expand/collapse width
-                    transition: isResizing ? "none" : "width 0.2s ease",                   
+                    width: activeTab ? "700px" : "0px", // Expand/collapse width
                     transition: "width 0.3s ease", // Smooth width transition
-                    borderLeft: "2px solid #ccc",
                     overflow: "hidden", // Prevent content overflow when collapsed
                     backgroundColor: "#0A4B3E",
                     color: "#CCFFFF",
-                    resize: "horizontal",                     
                 }}
             >
                 {activeTab && (
@@ -752,8 +656,8 @@ const DependencyTreePage = () => {
                         textAlign: "center",
                         padding: "8px",
                         borderRadius: 2,
-                        backgroundColor: activeTab === "spiderDiagram" ? "#00FFCC" : "#0A5F3E",
-                        color: activeTab === "spiderDiagram" ? "#000" : "#CCFFFF",
+                        backgroundColor: activeTab === "tracker" ? "#00FFCC" : "#0A5F3E",
+                        color: activeTab === "tracker" ? "#000" : "#CCFFFF",
                         "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
                     }}
                 >

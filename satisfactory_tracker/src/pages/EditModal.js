@@ -1,7 +1,8 @@
+//mine
 import React, { useState } from "react";
-import { Modal, Box, Typography, Button, TextField } from '@mui/material';
+import { Modal, Box, Typography, Button, TextField } from "@mui/material";
 
-const EditModal = ({ row, columns, onSave, onClose }) => {
+const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen }) => {
   const [updatedRow, setUpdatedRow] = useState({ ...row });
 
   // Handle field changes
@@ -16,7 +17,7 @@ const EditModal = ({ row, columns, onSave, onClose }) => {
 
   return (
     <Modal
-      open={Boolean(row)} // Open modal only if a row is provided
+    open={Boolean(row) || isCreateModalOpen} // Open modal only if a row is provided or creating a new row
       onClose={onClose}
       aria-labelledby="edit-modal-title"
       aria-describedby="edit-modal-description"
@@ -28,21 +29,22 @@ const EditModal = ({ row, columns, onSave, onClose }) => {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: 400,
-          bgcolor: 'background.mid',
+          bgcolor: 'background.paper',
+          background: 'background.default', //'linear-gradient(to right, #0A4B3E, #000000)',
           border: '2px solid',
           borderColor: 'primary.main',
           borderRadius: 2,
           boxShadow: 24,
           p: 3,
+          color: 'text.primary',
         }}
       >
         <Typography
           id="edit-modal-title"
-          variant="h1"
-          // component="h2"
-          sx={{ mb: 2, color: 'primary.main' }}
+          variant="h2"
+          sx={{ mb: 2, color: 'primary.main', textAlign: 'center' }}
         >
-          Edit Row
+          {isCreateModalOpen ? "Create New Row" : "Edit Row"}
         </Typography>
 
         {columns.map((col) => (
@@ -54,7 +56,33 @@ const EditModal = ({ row, columns, onSave, onClose }) => {
             fullWidth
             disabled={col === "id"} // Disable editing the ID
             margin="normal"
-            variant="outlined"            
+            variant="outlined"
+            slotProps={{
+              input: {
+                sx: {
+                  color: col === "id" ? 'text.secondary' : 'text.primary', // Adjust text color for disabled fields
+                },
+              },
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: col === "id" ? 'text.disabled' : 'primary.contrastText', // Default border color
+                },
+                '&:hover fieldset': {
+                  borderColor: col === "id" ? 'text.disabled' : 'primary.light', // Prevent hover color on disabled fields
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'primary.main', // Focus state for active fields
+                },
+                '&.Mui-disabled fieldset': {
+                  borderColor: 'text.disabled', // Explicitly set border color for disabled state
+                },
+              },
+              '& .MuiInputBase-root.Mui-disabled': {
+                color: 'text.secondary', // Safeguard for disabled text styling
+              },
+            }}
           />
         ))}
 
@@ -63,18 +91,20 @@ const EditModal = ({ row, columns, onSave, onClose }) => {
             variant="contained"
             color="secondary"
             sx={{
-              color: 'secondary.contrastText', // Ensures text matches theme
-              backgroundColor: 'secondary.main', // Ensures background matches theme
+              color: 'secondary.contrastText',
               mr: 1,
               }}
             onClick={handleSave}
-            //sx={{ mr: 1 }}
           >
             Save
           </Button>
           <Button
             variant="outlined"
             color="secondary"
+            sx={{
+              color: 'primary.contrastText',
+              borderColor: 'primary.contrastText',
+            }}
             onClick={onClose}
           >
             Cancel

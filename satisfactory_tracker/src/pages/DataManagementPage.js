@@ -1,3 +1,4 @@
+//Mine
 import React, { useState, useEffect } from "react";
 import { Link } from 'react-router-dom';
 import {
@@ -16,6 +17,7 @@ import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
 import axios from "axios";
 import EditModal from "./EditModal";
 import { API_ENDPOINTS } from "../apiConfig";
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 
 const DataManagementPage = () => {
   const [tables, setTables] = useState([]); // List of tables
@@ -26,6 +28,26 @@ const DataManagementPage = () => {
   const [editingRow, setEditingRow] = useState(null); // Row being edited
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); // Create modal visibility
   const [newRow, setNewRow] = useState({}); // New row data
+
+  const columnOrderConfig = {
+    recipes: ['id', 'part_id', 'recipe_name', 'ingredient_count', 'source_level', 'base_input', 'base_production_type', 'produced_in_automated', 'produced_in_manual', 'base_demand_pm', 'base_supply_pm', 'byproduct', 'byproduct_supply_pm'],
+    alternate_recipes: ['id', 'part_id', 'recipe_id', 'selected'],
+    node_purity: ['id', 'node_purity'],
+    miner_type: ['id', 'miner_type'],
+    miner_supply: ['id', 'node_purity_id', 'miner_type_id', 'base_supply_pm'],
+    power_shards: ['id', 'quantity', 'output_increase'],
+    user: ['id', 'role', 'username', 'email', 'password', 'is_verified'],
+    parts: ['id', 'part_name', 'level', 'category'],
+    data_validation: ['id', 'table_name', 'column_name', 'value', 'description'],
+  };
+
+  const rows = tableData.map((row, index) => ({ id: index, ...row })); // Ensure unique IDs for DataGrid
+
+  const gridColumns = columns.map((col) => ({
+    field: col,
+    headerName: col.replace(/_/g, ' ').toUpperCase(), // Format header names
+    flex: 1, // Adjust column width
+  }));
 
   // Fetch table names on component mount
   useEffect(() => {
@@ -45,7 +67,10 @@ const DataManagementPage = () => {
     try {
       const response = await axios.get(`${API_ENDPOINTS.tables}/${tableName}`);
       setTableData(response.data.rows);
-      setColumns(Object.keys(response.data.rows[0] || {}));
+      // Apply custom column order if specified, otherwise use dynamic order
+      const orderedColumns =
+        columnOrderConfig[tableName] || Object.keys(response.data.rows[0] || {});
+      setColumns(orderedColumns);
     } catch (error) {
       console.error(`Error fetching data for table ${tableName}:`, error);
     }
@@ -125,131 +150,140 @@ const DataManagementPage = () => {
     <Box sx={{ display: "flex", height: "100vh" }}>
       <Box
         sx={{
-            flex: 4,
-            padding: "16px",
-            background: "linear-gradient(to right, #000000, #0F705C)",
-            color: "#CCFFFF",                   
-        }}
-      > 
-      <Typography variant="h1" color="primary">
-        Data Management Page
-      </Typography>
-
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center", // Align dropdown and button vertically
-          gap: "16px", // Space between elements
-          marginBottom: "16px",          
+          flex: 4,
           padding: "16px",
-          borderRadius: "8px",
+          background: "linear-gradient(to right, #000000, #0F705C)",
+          color: "#CCFFFF",
         }}
       >
-        {/* Select Table Dropdown */}
-        <Box sx={{ display: "flex", flexDirection: "column" }}>
-          <label style={{ marginBottom: "4px", color: "#CCFFFF" }}>Select Table:</label>
-          <select
-            value={selectedTable}
-            onChange={(e) => handleTableChange(e)}
-            style={{
-              padding: "8px",
-              borderRadius: "4px",
-              border: "1px solid #ccc",
-              background: "#fff",
-            }}
-          >
-            <option value="">-- Select a Table --</option>
-            {tables.map((table) => (
-              <option key={table} value={table}>
-                {table}
-              </option>
-            ))}
-          </select>
-        </Box>
-        {/* Create New Row Button */}
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={handleCreate}
+        <Typography variant="h1" color="primary">
+          Data Management Page
+        </Typography>
+
+        <Box
           sx={{
-            height: "fit-content", // Match the height of the dropdown
-            alignSelf: "flex-end", // Align with the dropdown
+            display: "flex",
+            justifyContent: "space-between", // Spread the dropdown and button
+            alignItems: "center",
+            marginBottom: "16px",
+            padding: "16px",
+            borderRadius: "8px",
           }}
         >
-          Create New Row
-        </Button>
-      </Box>
+          {/* Select Table Dropdown */}
+          <Box sx={{ display: "flex", flexDirection: "column" }}>
+            <label style={{ marginBottom: "4px", color: "#CCFFFF" }}>Select Table:</label>
+            <select
+              value={selectedTable}
+              onChange={(e) => handleTableChange(e)}
+              style={{
+                padding: "8px",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                background: "#fff",
+              }}
+            >
+              <option value="">-- Select a Table --</option>
+              {tables.map((table) => (
+                <option key={table} value={table}>
+                  {table}
+                </option>
+              ))}
+            </select>
+          </Box>
+          {/* Create New Row Button */}
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleCreate}
+            disabled={!selectedTable} // Disable if no table is selected
+            sx={{
+              height: "fit-content", // Match the height of the dropdown
+            }}
+          >
+            Create New Row
+          </Button>
+        </Box>
 
-      {/* Data Grid */}
-      {selectedTable && (
-        <Box>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  {columns.map((col) => (
-                    <TableCell key={col}>{col}</TableCell>
-                  ))}
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {tableData.map((row) => (
-                  <TableRow key={row.id}>
-                    {columns.map((col) => (
-                      <TableCell key={col}>
-                        {row[col]}
-                      </TableCell>
-                    ))}
-                    <TableCell>
+
+        {/* Data Grid */}
+        {selectedTable && (
+          <Box sx={{ height: 700, width: "100%" }}>
+            <DataGrid
+              rows={rows}
+              columns={[
+                ...gridColumns,
+                {
+                  field: "actions",
+                  headerName: "Actions",
+                  flex: 1,
+                  renderCell: (params) => (
+                    <Box sx={{ display: "flex", gap: 1 }}>
                       <Button
                         variant="contained"
                         color="secondary"
-                        sx={{ marginRight: 1 }}
-                        onClick={() => handleEdit(row)}
+                        onClick={() => handleEdit(params.row)}
                       >
                         Edit
                       </Button>
                       <Button
                         variant="contained"
                         color="error"
-                        onClick={() =>
-                          handleDelete(row.id)
-                        }
+                        onClick={() => handleDelete(params.row.id)}
                       >
                         Delete
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <Typography>No data to display</Typography>
-        </Box>
-      )}
+                    </Box>
+                  ),
+                },
+              ]}
+              pageSize={20}
+              rowsPerPageOptions={[5, 10, 20]}
+              checkboxSelection
+              disableSelectionOnClick
+              sortingOrder={['asc', 'desc']}
+              slots={{ toolbar: GridToolbar }}
+              slotProps={{
+                toolbar: {
+                  showQuickFilter: true,
+                },
+              }}
+              sx={{
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundcolor: 'secondary.main',
+                  color: 'primary.main',
+                  textTransform: 'uppercase',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                },
+              }}
+            />
+          </Box>
+        )}
 
-      {/* Modal for Editing */}
-      {isModalOpen && editingRow && (
-        <EditModal
-          row={editingRow}
-          columns={columns}
-          onSave={handleSaveChanges}
-          onClose={handleModalClose}
-        />
-      )}
+        {/* Modal for Editing */}
+        {isModalOpen && editingRow && (
+          <EditModal
+            row={editingRow}
+            columns={columns}
+            onSave={handleSaveChanges}
+            onClose={handleModalClose}
+            isCreateModalOpen={isCreateModalOpen}
+          />
+        )}
 
-      {isCreateModalOpen && (
-        <EditModal
-          row={newRow}
-          columns={columns}
-          onSave={handleSaveNewRow}
-          onClose={handleCreateModalClose}
-        />
-      )}
+        {isCreateModalOpen && (
+          <EditModal
+            row={newRow}
+            columns={columns}
+            onSave={handleSaveNewRow}
+            onClose={handleCreateModalClose}
+            isCreateModalOpen={isCreateModalOpen}
+          />
+        )}
+      </Box>
     </Box>
-    </Box>
+
   );
 };
 

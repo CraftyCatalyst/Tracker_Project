@@ -9,11 +9,20 @@ const HomePage = () => {
     const userInfo = JSON.parse(localStorage.getItem("user_info"));
     const isLoggedIn = Boolean(userInfo); // Check if user_info exists in localStorage
 
+    try {
+        const userInfo = localStorage.getItem("user_info");
+        //console.log(userInfo);
+      } catch (e) {
+        console.error("Error accessing localStorage:", e);
+        return null; // Return null if parsing fails
+        
+      }
+
     return (
         <Box
             sx={{
                 background: "linear-gradient(to right, #0A4B3E, #000000)",  
-                //backgroundColor: "background.default",
+                //backgroundcolor: "background.default",
                 padding: 4,
                 minHeight: "100vh",
                 display: "flex",
@@ -54,6 +63,18 @@ const HomePage = () => {
                 >
                     Dependencies
                 </Button>
+                {/* <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => navigate("/drawer")}
+                    disabled={!isLoggedIn} // Disable if not logged in
+                    sx={{
+                        opacity: isLoggedIn ? 1 : 0.5,
+                        cursor: isLoggedIn ? "pointer" : "not-allowed",
+                    }}
+                >
+                    Drawer
+                </Button> */}
             </Stack>
         </Box>
     );

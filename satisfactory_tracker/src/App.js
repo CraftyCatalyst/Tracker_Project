@@ -11,6 +11,7 @@ import SignupPage from './pages/SignupPage';
 import Header from './Header';
 import { UserProvider } from './UserContext';
 
+
 function App() {
   return (
     <UserProvider>
@@ -22,8 +23,8 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/data" element={<DataManagementPage />} />
-            <Route path="/dependencies" element={<DependencyTreePage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/dependencies" element={<DependencyTreePage />} />            
+            <Route path="/signup" element={<SignupPage />} />            
           </Routes>
         </Router>
       </ThemeProvider>
