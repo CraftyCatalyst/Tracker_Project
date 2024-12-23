@@ -37,7 +37,7 @@ def create_app():
     with app.app_context():
         #print("Importing models...")
         # Import models to ensure they are registered
-        from .models import User, Parts, Recipes, Alternate_Recipes, Miner_Type, Node_Purity, Power_Shards, Miner_Supply
+        from .models import User, Part, Recipe, Alternate_Recipe, Miner_Type, Node_Purity, Power_Shards, Miner_Supply
         #print("Models imported")
         
         #print("Inspecting metadata...")

@@ -52,7 +52,7 @@ PROJECT_ID = config.GOOGLE_PROJECT_ID
 SITE_KEY = config.REACT_APP_RECAPTCHA_SITE_KEY
 SECRET_KEY = config.RECAPTCHA_API_KEY
 
-logger.info(f"**************************************Service account file: {SERVICE_ACCOUNT_FILE}, Project ID: {PROJECT_ID}, Site key: {SITE_KEY}")
+# logger.info(f"**************************************Service account file: {SERVICE_ACCOUNT_FILE}, Project ID: {PROJECT_ID}, Site key: {SITE_KEY}")
 
 # # Load the credentials
 # credentials = service_account.Credentials.from_service_account_file(
@@ -167,7 +167,7 @@ def logout():
     return jsonify({"message": "Logged out successfully."}), 201
 
 def generate_verification_token(email):
-    print(f"********************************************Generating verification token for {email} with secret key: {config.SECRET_KEY}")
+    #print(f"********************************************Generating verification token for {email} with secret key: {config.SECRET_KEY}")
     serializer = URLSafeTimedSerializer(config.SECRET_KEY)
     return serializer.dumps(email, salt='email-confirm')
 
@@ -220,6 +220,21 @@ def build_tree_route():
 
     return jsonify(result)
 
+@main.route('/api/<table_name>', methods=['GET'])
+def get_table_entries(table_name):
+    """Fetch all rows from the specified table."""
+    # Validate table name against a whitelist for security
+    if table_name not in config.VALID_TABLES:
+        return jsonify({"error": f"Invalid table name: {table_name}"}), 400
+
+    # Fetch data from the specified table
+    query = text(f"SELECT * FROM {table_name}")
+    try:
+        rows = db.session.execute(query).fetchall()
+        return jsonify([dict(row._mapping) for row in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 @main.route('/api/tables', methods=['GET'])
 def get_tables():
     inspector = inspect(db.engine)
@@ -279,36 +294,36 @@ def delete_row(table_name, row_id):
     db.session.commit()
     return jsonify({"message": "Row deleted successfully"})
 
-@main.route('/api/parts', methods=['GET'])
-def get_parts():
+@main.route('/api/part', methods=['GET'])
+def get_part():
     """GET ALL PARTS - Retrieve all parts from the database."""
-    query = text('SELECT * FROM parts')  # Wrap the query in text()
-    parts = db.session.execute(query).fetchall()  # Execute the query
-    return jsonify([dict(row._mapping) for row in parts])  # Convert rows to JSON-friendly dictionaries
+    query = text('SELECT * FROM part')  # Wrap the query in text()
+    part = db.session.execute(query).fetchall()  # Execute the query
+    return jsonify([dict(row._mapping) for row in part])  # Convert rows to JSON-friendly dictionaries
 
 @main.route('/api/part_names', methods=['GET'])
 def get_parts_names():
     """GET PART NAMES Fetch all parts from the database."""
-    parts_query = db.session.execute(text("SELECT id, part_name FROM parts WHERE category = 'Parts'")).fetchall()
+    parts_query = db.session.execute(text("SELECT id, part_name FROM part WHERE category = 'Parts'")).fetchall()
     parts = [{"id": row.id, "name": row.part_name} for row in parts_query]
     return jsonify(parts)
 
-@main.route('/api/recipes', methods=['GET'])
-def get_recipes():
+@main.route('/api/recipe', methods=['GET'])
+def get_recipe():
     """GET RECIPES - Retrieve all recipes from the database."""
-    query = text('SELECT * FROM recipes') # Wrap the query in text()
-    recipes = db.session.execute(query).fetchall()
-    return jsonify([dict(row._mapping) for row in recipes])
+    query = text('SELECT * FROM recipe') # Wrap the query in text()
+    recipe = db.session.execute(query).fetchall()
+    return jsonify([dict(row._mapping) for row in recipe])
 
-@main.route('/api/alternate_recipes', methods=['GET'])
-def get_alternate_recipes():
+@main.route('/api/alternate_recipe', methods=['GET'])
+def get_alternate_recipe():
     """
     Fetch all alternate recipes with part and recipe names.
     """
-    query = text('SELECT ar.id, ar.part_id, ar.recipe_id, ar.selected, p.part_name, r.recipe_name FROM alternate_recipes ar JOIN parts p ON ar.part_id = p.id JOIN recipes r ON ar.recipe_id = r.id')
+    query = text('SELECT ar.id, ar.part_id, ar.recipe_id, ar.selected, p.part_name, r.recipe_name FROM alternate_recipe ar JOIN part p ON ar.part_id = p.id JOIN recipe r ON ar.recipe_id = r.id')
     result = db.session.execute(query).fetchall()
-    alternate_recipes = [dict(row._mapping) for row in result]
-    return jsonify(alternate_recipes)
+    alternate_recipe = [dict(row._mapping) for row in result]
+    return jsonify(alternate_recipe)
 
 @main.route('/api/dependencies', methods=['GET'])
 def get_dependencies():
@@ -327,3 +342,11 @@ def tracker():
 def dashboard():
     """DASHBOARD - Render the dashboard page."""
     return f'Welcome, {current_user.username}!' #TODO: Implement dashboard.html
+
+@main.route('/api/validation', methods=['GET'])
+def get_data_validation():
+    """Fetch all data validation rules."""
+    query = text("SELECT * FROM data_validation")
+    validation_data = db.session.execute(query).fetchall()
+    # print("**************************************", [dict(row._mapping) for row in validation_data])
+    return jsonify([dict(row._mapping) for row in validation_data])

@@ -52,7 +52,7 @@ RECAPTCHA_API_KEY = os.getenv('RECAPTCHA_API_KEY')
 #print(f'**********************MAIL_USERNAME: {MAIL_USERNAME} MAIL_DEFAULT_SENDER: {MAIL_DEFAULT_SENDER} MAIL_PASSWORD: {MAIL_PASSWORD}')
 
 # Table and column whitelist
-VALID_TABLES = {'parts', 'recipes', 'alternate_recipes', 'node_purity', 'miner_type', 'miner_supply', 'power_shards', "user", "data_validation"}
+VALID_TABLES = {'part', 'recipe', 'alternate_recipe', 'node_purity', 'miner_type', 'miner_supply', 'power_shards', "user", "data_validation"}
 VALID_COLUMNS = {'part_name', 'level', 'category', 'base_production_type', 'produced_in_automated', 'produced_in_manual', 'production_type', 
                     'recipe_name', 'ingredient_count', 'source_level', 'base_input', 'base_demand_pm', 'base_supply_pm', 'byproduct', 'byproduct_supply_pm', 'selected', 
                     "selected",

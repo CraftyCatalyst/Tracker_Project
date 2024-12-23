@@ -6,7 +6,7 @@ cursor = conn.cursor()
 
 # Create the schema
 cursor.execute("""
-CREATE TABLE parts (
+CREATE TABLE part (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     part_name TEXT NOT NULL,
     level INTEGER,
@@ -25,7 +25,7 @@ description TEXT
 """)
 
 cursor.execute("""
-CREATE TABLE recipes (
+CREATE TABLE recipe (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     part_id INTEGER NOT NULL,
     recipe_name TEXT NOT NULL,
@@ -39,18 +39,18 @@ CREATE TABLE recipes (
     base_supply_pm REAL,
     byproduct TEXT,
     byproduct_supply_pm REAL,
-    FOREIGN KEY(part_id) REFERENCES parts(id)
+    FOREIGN KEY(part_id) REFERENCES part(id)
 );
 """)
 
 cursor.execute("""
-CREATE TABLE alternate_recipes (
+CREATE TABLE alternate_recipe (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     part_id INTEGER NOT NULL,
     recipe_id INTEGER NOT NULL,
     selected INTEGER DEFAULT 0 CHECK (selected IN (0, 1)),
-    FOREIGN KEY(part_id) REFERENCES parts(id),
-    FOREIGN KEY(recipe_id) REFERENCES recipes(id)
+    FOREIGN KEY(part_id) REFERENCES part(id),
+    FOREIGN KEY(recipe_id) REFERENCES recipe(id)
 );
 """)
 

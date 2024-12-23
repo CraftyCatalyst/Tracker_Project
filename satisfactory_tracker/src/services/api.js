@@ -13,64 +13,64 @@ export default apiClient;
 
 // Parts API
 export const fetchParts = async () => {
-  const response = await apiClient.get('/parts');
+  const response = await apiClient.get('/part');
   return response.data;
 };
 
 export const createPart = async (partData) => {
-  const response = await apiClient.post('/parts', partData);
+  const response = await apiClient.post('/part', partData);
   return response.data;
 };
 
 export const updatePart = async (partId, partData) => {
-  const response = await apiClient.put(`/parts/${partId}`, partData);
+  const response = await apiClient.put(`/part/${partId}`, partData);
   return response.data;
 };
 
 export const deletePart = async (partId) => {
-  const response = await apiClient.delete(`/parts/${partId}`);
+  const response = await apiClient.delete(`/part/${partId}`);
   return response.data;
 };
 
-// Recipes API
+// Recipe API
 export const fetchRecipes = async () => {
-  const response = await apiClient.get('/recipes');
+  const response = await apiClient.get('/recipe');
   return response.data;
 };
 
 export const createRecipe = async (recipeData) => {
-  const response = await apiClient.post('/recipes', recipeData);
+  const response = await apiClient.post('/recipe', recipeData);
   return response.data;
 };
 
 export const updateRecipe = async (recipeId, recipeData) => {
-  const response = await apiClient.put(`/recipes/${recipeId}`, recipeData);
+  const response = await apiClient.put(`/recipe/${recipeId}`, recipeData);
   return response.data;
 };
 
 export const deleteRecipe = async (recipeId) => {
-  const response = await apiClient.delete(`/recipes/${recipeId}`);
+  const response = await apiClient.delete(`/recipe/${recipeId}`);
   return response.data;
 };
 
 // Alternate Recipes API
 export const fetchAlternateRecipes = async () => {
-  const response = await apiClient.get('/alternate_recipes');
+  const response = await apiClient.get('/alternate_recipe');
   return response.data;
 };
 
 export const createAlternateRecipe = async (alternateRecipeData) => {
-  const response = await apiClient.post('/alternate_recipes', alternateRecipeData);
+  const response = await apiClient.post('/alternate_recipe', alternateRecipeData);
   return response.data;
 };
 
 export const updateAlternateRecipe = async (alternateRecipeId, alternateRecipeData) => {
-  const response = await apiClient.put(`/alternate_recipes/${alternateRecipeId}`, alternateRecipeData);
+  const response = await apiClient.put(`/alternate_recipe/${alternateRecipeId}`, alternateRecipeData);
   return response.data;
 };
 
 export const deleteAlternateRecipe = async (alternateRecipeId) => {
-  const response = await apiClient.delete(`/alternate_recipes/${alternateRecipeId}`);
+  const response = await apiClient.delete(`/alternate_recipe/${alternateRecipeId}`);
   return response.data;
 };
 

@@ -57,9 +57,9 @@ def get_or_create(cursor, table, unique_column, value, additional_data=None):
     return cursor.lastrowid
 
 # Load data from the spreadsheet
-parts_df = pd.read_excel(excel_path, sheet_name="Part_Data")
-recipes_df = pd.read_excel(excel_path, sheet_name="Recipes")
-alternate_recipes_df = pd.read_excel(excel_path, sheet_name="Alternate_Recipes")
+part_df = pd.read_excel(excel_path, sheet_name="Part_Data")
+recipe_df = pd.read_excel(excel_path, sheet_name="Recipes")
+alternate_recipe_df = pd.read_excel(excel_path, sheet_name="Alternate_Recipes")
 node_purity_df = pd.read_excel(excel_path, sheet_name="Node_Purity")
 miner_type_df = pd.read_excel(excel_path, sheet_name="Miner_Type")
 miner_supply_df = pd.read_excel(excel_path, sheet_name="Miner_Supply")
@@ -69,9 +69,9 @@ valid_values_df = pd.read_excel(excel_path, sheet_name="Valid_Values")
 print("Data loaded from Excel")
 
 #Replace "N/A" with None (treated as NULL in SQLite)
-parts_df.replace("N/A", None, inplace=True)
-recipes_df.replace("N/A", None, inplace=True)
-alternate_recipes_df.replace("N/A", None, inplace=True)
+part_df.replace("N/A", None, inplace=True)
+recipe_df.replace("N/A", None, inplace=True)
+alternate_recipe_df.replace("N/A", None, inplace=True)
 node_purity_df.replace("N/A", None, inplace=True)
 miner_type_df.replace("N/A", None, inplace=True)
 miner_supply_df.replace("N/A", None, inplace=True)
@@ -102,10 +102,10 @@ print("Migrated data validation")
 
 # Migrate recipes
 print("Migrating recipes")
-for _, row in recipes_df.iterrows():
-    part_id = get_or_create(cursor, "parts", "part_name", row["part_name"])
+for _, row in recipe_df.iterrows():
+    part_id = get_or_create(cursor, "part", "part_name", row["part_name"])
     cursor.execute("""
-    INSERT INTO recipes (part_id, recipe_name, ingredient_count, source_level, base_input, base_production_type, produced_in_automated, produced_in_manual, base_demand_pm, base_supply_pm, byproduct, byproduct_supply_pm)
+    INSERT INTO recipe (part_id, recipe_name, ingredient_count, source_level, base_input, base_production_type, produced_in_automated, produced_in_manual, base_demand_pm, base_supply_pm, byproduct, byproduct_supply_pm)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (part_id, row["recipe_name"], row["ingredient_count"], row["source_level"], row["base_input"], row["base_production_type"], row["produced_in_automated"], row["produced_in_manual"], row["base_demand_pm"], row["base_supply_pm"], row["byproduct"], row["byproduct_supply_pm"]))
 
@@ -113,11 +113,11 @@ print("Migrated recipes")
 
 # Migrate alternate recipes
 print("Migrating alternate recipes")
-for _, row in alternate_recipes_df.iterrows():
-    part_id = get_or_create(cursor, "parts", "part_name", row["part_name"])
-    recipe_id = get_or_create(cursor, "recipes", "recipe_name", row["recipe_name"])
+for _, row in alternate_recipe_df.iterrows():
+    part_id = get_or_create(cursor, "part", "part_name", row["part_name"])
+    recipe_id = get_or_create(cursor, "recipe", "recipe_name", row["recipe_name"])
     cursor.execute("""
-    INSERT INTO alternate_recipes (part_id, recipe_id, selected)
+    INSERT INTO alternate_recipe (part_id, recipe_id, selected)
     VALUES (?, ?, ?)
     """, (part_id, recipe_id, row["selected"]))
 

@@ -298,10 +298,12 @@ const DependencyTreePage = () => {
     useEffect(() => {
         const fetchPartsAndRecipes = async () => {
             try {
+                console.log("Getting Alt Recipes", API_ENDPOINTS.part_names);
                 const partsResponse = await axios.get(API_ENDPOINTS.part_names);
                 const partsData = partsResponse.data;
                 setParts(Array.isArray(partsData) ? partsData : []);
-                const recipesResponse = await axios.get(API_ENDPOINTS.alternate_recipes);
+                console.log("Getting Alt Recipes", API_ENDPOINTS.alternate_recipe);
+                const recipesResponse = await axios.get(API_ENDPOINTS.alternate_recipe);
                 console.log("Fetched Alternate Recipes:", recipesResponse.data);
                 setAlternateRecipes(recipesResponse.data);
                 setFilteredRecipes(recipesResponse.data); // Initialize filteredRecipes

@@ -22,7 +22,7 @@ VALID_COLUMNS = config.VALID_COLUMNS
 
 # Define command-line arguments
 parser = argparse.ArgumentParser(description='Refresh data to SQLite database.')
-parser.add_argument('table', choices=['all_tables', 'parts', 'recipes', 'alternate_recipes', 'node_purity', 'miner_type', 'miner_supply', 'power_shards', 'data_validation' ], help='The table to delete and reload load data into')
+parser.add_argument('table', choices=['all_tables', 'part', 'recipe', 'alternate_recipe', 'node_purity', 'miner_type', 'miner_supply', 'power_shards', 'data_validation' ], help='The table to delete and reload load data into')
 args = parser.parse_args()
 
 # Load Excel data
@@ -119,38 +119,38 @@ if args.table == 'data_validation' or args.table == 'all_tables':
     print(f"Record count after loading data into data_validation: {get_record_count(cursor, 'data_validation')}")
     print("DATA VALIDATION DONE")
    
-if args.table == 'recipes' or args.table == 'all_tables':
-    # Refresh recipes
-    print("REFRESHING RECIPES")
-    recipes_df = pd.read_excel(excel_path, sheet_name="Recipes")
-    recipes_df.replace("N/A", None, inplace=True)    
-    print(f"Record count before deleting data from recipes: {get_record_count(cursor, 'recipes')}")
-    delete_all_data_from_table(cursor, 'recipes')
-    for _, row in recipes_df.iterrows():
-        part_id = get_or_create(cursor, "parts", "part_name", row["part_name"])
+if args.table == 'recipe' or args.table == 'all_tables':
+    # Refresh recipe
+    print("REFRESHING RECIPE")
+    recipe_df = pd.read_excel(excel_path, sheet_name="Recipes")
+    recipe_df.replace("N/A", None, inplace=True)    
+    print(f"Record count before deleting data from recipe: {get_record_count(cursor, 'recipe')}")
+    delete_all_data_from_table(cursor, 'recipe')
+    for _, row in recipe_df.iterrows():
+        part_id = get_or_create(cursor, "part", "part_name", row["part_name"])
         cursor.execute("""
-        INSERT INTO recipes (part_id, recipe_name, ingredient_count, source_level, base_input, base_production_type, produced_in_automated, produced_in_manual, base_demand_pm, base_supply_pm, byproduct, byproduct_supply_pm)
+        INSERT INTO recipe (part_id, recipe_name, ingredient_count, source_level, base_input, base_production_type, produced_in_automated, produced_in_manual, base_demand_pm, base_supply_pm, byproduct, byproduct_supply_pm)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (part_id, row["recipe_name"], row["ingredient_count"], row["source_level"], row["base_input"], row["base_production_type"], row["produced_in_automated"], row["produced_in_manual"], row["base_demand_pm"], row["base_supply_pm"], row["byproduct"], row["byproduct_supply_pm"]))
-    print(f"Record count after loading data into recipes: {get_record_count(cursor, 'recipes')}")
-    print("RECIPES DONE")
+    print(f"Record count after loading data into recipe: {get_record_count(cursor, 'recipe')}")
+    print("RECIPE DONE")
 
-if args.table == 'alternate_recipes' or args.table == 'all_tables':
+if args.table == 'alternate_recipe' or args.table == 'all_tables':
     # Refresh alternate recipes
     print("REFRESHING ALTERNATE RECIPES")
-    alternate_recipes_df = pd.read_excel(excel_path, sheet_name="Alternate_Recipes")
-    alternate_recipes_df.replace("N/A", None, inplace=True)    
-    print(f"Record count before deleting data from alternate_recipes: {get_record_count(cursor, 'alternate_recipes')}")
-    delete_all_data_from_table(cursor, 'alternate_recipes')
-    for _, row in alternate_recipes_df.iterrows():
-        part_id = get_or_create(cursor, "parts", "part_name", row["part_name"])
-        recipe_id = get_or_create(cursor, "recipes", "recipe_name", row["recipe_name"])
+    alternate_recipe_df = pd.read_excel(excel_path, sheet_name="Alternate_Recipes")
+    alternate_recipe_df.replace("N/A", None, inplace=True)    
+    print(f"Record count before deleting data from alternate_recipe: {get_record_count(cursor, 'alternate_recipe')}")
+    delete_all_data_from_table(cursor, 'alternate_recipe')
+    for _, row in alternate_recipe_df.iterrows():
+        part_id = get_or_create(cursor, "part", "part_name", row["part_name"])
+        recipe_id = get_or_create(cursor, "recipe", "recipe_name", row["recipe_name"])
         cursor.execute("""
-        INSERT INTO alternate_recipes (part_id, recipe_id, selected)
+        INSERT INTO alternate_recipe (part_id, recipe_id, selected)
         VALUES (?, ?, ?)
         """, (part_id, recipe_id, row["selected"]))
-    print(f"Record count after loading data into alternate_recipes: {get_record_count(cursor, 'alternate_recipes')}")
-    print("ALTERNATE RECIPES DONE")
+    print(f"Record count after loading data into alternate_recipe: {get_record_count(cursor, 'alternate_recipe')}")
+    print("ALTERNATE RECIPE DONE")
 
 if args.table == 'node_purity' or args.table == 'all_tables':
     # Refresh of node purity

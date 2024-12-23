@@ -11,18 +11,18 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(200), nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
 
-class Parts(db.Model):
-    __tablename__ = 'parts'
+class Part(db.Model):
+    __tablename__ = 'part'
     id = db.Column(db.Integer, primary_key=True)
     part_name = db.Column(db.String(200), nullable=False)
     level = db.Column(db.Integer)
     category = db.Column(db.String(100))
     
 
-class Recipes(db.Model):
-    __tablename__ = 'recipes'
+class Recipe(db.Model):
+    __tablename__ = 'recipe'
     id = db.Column(db.Integer, primary_key=True)
-    part_id = db.Column(db.Integer, db.ForeignKey('parts.id'), nullable=False)
+    part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=False)
     recipe_name = db.Column(db.String(200), nullable=False)
     ingredient_count = db.Column(db.Integer)
     source_level = db.Column(db.Integer)
@@ -35,11 +35,11 @@ class Recipes(db.Model):
     byproduct = db.Column(db.String(100))
     byproduct_supply_pm = db.Column(db.Float)
 
-class Alternate_Recipes(db.Model):
-    __tablename__ = 'alternate_recipes'
+class Alternate_Recipe(db.Model):
+    __tablename__ = 'alternate_recipe'
     id = db.Column(db.Integer, primary_key=True)
-    part_id = db.Column(db.Integer, db.ForeignKey('parts.id'), nullable=False)
-    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=False)
+    part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
     selected = db.Column(db.Boolean, default=False)
 
 class Miner_Type(db.Model):

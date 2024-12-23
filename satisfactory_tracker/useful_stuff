@@ -87,12 +87,12 @@ npm commands:
 Table Maintenance:
     # Run refresh_data.py in SQLite_stuff directory to delete all data and reload either a specific table or all tables.
     # Primary keys are reset to 0 when the data is reloaded. So you shouldn't need to reload foreign key data. But spot check to be sure.
-    # Command line arguments as follows: all_tables, parts, recipes, alternate_recipes, node_purity, miner_type, miner_supply, power_shards, data_validation
+    # Command line arguments as follows: all_tables, part, recipe, alternate_recipe, node_purity, miner_type, miner_supply, power_shards, data_validation
     # Or just copy and paste one of the following commands into the command line.
         python refresh_data.py all_tables # Refresh all the data from the Excel file
-        python refresh_data.py parts # Refresh the parts data from the Excel file
-        python refresh_data.py recipes # Refresh the recipes data from the Excel file
-        python refresh_data.py alternate_recipes # Refresh the alternate recipes data from the Excel file
+        python refresh_data.py part # Refresh the part data from the Excel file
+        python refresh_data.py recipe # Refresh the recipe data from the Excel file
+        python refresh_data.py alternate_recipe # Refresh the alternate recipe data from the Excel file
         python refresh_data.py node_purity # Refresh the node purity data from the Excel file
         python refresh_data.py miner_type # Refresh the miner type data from the Excel file
         python refresh_data.py miner_supply # Refresh the miner supply data from the Excel file
@@ -191,24 +191,28 @@ Copilot:
     Ctrl + Shift + L - Multi-select
 
 #TODO:
-    - #DONE - Fix Logout button in the header. It's not working. 
-    - #DONE - Visualization of Dependency Tree
-        Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
-    - IN PROGRESS - Interactive Filtering
-    - Update build_tree to take alternate recipes into account.
-    - 
-    - Enhance the filtering options for parts and recipes
-        Search bar with autocomplete.
-        Multi-select dropdown for filtering recipes.
-        Sliders for adjusting target quantities dynamically.
-    - Save and Load Configurations
-        Allow users to save their selected recipes, parts, and target quantities into configurations that they can load later.
-    - Machine and Resource Calculations
-        Add summaries for the required machines and resource supply/demand at the bottom of the tree.
-    - Export Tree Data
-        Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).
-    - #DONE - Collapsible Tree Nodes
-      #  Add the ability to collapse/expand all/individual nodes of the tree for better usability.   
+    IN PROGRESS:
+        - Implement Data Validation on EditModal
+            - Implement the data validation on the EditModal for edit and create modes.
+                # - Get valid values from data_validation table.
+                # - Get values for foreign key constraints
+                # - Change parts and recipes tables to 'part' and 'recipe' for consistency.
+    PENDING:
+        - Update build_tree to take alternate recipes into account.
+        - Save and Load Configurations
+            - Allow users to save their selected recipes, parts, and target quantities into configurations that they can load later.
+        - Machine and Resource Calculations
+            - Add summaries for the required machines and resource supply/demand at the bottom of the tree.
+        - Export Tree Data
+            - Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).
+    DONE:
+        - #DONE - Fix Logout button in the header. It's not working. 
+        - #DONE - Visualization of Dependency Tree
+            Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
+        - #DONE - Interactive Filtering (updated all tables to MUI X DataGrid)
+            #- Added interactive filtering to the tables to allow users to search, sort, and filter the data.
+        - #DONE - Collapsible Tree Nodes
+        #  Add the ability to collapse/expand all/individual nodes of the tree for better usability.   
     
 
 

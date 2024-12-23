@@ -1,23 +1,84 @@
 //mine
 import React, { useState } from "react";
-import { Modal, Box, Typography, Button, TextField } from "@mui/material";
+import { Modal, Box, Typography, Button, TextField, MenuItem } from "@mui/material";
+import axios from "axios";
+import { API_ENDPOINTS } from "../apiConfig";
+import { useEffect } from "react";
 
-const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen }) => {
+
+const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen, tableName }) => {
   const [updatedRow, setUpdatedRow] = useState({ ...row });
+  const [validationRules, setValidationRules] = useState([]);
+  const [foreignKeyData, setForeignKeyData] = useState({});
 
-  // Handle field changes
+  useEffect(() => {
+    const fetchValidationRules = async () => {
+      try {
+        const response = await axios.get(API_ENDPOINTS.validation);
+        // console.log("Fetched Validation Rules:", response.data); // Debug
+        setValidationRules(response.data);
+        //console.log("Set Validation Rules:", response.data); // Debug
+      } catch (error) {
+        //console.error("Error fetching validation rules:", error);
+      }
+    };
+    fetchValidationRules();
+  }, []);
+
+  const getValidValues = (tableName, columnName) => {
+    //console.log("Validation Rules:", validationRules);
+    //console.log("Checking rules for Table:", tableName, "Column:", columnName);
+    const values = validationRules
+      .filter(
+        (rule) =>
+          rule["table_name"] === tableName && rule["column_name"] === columnName
+      )
+      .map((rule) => rule.value);
+    //console.log(`Valid values for ${columnName}:`, values); // Debug    
+    return values;
+  };
+
+  useEffect(() => {
+    const fetchForeignKeyData = async () => {
+      try {
+        const foreignKeys = columns.filter((col) => col.endsWith("_id")); // Detect foreign key columns
+        const data = {};
+
+        for (const fk of foreignKeys) {
+          const tableName = fk.replace("_id", ""); // Infer table name
+          //console.log(`Fetching Foreign Key Data for ${API_ENDPOINTS.table_name}/${tableName}`); // Debug
+          const endpoint = API_ENDPOINTS.table_name(tableName);
+          const response = await axios.get(`${endpoint}`); // Fetch foreign key data
+          //console.log(`Fetched Foreign Key Data for ${endpoint}:`, response.data); // Debug
+          setForeignKeyData(response.data);
+          data[fk] = response.data.map((row) => ({
+            id: row.id,
+            name: row.name || row.node_purity || row.miner_type, // Adjust based on the schema
+          }));
+        }
+
+        setForeignKeyData(data);
+        //console.log("Fetched Foreign Key Data:", data); // Debug
+      } catch (error) {
+        console.error("Error fetching foreign key data:", error);
+      }
+    };
+
+    fetchForeignKeyData();
+  }, [columns]);
+
   const handleChange = (e, column) => {
     setUpdatedRow({ ...updatedRow, [column]: e.target.value });
   };
 
-  // Save the updated row
   const handleSave = () => {
+    console.log("Saving Row:", updatedRow); // Debug
     onSave(updatedRow);
   };
 
   return (
     <Modal
-    open={Boolean(row) || isCreateModalOpen} // Open modal only if a row is provided or creating a new row
+      open={Boolean(row) || isCreateModalOpen} // Open modal only if a row is provided or creating a new row
       onClose={onClose}
       aria-labelledby="edit-modal-title"
       aria-describedby="edit-modal-description"
@@ -47,44 +108,63 @@ const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen }) => {
           {isCreateModalOpen ? "Create New Row" : "Edit Row"}
         </Typography>
 
-        {columns.map((col) => (
-          <TextField
-            key={col}
-            label={col}
-            value={updatedRow[col]}
-            onChange={(e) => handleChange(e, col)}
-            fullWidth
-            disabled={col === "id"} // Disable editing the ID
-            margin="normal"
-            variant="outlined"
-            slotProps={{
-              input: {
-                sx: {
-                  color: col === "id" ? 'text.secondary' : 'text.primary', // Adjust text color for disabled fields
-                },
-              },
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': {
-                  borderColor: col === "id" ? 'text.disabled' : 'primary.contrastText', // Default border color
-                },
-                '&:hover fieldset': {
-                  borderColor: col === "id" ? 'text.disabled' : 'primary.light', // Prevent hover color on disabled fields
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main', // Focus state for active fields
-                },
-                '&.Mui-disabled fieldset': {
-                  borderColor: 'text.disabled', // Explicitly set border color for disabled state
-                },
-              },
-              '& .MuiInputBase-root.Mui-disabled': {
-                color: 'text.secondary', // Safeguard for disabled text styling
-              },
-            }}
-          />
-        ))}
+        {columns.map((col) => {
+          const validValues = getValidValues(tableName, col); // Validation rules
+          const fkValues = foreignKeyData[col]; // Foreign key values
+
+          if (validValues.length > 0) {
+            return (
+              <TextField
+                select
+                key={col}
+                label={col.replace(/_/g, " ")}
+                value={updatedRow[col] || ""}
+                onChange={(e) => handleChange(e, col)}
+                fullWidth
+                margin="normal"
+                variant="outlined"
+              >
+                {validValues.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
+              </TextField>
+            );
+          } else if (fkValues) {
+            return (
+              <TextField
+                select
+                key={col}
+                label={col.replace(/_/g, " ")}
+                value={updatedRow[col] || ""}
+                onChange={(e) => handleChange(e, col)}
+                fullWidth
+                margin="normal"
+                variant="outlined"
+              >
+                {fkValues.map((fk) => (
+                  <MenuItem key={fk.id} value={fk.id}>
+                    {fk.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            );
+          } else {
+            return (
+              <TextField
+                key={col}
+                label={col.replace(/_/g, " ")}
+                value={updatedRow[col] || ""}
+                onChange={(e) => handleChange(e, col)}
+                fullWidth
+                disabled={col === "id"}
+                margin="normal"
+                variant="outlined"
+              />
+            );
+          }
+        })}
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           <Button
@@ -93,7 +173,7 @@ const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen }) => {
             sx={{
               color: 'secondary.contrastText',
               mr: 1,
-              }}
+            }}
             onClick={handleSave}
           >
             Save

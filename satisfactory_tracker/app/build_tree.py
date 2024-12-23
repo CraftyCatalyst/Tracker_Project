@@ -21,8 +21,8 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
     part_data = db.session.execute(
         text("""
         SELECT p.part_name, r.base_input, r.source_level, r.base_demand_pm, r.base_supply_pm, r.recipe_name, r.produced_in_automated
-        FROM parts p
-        JOIN recipes r ON p.id = r.part_id
+        FROM part p
+        JOIN recipe r ON p.id = r.part_id
         WHERE p.id = :part_id AND r.recipe_name = :recipe_type
         """),
         {"part_id": part_id, "recipe_type": recipe_type}
@@ -44,7 +44,7 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
 
         # Look up the part_id for the ingredient_input and the machine it is produced in
         ingredient_input_id = db.session.execute(
-            text("SELECT id FROM parts WHERE part_name = :ingredient_input"),
+            text("SELECT id FROM part WHERE part_name = :ingredient_input"),
             {"ingredient_input": ingredient_input}
         ).scalar()
 
@@ -52,20 +52,20 @@ def build_tree(part_id, recipe_type="_Standard", target_quantity=1, visited=None
 
         #TODO TEST - # Lookup ingredient input data to get its supply rate and produced in machine
         ingredient_supply = db.session.execute(
-            text("SELECT base_supply_pm FROM recipes WHERE part_id = :part_id AND recipe_name = :base_recipe"),
+            text("SELECT base_supply_pm FROM recipe WHERE part_id = :part_id AND recipe_name = :base_recipe"),
             {"part_id": ingredient_input_id, "base_recipe": ingredient_recipe}
         ).scalar()
         
         #logger.info(f"Ingredient supply: {ingredient_supply}, ingredient_id: {ingredient_input_id}, recipe: {ingredient_recipe}")
 
         ingredient_production_machine = db.session.execute(
-            text("SELECT produced_in_automated FROM recipes WHERE part_id = :base_input_id AND recipe_name = :base_recipe"),
+            text("SELECT produced_in_automated FROM recipe WHERE part_id = :base_input_id AND recipe_name = :base_recipe"),
             {"base_input_id": ingredient_input_id, "base_recipe": ingredient_recipe}
         ).scalar()
-        sql_query = f"SELECT produced_in_automated FROM recipes WHERE part_id = {ingredient_input_id} AND recipe_name = '{ingredient_recipe}'"
+        sql_query = f"SELECT produced_in_automated FROM recipe WHERE part_id = {ingredient_input_id} AND recipe_name = '{ingredient_recipe}'"
         #logger.info(f"SQL Query: {sql_query}")
         #logger.info(f"Ingredient production machine: {ingredient_production_machine}")
-        #TODO - # Incorporate the Alternate_Recipes table and determine the correct recipe type for the ingredient input (default to _Standard if no alternate specified)
+        #TODO - # Incorporate the Alternate_Recipe table and determine the correct recipe type for the ingredient input (default to _Standard if no alternate specified)
         
         
 

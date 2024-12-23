@@ -30,14 +30,14 @@ const DataManagementPage = () => {
   const [newRow, setNewRow] = useState({}); // New row data
 
   const columnOrderConfig = {
-    recipes: ['id', 'part_id', 'recipe_name', 'ingredient_count', 'source_level', 'base_input', 'base_production_type', 'produced_in_automated', 'produced_in_manual', 'base_demand_pm', 'base_supply_pm', 'byproduct', 'byproduct_supply_pm'],
-    alternate_recipes: ['id', 'part_id', 'recipe_id', 'selected'],
+    recipe: ['id', 'part_id', 'recipe_name', 'ingredient_count', 'source_level', 'base_input', 'base_production_type', 'produced_in_automated', 'produced_in_manual', 'base_demand_pm', 'base_supply_pm', 'byproduct', 'byproduct_supply_pm'],
+    alternate_recipe: ['id', 'part_id', 'recipe_id', 'selected'],
     node_purity: ['id', 'node_purity'],
     miner_type: ['id', 'miner_type'],
     miner_supply: ['id', 'node_purity_id', 'miner_type_id', 'base_supply_pm'],
     power_shards: ['id', 'quantity', 'output_increase'],
     user: ['id', 'role', 'username', 'email', 'password', 'is_verified'],
-    parts: ['id', 'part_name', 'level', 'category'],
+    part: ['id', 'part_name', 'level', 'category'],
     data_validation: ['id', 'table_name', 'column_name', 'value', 'description'],
   };
 
@@ -269,6 +269,7 @@ const DataManagementPage = () => {
             onSave={handleSaveChanges}
             onClose={handleModalClose}
             isCreateModalOpen={isCreateModalOpen}
+            tableName={selectedTable} // Pass the currently selected table
           />
         )}
 
@@ -279,6 +280,7 @@ const DataManagementPage = () => {
             onSave={handleSaveNewRow}
             onClose={handleCreateModalClose}
             isCreateModalOpen={isCreateModalOpen}
+            tableName={selectedTable} // Pass the currently selected table
           />
         )}
       </Box>
