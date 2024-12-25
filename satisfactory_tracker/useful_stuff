@@ -192,6 +192,7 @@ Copilot:
 
 #TODO:
     IN PROGRESS:
+        - Set up laptop
         - Implement Data Validation on EditModal
             - Implement the data validation on the EditModal for edit and create modes.
                 # - Get valid values from data_validation table.
