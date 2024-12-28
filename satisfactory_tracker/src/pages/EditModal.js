@@ -31,7 +31,7 @@ const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen, tableName
       validationRules
         .filter(rule => rule["table_name"] === tableName && rule["column_name"] === columnName)
         .map(rule => ({ value: rule.value, description: rule.description })) || []
-    );  
+    );
   };
 
   useEffect(() => {
@@ -112,155 +112,154 @@ const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen, tableName
 
           if (validValues.length > 0) {
             return (
-              <Tooltip
-                key={col}
-                title={hoveredDescription || "Hover over a value for details"}
-                arrow
-              >
-                <TextField
-                  select
-                  key={col}
-                  label={col.replace(/_/g, " ")}
-                  value={updatedRow[col] || ""}
-                  onChange={(e) => handleChange(e, col)}
-                  fullWidth
-                  margin="normal"
-                  variant="outlined"
-                  slotProps={{
-                    input: {
-                      sx: {
-                        color: col === "id" ? 'text.secondary' : 'text.primary', // Adjust text color for disabled fields
-                      },
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '& fieldset': {
-                        borderColor: col === "id" ? 'text.disabled' : 'primary.contrastText', // Default border color
-                      },
-                      '&:hover fieldset': {
-                        borderColor: col === "id" ? 'text.disabled' : 'primary.light', // Prevent hover color on disabled fields
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: 'primary.main', // Focus state for active fields
-                      },
-                      '&.Mui-disabled fieldset': {
-                        borderColor: 'text.disabled', // Explicitly set border color for disabled state
-                      },
-                    },
-                    '& .MuiInputBase-root.Mui-disabled': {
-                      color: 'text.secondary', // Safeguard for disabled text styling
-                    },
+              <Box key={col} sx={{ mb: 2 }}>
+                <label
+                  htmlFor={col}
+                  style={{
+                    display: "block",
+                    fontWeight: "bold",
+                    marginBottom: "4px",
+                    color: "text.primary",
                   }}
                 >
+                  {col.replace(/_/g, " ")}
+                </label>
+                <select
+                  id={col}
+                  value={updatedRow[col] || ""}
+                  onChange={(e) => handleChange(e, col)}
+                  onMouseEnter={(e) => {
+                    const selectedOption = validValues.find(
+                      (val) => val.value === e.target.value
+                    );
+                    setHoveredDescription(selectedOption?.description || "");
+                  }}
+                  onMouseLeave={() => setHoveredDescription("")}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    background: "white",
+                  }}
+                >
+                  <option value="" disabled>
+                    -- Select an option --
+                  </option>
                   {validValues.map(({ value, description }) => (
-                    <MenuItem
-                      key={value}
-                      value={value}
-                      onMouseEnter={() => setHoveredDescription(description || "")} // Update tooltip on hover
-                      onMouseLeave={() => setHoveredDescription("")} // Reset tooltip on mouse leave
-                    >
+                    <option key={value} value={value} title={description}>
                       {value}
-                    </MenuItem>
+                    </option>
                   ))}
-                </TextField>
-              </Tooltip>
+                </select>
+                {hoveredDescription && (
+                <div
+                  style={{
+                    marginTop: "4px",
+                    fontSize: "12px",
+                    color: "gray",
+                  }}
+                >
+                  {hoveredDescription}
+                </div>
+                )}
+              </Box>
             );
-        } else if (fkValues.length > 0) {
-          return (
-            <TextField
-              select
-              key={col}
-              label={col.replace(/_/g, " ")}
-              value={updatedRow[col] || ""}
-              onChange={(e) => handleChange(e, col)}
-              fullWidth
-              margin="normal"
-              variant="outlined"
-              slotProps={{
-                input: {
-                  sx: {
-                    color: col === "id" ? 'text.secondary' : 'text.primary', // Adjust text color for disabled fields
+          } else if (fkValues.length > 0) {
+            return (
+              <TextField
+                select
+                key={col}
+                label={col.replace(/_/g, " ")}
+                value={updatedRow[col] || ""}
+                onChange={(e) => handleChange(e, col)}
+                fullWidth
+                margin="normal"
+                variant="outlined"
+                slotProps={{
+                  input: {
+                    sx: {
+                      color: col === "id" ? 'text.secondary' : 'text.primary', // Adjust text color for disabled fields
+                    },
                   },
-                },
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: col === "id" ? 'text.disabled' : 'primary.contrastText', // Default border color
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: col === "id" ? 'text.disabled' : 'primary.contrastText', // Default border color
+                    },
+                    '&:hover fieldset': {
+                      borderColor: col === "id" ? 'text.disabled' : 'primary.light', // Prevent hover color on disabled fields
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'primary.main', // Focus state for active fields
+                    },
+                    '&.Mui-disabled fieldset': {
+                      borderColor: 'text.disabled', // Explicitly set border color for disabled state
+                    },
                   },
-                  '&:hover fieldset': {
-                    borderColor: col === "id" ? 'text.disabled' : 'primary.light', // Prevent hover color on disabled fields
+                  '& .MuiInputBase-root.Mui-disabled': {
+                    color: 'text.secondary', // Safeguard for disabled text styling
                   },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'primary.main', // Focus state for active fields
-                  },
-                  '&.Mui-disabled fieldset': {
-                    borderColor: 'text.disabled', // Explicitly set border color for disabled state
-                  },
-                },
-                '& .MuiInputBase-root.Mui-disabled': {
-                  color: 'text.secondary', // Safeguard for disabled text styling
-                },
-              }}
-            >
-              {fkValues.map((fk) => (
-                <MenuItem key={fk.id} value={fk.id}>
-                  {fk.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            );
-        } else {
-          return (
-            <TextField
-              key={col}
-              label={col.replace(/_/g, " ")}
-              value={updatedRow[col] || ""}
-              onChange={(e) => handleChange(e, col)}
-              fullWidth
-              disabled={col === "id"}
-              margin="normal"
-              variant="outlined"
-              slotProps={{
-                input: {
-                  sx: {
-                    color: col === "id" ? 'text.secondary' : 'text.primary', // Adjust text color for disabled fields
-                  },
-                },
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: col === "id" ? 'text.disabled' : 'primary.contrastText', // Default border color
-                  },
-                  '&:hover fieldset': {
-                    borderColor: col === "id" ? 'text.disabled' : 'primary.light', // Prevent hover color on disabled fields
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'primary.main', // Focus state for active fields
-                  },
-                  '&.Mui-disabled fieldset': {
-                    borderColor: 'text.disabled', // Explicitly set border color for disabled state
-                  },
-                },
-                '& .MuiInputBase-root.Mui-disabled': {
-                  color: 'text.secondary', // Safeguard for disabled text styling
-                },
-              }}
+                }}
               >
-              {fkValues.map((fk) => (
-                <MenuItem key={fk.id} value={fk.id}>
-                  {fk.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            
-          );
-        }
-      })}
-        
-        
+                {fkValues.map((fk) => (
+                  <MenuItem key={fk.id} value={fk.id}>
+                    {fk.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            );
+          } else {
+            return (
+              <TextField
+                key={col}
+                label={col.replace(/_/g, " ")}
+                value={updatedRow[col] || ""}
+                // onChange={(e) => handleChange(e, col)}
+                fullWidth
+                disabled={col === "id"}
+                margin="normal"
+                variant="outlined"
+                slotProps={{
+                  input: {
+                    sx: {
+                      color: col === "id" ? 'text.secondary' : 'text.primary', // Adjust text color for disabled fields
+                    },
+                  },
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: col === "id" ? 'text.disabled' : 'primary.contrastText', // Default border color
+                    },
+                    '&:hover fieldset': {
+                      borderColor: col === "id" ? 'text.disabled' : 'primary.light', // Prevent hover color on disabled fields
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'primary.main', // Focus state for active fields
+                    },
+                    '&.Mui-disabled fieldset': {
+                      borderColor: 'text.disabled', // Explicitly set border color for disabled state
+                    },
+                  },
+                  '& .MuiInputBase-root.Mui-disabled': {
+                    color: 'text.secondary', // Safeguard for disabled text styling
+                  },
+                }}
+              >
+                {fkValues.map((fk) => (
+                  <MenuItem key={fk.id} value={fk.id}>
+                    {fk.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            );
+          }
+        })}
+
+
+
 
 
 
