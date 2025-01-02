@@ -1,20 +1,22 @@
 # Table of Contents:
-* [Section 1: Troubleshooting](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-1---troubleshooting)
-* [Section 2: New System Installation](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-2---new-system-installation)
-* [Section 3: Virtual Environment](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-3---virtual-environment)
-* [Section 4: Build & Run the Application - Line 56](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-4---build--run-the-application)
-* [Section 5: Docker](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-5---docker)
-* [Section 6: npm commands](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-6---npm-commands)
-* [Section 7: Table Maintenance](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-7---table-maintenance)
-* [Section 8: Flask Commands](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-8---flask-commands)
-* [Section 9: SQLite](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-9---SQLite)
-* [Section 10: Key files](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-10---key-files)
-* [Section 11: Code stuff](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-11---code-stuff)
-* [Section 12: Project relative paths](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-12---project-relative-paths)
-* [Section 13: Visual Studio](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-13---visual-studio)
-* [Section 14: Copilot](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-14---copilot)
-* [Section 15: Feature List](https://github.com/CraftyCatalyst/Tracker_Project/blob/main/satisfactory_tracker/README.md#section-15---feature-list--todos)
+* [Section 1: Troubleshooting](#section-1---troubleshooting)
+* [Section 2: New System Installation](#section-2---new-system-installation)
+* [Section 3: Virtual Environment](#section-3---virtual-environment)
+* [Section 4: Build & Run the Application - Line 56](#section-4---build--run-the-application)
+* [Section 5: Docker](#section-5---docker)
+* [Section 6: npm commands](#section-6---npm-commands)
+* [Section 7: Table Maintenance](#section-7---table-maintenance)
+* [Section 8: Flask Commands](#section-8---flask-commands)
+* [Section 9: SQLite](#section-9---SQLite)
+* [Section 10: Key files](#section-10---key-files)
+* [Section 11: Code stuff](#section-11---code-stuff)
+* [Section 12: Project relative paths](#section-12---project-relative-paths)
+* [Section 13: Visual Studio](#section-13---visual-studio)
+* [Section 14: Copilot](#section-14---copilot)
+* [Section 15: Feature List](#section-15---feature-list--todos)
 
+| <h1>Section 1 - Troubleshooting:</h1>|<h6>[Back to top](#table-of-contents)</h6>|
+| :------------ |------------------------------------------------------:|
 # Section 1 - Troubleshooting:
 ## When installed packages aren't recognised:
 ### Check >Python Interpreter in Command Palette to make sure it's pointing to the right python installation.
