@@ -35,15 +35,15 @@
 
 # Section 2 - New System Installation:
   ### 1) Install Node.js  
-  https://nodejs.org/en/download/prebuilt-installer
+    https://nodejs.org/en/download/prebuilt-installer
   ### 2) Install the Communnity version of MySQL - if necessary
-  https://dev.mysql.com/downloads/mysql/
+    https://dev.mysql.com/downloads/mysql/
   ### 3) Install MySQL Workbench - if necessary
-  https://dev.mysql.com/downloads/workbench/
+    https://dev.mysql.com/downloads/workbench/
   ### 4) Install Python - if necessary
-  https://www.python.org/downloads/windows/
+    https://www.python.org/downloads/windows/
   ### 5) Set Up a Virtual Environment
-  See Section 3
+    See Section 3
 
 # Section 3 - Virtual environment:
   ### Set Up:
@@ -291,29 +291,43 @@ formatting of TODOs:
 - Ctrl + Shift + L 
 
 # Section 15 - Feature List & TODOs:
-### IN PROGRESS:            
-- Implement Data Validation on EditModal
-- Implement the data validation on the EditModal for edit and create modes.
-- Get valid values from data_validation table.
-- Get values for foreign key constraints
-- Change parts and recipes tables to 'part' and 'recipe' for consistency.
+## Data Management
+* ### Edit Modal:            
+    * [ ] Implement Data Validation on EditModal
+    * [ ] Implement the data validation on the EditModal for edit and create modes.
+    * [ ] Get valid values from data_validation table.
+    * [ ] Get values for foreign key constraints
+    * [ ] Change parts and recipes tables to 'part' and 'recipe' for consistency.
 
-### PENDING:
-- Update build_tree to take alternate recipes into account.
-- Save and Load Configurations
-- Allow users to save their selected recipes, parts, and target quantities into configurations that they can load later.
-- Machine and Resource Calculations
-- Add summaries for the required machines and resource supply/demand at the bottom of the tree.
-- Export Tree Data
-- Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).
+## Dependencies
+* ### Build Tree:
+    * [ ] Update build_tree to take alternate recipes into account.
+    * [ ] Save and Load Configurations
+        * [ ] Allow users to save their selected recipes, parts, and target quantities into configurations that they can load later.
+    * [ ] Machine and Resource Calculations
+        * [ ] Add summaries for the required machines and resource supply/demand at the bottom of the tree.
+* ### User Interface:
+    * [ ] Export Tree Data
+        * [ ] Allow exporting the dependency tree (e.g., as JSON, CSV, or a downloadable PDF).
+    * [x] Visualization of Dependency Tree
+        * [x] Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
+        * [x] Interactive Filtering (updated all tables to MUI X DataGrid)
+        * [x] Added interactive filtering to the tables to allow users to search, sort, and filter the data.
+    * [x] Collapsible Tree Nodes
+        * [x] Add the ability to collapse/expand all/individual nodes of the tree for better usability. 
 
-### DONE:
-- Set up laptop
-- Fix Logout button in the header. It's not working. 
-- Visualization of Dependency Tree
-- Use a tree graph (e.g., D3.js, react-tree-graph, or MUI X TreeView) to visually display the tree structure instead of the current table. This will help users better understand relationships.
-- Interactive Filtering (updated all tables to MUI X DataGrid)
-- Added interactive filtering to the tables to allow users to search, sort, and filter the data.
-- Collapsible Tree Nodes
-- Add the ability to collapse/expand all/individual nodes of the tree for better usability.   
+* ### Production Configuration:
+    * [x] Get Flask working on a seperate server
+        * [ ] Separate Flask/SQL and React code
+        * [ ] Add a new 'prod' RUN_MODE
+        * [ ] Test Docker with new folder structure
+    * [ ] Upgrade from SQLite3 to MySQL
+
+* ### MISC:
+    * [x] Test new system installation instructions on laptop
+    * [x] Fix Logout button in the header. It's not working.
+    
+
+
+  
 
