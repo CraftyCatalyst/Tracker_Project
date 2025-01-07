@@ -8,27 +8,35 @@ services:
       - "3000:3000" # React
       - "5000:5000" # Flask
     volumes:
-      - .:/app
+      - .:/app:cached
     environment:
       FLASK_ENV: development
       NODE_ENV: development
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_USER: tracker_user
-      MYSQL_PASSWORD: example #TODO: Create & update this password
+      MYSQL_PASSWORD: KUTcF^TI@3JBsAP6
       MYSQL_DB: satisfactory_tracker
     depends_on:
       - mysql
-    command: npm start
-  
+    command: npm start, sleep infinity
+    
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    network_mode: service:mysql
   mysql:
     image: mysql:8.0
+    restart: unless-stopped
     environment:      
-      MYSQL_ROOT_PASSWORD: example #TODO: Create & update this password
+      MYSQL_ROOT_PASSWORD: lxtfd&B7rQKgL9fs
       MYSQL_DATABASE: satisfactory_tracker
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    
+    # Add "forwardPorts": ["5432"] to **devcontainer.json** to forward MySQL locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
 volumes:
   mysql_data:

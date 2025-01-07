@@ -15,7 +15,7 @@ dotenv_path = os.path.join(basedir, ".env")
 load_dotenv()
 
 class Config:
-    RUN_MODE = os.getenv('RUN_MODE')
+    RUN_MODE = os.getenv('RUN_MODE_LOCATION')
     print(f'RUN_MODE: {RUN_MODE}')
 
 # Set DB config values based on RUN_MODE

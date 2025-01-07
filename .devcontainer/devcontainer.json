@@ -1,0 +1,11 @@
+{
+	"name": "Tracker Project MySQL",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	"forwardPorts": [3306],
+	"features": {
+        "docker-in-docker": "latest"
+    },
+	"postCreateCommand": "apt-get update && apt-get install -y docker.io && service docker start || dockerd"    
+}
