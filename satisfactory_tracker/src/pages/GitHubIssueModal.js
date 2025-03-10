@@ -20,6 +20,23 @@ const GitHubIssueModal = ({ open, onClose }) => {
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const location = useLocation();
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Handle file selection
+  const handleFileUpload = (acceptedFiles) => {
+    setUploadedFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
+  };
+
+  // Remove file function
+  const handleRemoveFile = (index) => {
+    setUploadedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+    console.log("Files after removal:", uploadedFiles); // Debugging
+  };
+
+  useEffect(() => {
+    console.log("Updated file list:", uploadedFiles);
+  }, [uploadedFiles]);
 
   const pageTitles = {
     "/": "Home",
@@ -75,14 +92,16 @@ const GitHubIssueModal = ({ open, onClose }) => {
     e.preventDefault();
     setError("");
     setSuccessMessage("");
-
+    setLoading(true);
     let uploadedImageUrls = [];
 
     // ✅ Upload image if one is selected
     // ✅ Upload all selected files
-    if (files.length > 0) {
+    if (uploadedFiles.length > 0) {
+      // const formData = new FormData();
+      // files.forEach((file) => formData.append("file", file));
       const formData = new FormData();
-      files.forEach((file) => formData.append("file", file));
+      uploadedFiles.forEach((file) => formData.append("file", file));
 
       try {
         const uploadResponse = await axios.post(API_ENDPOINTS.upload_screenshot, formData, {
@@ -92,6 +111,7 @@ const GitHubIssueModal = ({ open, onClose }) => {
 
       } catch (error) {
         setError("Failed to upload screenshot.");
+        setLoading(false);
         return;
       }
     }
@@ -103,12 +123,12 @@ const GitHubIssueModal = ({ open, onClose }) => {
 ${description}
 
 **Uploaded Files:**  
-${uploadedImageUrls.length > 0 
-  ? uploadedImageUrls.map((url) => {
-      const filename = url.split("/").pop(); // Extract filename from URL
-      return `📎 [View File - ${filename}](${url})`;
-    }).join("\n") 
-  : "No files uploaded"}
+${uploadedImageUrls.length > 0
+        ? uploadedImageUrls.map((url) => {
+          const filename = url.split("/").pop(); // Extract filename from URL
+          return `📎 [View File - ${filename}](${url})`;
+        }).join("\n")
+        : "No files uploaded"}
 
 
 ---
@@ -127,19 +147,23 @@ ${browserInfo}
       setTitle("");
       setDescription("");
       setLabels(["bug"]);
+      setUploadedFiles([]); // ✅ Clear files after successful upload
     } catch (error) {
       setError(error.response?.data?.error || "Failed to create issue.");
       console.error("Failed to create GitHub issue", error);
       // logToBackend("Failed to create GitHub issue", error);
+    } finally {
+      setLoading(false);
     }
   };
-
   const [files, setFiles] = useState([]);
 
   // ✅ Handle Drop Event
-  const onDrop = useCallback((acceptedFiles) => {
-    setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);  // ✅ Append new files
-  }, []);
+  const onDrop = (acceptedFiles) => {
+    setUploadedFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
+    console.log("Files after upload:", uploadedFiles); // Debugging
+    // handleFileUpload(acceptedFiles);
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -212,7 +236,26 @@ ${browserInfo}
               </Box>
 
               {/* ✅ Show File Previews */}
-              <Box sx={{ mt: 2 }}>{filePreviews}</Box>
+              <Box sx={{ mt: 2 }}>
+                {uploadedFiles.length > 0 && (
+                  <ul style={{ listStyle: "none", padding: 0 }}>
+                    {uploadedFiles.map((file, index) => (
+                      <li key={index} style={{ display: "flex", alignItems: "center", marginBottom: "5px" }}>
+                        📎 {file.name}
+                        <Button
+                          onClick={() => handleRemoveFile(index)}
+                          variant="outlined"
+                          size="small"
+                          sx={{ ml: 2, color: "red", borderColor: "red", "&:hover": { backgroundColor: "#ffcccb" } }}
+                        >
+                          ❌ Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Box>
+
             </>
             {/* 🔹 Display Browser & URL Info */}
             <Typography variant="body2" sx={{ mt: 2, color: "gray", fontSize: "0.9rem" }}>
@@ -222,8 +265,14 @@ ${browserInfo}
               </pre>
             </Typography>
 
-            <Button type="submit" variant="contained" fullWidth sx={{ mt: 2, backgroundColor: "#ff5722", "&:hover": { backgroundColor: "#e64a19" } }}>
-              Submit
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              sx={{ mt: 2, backgroundColor: "#ff5722", "&:hover": { backgroundColor: "#e64a19" } }}
+              disabled={loading}  // 🔹 Disable when loading
+            >
+              {loading ? "Submitting..." : "Submit"}
             </Button>
             <Button
               onClick={onClose}
