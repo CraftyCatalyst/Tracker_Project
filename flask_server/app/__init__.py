@@ -17,8 +17,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 def create_app():
     # Construct the absolute path to the config file
-    config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../config.py'))
+    config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
     print(f"Loading config from: {config_path}")
+    logging.debug(f"Loading config from: {config_path}")
     logger = setup_logger("__init__")
     app = Flask(__name__, static_folder=None) # Explicity set static_folder to None to disable static file serving from default location
     CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True) # Enable CORS for all domains on all routes with credentials support

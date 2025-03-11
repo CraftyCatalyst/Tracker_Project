@@ -35,7 +35,7 @@ import secrets
 import base64
 # from .read_save_file import process_save_file  # Import the processing function
 
-config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../config.py'))
+config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
 
 # Load the config module dynamically
 spec = importlib.util.spec_from_file_location("config", config_path)
