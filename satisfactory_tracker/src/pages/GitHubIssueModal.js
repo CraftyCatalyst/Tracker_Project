@@ -42,7 +42,7 @@ const GitHubIssueModal = ({ open, onClose }) => {
     "/": "Home",
     "/data": "Data Management",
     "/dependencies": "Parts & Recipes",
-    "/tracker": "My Tracker",
+    "/tracker": "Tracker",
     "/admin/testers": "Testers Registration",
   };
 
@@ -75,9 +75,6 @@ const GitHubIssueModal = ({ open, onClose }) => {
 
     return `Browser: ${browser} | OS: ${os} | Page: ${currentPageTitle}`;
   };
-
-
-
 
   // Inside `useEffect()`, replace the old `setBrowserInfo`
   useEffect(() => {

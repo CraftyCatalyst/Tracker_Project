@@ -1,5 +1,5 @@
 /// This is the main component of the application. It is responsible for routing the user to the correct page based on the URL path.
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AlertProvider } from "./context/AlertContext";
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -24,6 +24,24 @@ import { Box } from "@mui/material"; // Import Box
 
 
 function App() {
+  useEffect(() => {
+    // Determine the title based on the domain
+    const hostname = window.location.hostname;
+    let title = 'Satisfactory Tracker';
+
+    if (hostname === 'localhost') {
+      title = 'Satisfactory Tracker - LOCAL';
+    } else if (hostname === 'www.satisfactorytracker.com') {
+      title = 'Satisfactory Tracker';
+    } else if (hostname === 'dev.satisfactorytracker.com') {
+      title = 'Satisfactory Tracker - Closed Beta Test';
+    }
+
+    // Set the document title
+    document.title = title;
+  }, []);
+
+  
   return (
     <UserProvider>
       <AlertProvider> {/* Wrap AlertProvider around the app */}

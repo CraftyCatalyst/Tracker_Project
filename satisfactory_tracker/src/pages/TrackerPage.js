@@ -274,16 +274,11 @@ const TrackerPage = () => {
     }
   };
 
-  console.log("before dropzone declaration - useDropZone:", useDropzone);
-  const dropzone = useDropzone({ onDrop, accept: ".sav", multiple: false });
-  console.log("Dropzone Output:", dropzone);
-  const { getRootProps, getInputProps, isDragActive } = dropzone || {};
-
-  // const { getRootProps, getInputProps, isDragActive } = useDropzone({
-  //   onDrop,
-  //   accept: ".sav",
-  //   multiple: false,
-  // });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: ".sav",
+    multiple: false,
+  });
 
   //  Define columns for DataGrid
   const userColumns = [
