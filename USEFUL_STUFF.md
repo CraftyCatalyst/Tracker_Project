@@ -74,6 +74,11 @@ Check >Python Interpreter in Command Palette to make sure it's pointing to the r
 * #### <span style="color: orange; font-size: 18px;">WINDOWS</span>
       Open task manager and end all Node.js processes. Then restart the application.
 
+ ### Flask stops recognising new routes 
+    Do a full Flask restart (CTRL+C)
+    clear __pycache__
+    then restart
+
 ## <h1 id="section-2">Section 2 - New System Installation 
 <a href="#table-of-contents" style="font-size: 14px; float: right;">Back to top</a></h1>
   

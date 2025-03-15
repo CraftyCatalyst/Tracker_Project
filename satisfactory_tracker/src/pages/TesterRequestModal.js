@@ -128,7 +128,7 @@ const TesterRequestModal = ({ open, onClose }) => {
         <form onSubmit={handleSubmit}>
           <TextField fullWidth required margin="normal" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <TextField fullWidth required margin="normal" label="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-          <TextField fullWidth required margin="normal" label="Your favorite thing about Satisfactory" multiline rows={3} value={favThing} onChange={(e) => setFavThing(e.target.value)} />
+          <TextField fullWidth required margin="normal" label="What is your favorite thing about Satisfactory?" multiline rows={3} value={favThing} onChange={(e) => setFavThing(e.target.value)} />
           <TextField fullWidth required margin="normal" label="Why do you want to be a tester?" multiline rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
           
           {/* reCAPTCHA container */}

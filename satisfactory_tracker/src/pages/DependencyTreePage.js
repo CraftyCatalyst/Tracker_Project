@@ -66,50 +66,6 @@ const DependencyTreePage = () => {
     const [recipes, setRecipes] = useState(filteredRecipes);
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
-    // Commenting out the resizing code for now
-    // const handleMouseDown = (e) => {
-    //     //console.log("Mouse Down");
-    //     setIsResizing(true);
-    //     setStartX(e.clientX);
-    //     setStartWidth(tabWidth);
-    //     // Prevent text selection
-    //     document.body.style.userSelect = "none";
-    // };
-
-    // const handleMouseMove = (e) => {
-    //     if (tabWidth === 0) { return }; // Skip if the tab is collapsed
-
-    //     const deltaX = startX - e.clientX; // Calculate the change in X position
-    //     const newWidth = Math.max(0, startWidth + deltaX); // Calculate the new width
-    //     setTabWidth(newWidth);
-    //     //console.log("Mouse Position:", e.clientX, "Start X:", startX, "Tab Width:", tabWidth, "New Width:", newWidth, "Delta X:", deltaX);        
-    // };
-
-    // useEffect(() => {
-    //     //console.log("Updated Tab Width:", tabWidth);
-    // }, [tabWidth]);
-
-    // const handleMouseUp = () => {
-    //     //console.log("Mouse Up");
-    //     setIsResizing(false);
-    //     document.body.style.userSelect = ""; // Re-enable text selection
-    // };
-
-    // useEffect(() => {
-    //     if (isResizing) {
-    //         window.addEventListener("mousemove", handleMouseMove);
-    //         window.addEventListener("mouseup", handleMouseUp);
-    //     } else {
-    //         window.removeEventListener("mousemove", handleMouseMove);
-    //         window.removeEventListener("mouseup", handleMouseUp);
-    //     }
-
-    //     return () => {
-    //         window.removeEventListener("mousemove", handleMouseMove);
-    //         window.removeEventListener("mouseup", handleMouseUp);
-    //     };
-    // }, [isResizing]);
-
     const fetchTreeData = async () => {
         try {
             const response = await axios.get(API_ENDPOINTS.build_tree, {
@@ -1108,7 +1064,7 @@ const DependencyTreePage = () => {
                 {[
                     { id: "alternateRecipes", label: "Alternate Recipes" },
                     { id: "visualiseTree", label: "Visualise Tree", disabled: !treeData },
-                    // { id: "tracker", label: "Tracker" },
+                    { id: "tracker", label: "Tracker" },
                     // { id: "spiderDiagram", label: "Spider Diagram" }
                 ].map((tab) => (
                     <Button

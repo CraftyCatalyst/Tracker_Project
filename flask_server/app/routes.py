@@ -11,7 +11,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import math
 import json
-from .models import User, Tracker, User_Save, Part, Recipe, Machine, Machine_Level, Node_Purity, Resource_Node, UserSettings, User_Save_Pipes, User_Tester_Registrations
+from .models import User, Tracker, User_Save, Part, Recipe, Machine, Machine_Level, Node_Purity, Resource_Node, UserSettings, User_Save_Pipes, User_Tester_Registrations, Project_Assembly_Phases, Project_Assembly_Parts, UserSelectedRecipe, Admin_Settings
 from sqlalchemy.exc import SQLAlchemyError
 from . import db
 from .build_tree import build_tree
@@ -35,7 +35,12 @@ import secrets
 import base64
 # from .read_save_file import process_save_file  # Import the processing function
 
-config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
+# config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
+base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+print(f"INIT Base path: {base_path}")
+    
+config_path = os.path.join(base_path, "config.py")
+print(f"INIT Loading config from: {config_path}")
 
 # Load the config module dynamically
 spec = importlib.util.spec_from_file_location("config", config_path)
@@ -47,6 +52,7 @@ logger = setup_logger("routes")
 #logger.info(f"Config Path: {config_path}")  
 
 # Use the imported config variables
+RUN_MODE = config.RUN_MODE
 REACT_BUILD_DIR = config.REACT_BUILD_DIR
 REACT_STATIC_DIR = config.REACT_STATIC_DIR
 SECRET_KEY = config.SECRET_KEY
@@ -81,6 +87,13 @@ if not os.path.exists(UPLOAD_FOLDER):
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+print("AT THE TOP OF routes.py!")
+
+@main.before_request
+def debug_request():
+    logger.info(f"Incoming request: {request.method} {request.path}")
+    logging.info(f"Incoming request: {request.method} {request.path}")
+    print(f"Incoming request: {request.method} {request.path}")
 
 @main.route('/')
 def serve_react_app():
@@ -94,20 +107,6 @@ def serve_static_files(path):
     """STATIC ROUTE - Serve static files from React's build directory."""
     logger.info(f"Serving static file: {path}")
     return send_from_directory(os.path.join(REACT_BUILD_DIR, 'static'), path)
-
-@main.route('/<path:path>')
-def catchall(path):
-    logger.info(f"CATCH-ALL route called: {path}")
-    """CATCH-ALL route to serve React app or fallback."""
-    if path.startswith("static/"):
-        logger.info(f"CATCH-ALL - Skipping static route for: {path}")
-        return "", 404  # Ensure Flask doesn't interfere with /static
-    file_path = os.path.join(REACT_BUILD_DIR, path)
-    if os.path.exists(file_path):
-        logger.info(f"CATCH-ALL - Serving file: {file_path}")
-        return send_from_directory(REACT_BUILD_DIR, path)
-    logger.info("CATCH-ALL - Serving React app index.html")
-    return send_from_directory(REACT_BUILD_DIR, 'index.html')
 
 @main.route('/api/login', methods=['GET', 'POST'])
 def login():
@@ -302,20 +301,64 @@ def build_tree_route():
     #logger.info(f"Build Tree Result: {result}")
     return jsonify(result)
 
-@main.route('/api/<table_name>', methods=['GET'])
-def get_table_entries(table_name):
-    """Fetch all rows from the specified table."""
-    # Validate table name against a whitelist for security
-    if table_name not in config.VALID_TABLES:
-        return jsonify({"error": f"Invalid table name: {table_name}"}), 400
-
-    # Fetch data from the specified table
-    query = text(f"SELECT * FROM {table_name}")
+@main.route('/api/get_system_status', methods=['GET'])
+def system_status():
+    """Returns system-wide status information for the admin dashboard."""
+    logger.info("ENTERED system_status ROUTE!")  # 🔹 Add a log
+    print("ENTERED system_status ROUTE!")  # 🔹 Also print to console
+    
+    import subprocess
+  
+    # Check Flask Port
+    flask_port = request.host.split(":")[-1]  # Extract from request URL
+    logger.info(f"SYSTEM STATUS FLASK_PORT: {flask_port}")
+    print(f"SYSTEM STATUS FLASK_PORT: {flask_port}")
+    logger.info(f"SYSTEM STATUS RUN_MODE: {RUN_MODE}")
+    print(f"SYSTEM STATUS RUN_MODE: {RUN_MODE}")
+    # Check Database Connection
     try:
-        rows = db.session.execute(query).fetchall()
-        return jsonify([dict(row._mapping) for row in rows])
+        db.session.execute(text("SELECT 1"))
+        db_status = "Connected"
+        print(f"SYSTEM STATUS DB_STATUS: {db_status}")
+        logger.info(f"SYSTEM STATUS DB_STATUS: {db_status}")
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        db_status = f"Error: {str(e)}"
+    
+    # Check Nginx Status (only if running in production mode)
+    if RUN_MODE in ["prod", "prod_local"]:
+        try:
+            nginx_status = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
+            nginx_status = "Running" if "active" in nginx_status.stdout else "Not Running"
+        except Exception as e:
+            nginx_status = f"Error: {str(e)}"
+    else:
+        nginx_status = "Not applicable (RUN_MODE is not 'prod')"
+
+    print(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")
+    logger.info(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")    
+    return jsonify({
+        "run_mode": RUN_MODE,
+        "flask_port": flask_port,
+        "db_status": db_status,
+        "nginx_status": nginx_status
+    })
+
+# @main.route('/api/<table_name>', methods=['GET'])
+# def get_table_entries(table_name):
+#     """Fetch all rows from the specified table."""
+#     logger.info(f"Getting all rows from table: {table_name}")
+#     logging.info(f"Getting all rows from table: {table_name}")
+#     # Validate table name against a whitelist for security
+#     if table_name not in config.VALID_TABLES:
+#         return jsonify({"error": f"Invalid table name: {table_name}"}), 400
+
+#     # Fetch data from the specified table
+#     query = text(f"SELECT * FROM {table_name}")
+#     try:
+#         rows = db.session.execute(query).fetchall()
+#         return jsonify([dict(row._mapping) for row in rows])
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
     
 @main.route('/api/tables', methods=['GET'])
 def get_tables():
@@ -396,7 +439,7 @@ def get_part():
 @main.route('/api/part_names', methods=['GET'])
 def get_parts_names():
     """GET PART NAMES Fetch all parts from the database."""
-    parts_query = db.session.execute(text("SELECT id, part_name FROM part WHERE category = 'Parts'")).fetchall()
+    parts_query = db.session.execute(text("SELECT id, part_name FROM part WHERE category = 'Parts' ORDER BY part_name")).fetchall()
     parts = [{"id": row.id, "name": row.part_name} for row in parts_query]
     return jsonify(parts)
 
@@ -444,7 +487,7 @@ def tracker():
     """TRACKER - Render the tracker page."""
     return render_template('tracker.html') #TODO: Implement tracker.html
     
-@main.route('/dashboard')
+@main.route('/api/dashboard')
 @login_required
 def dashboard():
     """DASHBOARD - Render the dashboard page."""
@@ -1378,3 +1421,255 @@ def upload_screenshot():
             return jsonify({"error": "Failed to upload some files", "details": response.json()}), 400
 
     return jsonify({"image_urls": uploaded_urls}), 201  # ✅ Return multiple URLs
+
+
+# Store user activity in memory for now (better to use Redis in production)
+ACTIVE_USERS = {}
+
+@main.route('/api/user_activity', methods=['POST'])
+def update_user_activity():
+    """Updates the last active time and page for a user."""
+    if not current_user.is_authenticated:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    data = request.json
+    page = data.get("page", "Unknown Page")
+    timestamp = datetime.now().strftime('%d/%m/%y %H:%M:%S')
+
+    ACTIVE_USERS[current_user.id] = {
+        "username": current_user.username,
+        "page": page,
+        "last_active": timestamp
+    }
+
+    return jsonify({"message": "User activity updated"}), 200
+
+
+@main.route('/api/active_users', methods=['GET'])
+def get_active_users():
+    """Returns a list of active users and their last activity."""
+    return jsonify(ACTIVE_USERS)
+
+@main.route('/api/get_assembly_phases', methods=['GET'])
+def get_assembly_phases():
+    requests = Project_Assembly_Phases.query.order_by(Project_Assembly_Phases.id).all()
+
+    return jsonify([
+        {
+            "id": req.id,
+            "phase_name": req.phase_name,
+            "phase_description": req.phase_description,
+        }
+        for req in requests
+    ])
+
+@main.route('/api/get_assembly_phase_parts/<int:phase_id>', methods=['GET'])
+def get_assembly_phases_parts(phase_id):
+    requests = Project_Assembly_Parts.query.filter_by(phase_id=phase_id).all()
+    return jsonify([
+        {
+            "id": req.id,
+            "phase_id": req.phase_id,
+            "phase_part_id": req.phase_part_id,
+            "phase_part_quantity": req.phase_part_quantity,
+        }
+        for req in requests
+    ])
+
+@main.route('/api/get_assembly_phase_details/<int:phase_id>', methods=['GET'])
+def get_assembly_phase_details(phase_id):
+    phase = Project_Assembly_Phases.query.get(phase_id)
+    if not phase:
+        return jsonify({"error": "Phase not found"}), 404
+
+    parts = (
+        db.session.query(
+            Project_Assembly_Parts.phase_part_id,
+            Project_Assembly_Parts.phase_part_quantity,
+            Part.part_name
+        )
+        .join(Part, Project_Assembly_Parts.phase_part_id == Part.id)
+        .filter(Project_Assembly_Parts.phase_id == phase_id)
+        .all()
+    )
+
+    return jsonify({
+        "id": phase.id,
+        "phase_name": phase.phase_name,
+        "phase_description": phase.phase_description,
+        "parts": [
+            {"part_name": p.part_name, "quantity": p.phase_part_quantity} for p in parts
+        ]
+    })
+
+@main.route('/api/get_all_assembly_phase_details', methods=['GET'])
+def get_all_assembly_phase_details():
+    phases = Project_Assembly_Phases.query.all()
+    
+    all_phases = []
+    for phase in phases:
+        parts = (
+            db.session.query(
+                Project_Assembly_Parts.phase_part_id,
+                Project_Assembly_Parts.phase_part_quantity,
+                Part.part_name  # ✅ Get part name from Part table
+            )
+            .join(Part, Project_Assembly_Parts.phase_part_id == Part.id)  # ✅ JOIN to get part names
+            .filter(Project_Assembly_Parts.phase_id == phase.id)
+            .all()
+        )
+
+        all_phases.append({
+            "id": phase.id,
+            "phase_name": phase.phase_name,
+            "phase_description": phase.phase_description,
+            "parts": [
+                {"part_name": p.part_name, "quantity": p.phase_part_quantity} for p in parts
+            ]
+        })
+
+    return jsonify(all_phases)
+
+
+@main.route('/api/user_selected_recipe_check_part/<int:part_id>', methods=['GET'])
+def selected_recipe_check_part(part_id):
+    requests = UserSelectedRecipe.query.filter_by(user_id = current_user.id, part_id=part_id).all()
+    return jsonify([
+        {
+            "recipe_id": req.recipe_id,            
+        }
+        for req in requests
+    ])
+
+@main.route('/api/get_admin_settings', methods=['GET'])
+def get_admin_settings():
+    settings = Admin_Settings.query.all()
+    # return the following fields id, setting_category, setting_key, setting_type, value_text, value_boolean, value_float, value_integer, value_datetime, created_at, updated_at
+    
+    return jsonify([
+        {
+            "id": settings.id,
+            "setting_category": settings.setting_category,
+            "setting_key": settings.setting_key,
+            "setting_type": settings.setting_type,
+            "value_text": settings.value_text,
+            "value_boolean": settings.value_boolean,
+            "value_float": settings.value_float,
+            "value_integer": settings.value_integer,
+            "value_datetime": settings.value_datetime,
+            "created_at": settings.created_at,
+            "updated_at": settings.updated_at,
+        }
+    ])
+
+@main.route('/api/get_admin_setting/<category>/<key>/<type>', methods=['GET'])
+def get_admin_setting(category, key, type):
+    setting = Admin_Settings.query.filter_by(setting_category=category, setting_key=key, setting_type=type).first()
+    if not setting:
+        return jsonify({"error": "Setting not found"}), 404
+    
+    if type == 'text':
+        return jsonify({"value": setting.value_text})
+    elif type == 'boolean':
+        return jsonify({"value": setting.value_boolean})
+    elif type == 'float':
+        return jsonify({"value": setting.value_float})
+    elif type == 'integer':
+        return jsonify({"value": setting.value_integer})
+    elif type == 'datetime':
+        return jsonify({"value": setting.value_datetime})
+    else:
+        return jsonify({"error": "Invalid setting type"}), 400
+    
+
+@main.route('/api/add_admin_setting', methods=['POST'])
+def add_admin_setting():
+    data = request.json
+    category = data.get('category')
+    key = data.get('key')
+    type = data.get('type')
+    value = data.get('value')
+
+    if not category or not key or not type or value is None:
+        return jsonify({"error": "Category, key, type, and value are required"}), 400
+
+    setting = Admin_Settings.query.filter_by(setting_category=category, setting_key=key, setting_type=type).first()
+    if not setting:
+        return jsonify({"error": "Setting not found"}), 404
+
+    if type == 'text':
+        setting.value_text = value
+    elif type == 'boolean':
+        setting.value_boolean = value
+    elif type == 'float':
+        setting.value_float = value
+    elif type == 'integer':
+        setting.value_integer = value
+    elif type == 'datetime':
+        setting.value_datetime = value
+    else:
+        return jsonify({"error": "Invalid setting type"}), 400
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Setting updated successfully"}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+    
+@main.route('/api/update_admin_setting', methods=['PUT'])
+def update_admin_setting():
+    data = request.json
+    id = data.get('id')
+    category = data.get('category')
+    key = data.get('key')
+    type = data.get('type')
+    value = data.get('value')
+
+    if not category or not key or not type or value is None:
+        return jsonify({"error": "Category, key, type, and value are required"}), 400
+
+    setting = Admin_Settings.query.filter_by(id).first()
+    if not setting:
+        return jsonify({"error": "Setting not found"}), 404
+
+    setting.category = category
+    setting.key = key
+    setting.type = type
+
+    if type == 'text':
+        setting.value_text = value
+    elif type == 'boolean':
+        setting.value_boolean = value
+    elif type == 'float':
+        setting.value_float = value
+    elif type == 'integer':
+        setting.value_integer = value
+    elif type == 'datetime':
+        setting.value_datetime = value
+    else:
+        return jsonify({"error": "Invalid setting type"}), 400
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Setting updated successfully"}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@main.route('/<path:path>')
+def catchall(path):
+    logger.info(f"CATCH-ALL route called: {path}")
+    """CATCH-ALL route to serve React app or fallback."""
+    if path.startswith("static/"):
+        logger.info(f"CATCH-ALL - Skipping static route for: {path}")
+        return "", 404  # Ensure Flask doesn't interfere with /static
+    file_path = os.path.join(REACT_BUILD_DIR, path)
+    if os.path.exists(file_path):
+        logger.info(f"CATCH-ALL - Serving file: {file_path}")
+        return send_from_directory(REACT_BUILD_DIR, path)
+    logger.info("CATCH-ALL - Serving React app index.html")
+    return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
+print("LOADED routes.py!")
