@@ -3,13 +3,16 @@ import logging
 from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.DEBUG)
+
 # Base directory of the project
-basedir = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-print(f"BASE DIRECTORY: {basedir}")
+basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+print(f"CONFIG BASE DIRECTORY: {basedir}")
 
 # Load environment variables from .env file
 dotenv_path = os.path.join(basedir, "satisfactory_tracker", ".env")
-load_dotenv()
+print(f"CONFIG Loading .env from: {dotenv_path}")
+logging.debug(f"CONFIG Loading .env from: {dotenv_path}")
+load_dotenv(dotenv_path, override=True)
 
 # for key in os.environ:
 #     print(f"{key}: {os.getenv(key)}")
@@ -22,6 +25,7 @@ load_dotenv()
 class Config:
     RUN_MODE = os.getenv('REACT_APP_RUN_MODE', '')
 
+RUN_MODE = Config.RUN_MODE
 print(f"Config.RUN_MODE: {Config.RUN_MODE}")    
 logging.debug(f"Config.RUN_MODE: {Config.RUN_MODE}")
 

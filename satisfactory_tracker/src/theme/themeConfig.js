@@ -2,7 +2,7 @@ import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { dark } from '@mui/material/styles/createPalette';
 import logToBackend from "../services/logService";
 import { DensitySmall, WrapText } from '@mui/icons-material';
-import { fontSize, minHeight } from '@mui/system';
+import { fontSize, minHeight, typography } from '@mui/system';
 
 export const USE_THEME = 'dark'; // 'light' or 'dark'
 
@@ -26,7 +26,7 @@ export const THEME_LIGHT = {
     text_disabled: '#757575', // Muted Gray for disabled text #757575
     text_dropdown: '#FFFFFF', // White text for dropdowns 
     // Button color palette
-    button_main: '#242424', // Dark Gray #242424
+    button_main: '#0A3D62', // Dark Gray #242424 change to Deep Ocean Blue #0A3D62
     button_contrastText: '#FFFFFF', // White text on buttons #FFFFFF
     button_hover: '#333333', // Dark Charcoal hover color #333333
     button_disabled: '#383838', // Dark Gray for disabled buttons #383838
@@ -171,28 +171,28 @@ export const THEME_LIGHT = {
         textTransform: 'none',
     },
     components_MuiButton_containedPrimary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #1d3a2a
         },
     },
     components_MuiButton_containedSecondary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #1d3a2a
         },
     },
     components_MuiButton_outlinedPrimary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #2a2e51
         },
     },
     components_MuiButton_outlinedSecondary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #1d3a2a
@@ -319,7 +319,7 @@ export const THEME_DARK = {
     text_disabled: '#757575', // Muted Gray for disabled text #757575
     text_dropdown: '#FFFFFF', // White text for dropdowns 
     // Button color palette
-    button_main: '#242424', // Dark Gray #242424
+    button_main: '#0A3D62', //'#242424', // Dark Gray #242424 change to Deep Ocean Blue #0A3D62
     button_contrastText: '#FFFFFF', // White text on buttons #FFFFFF
     button_hover: '#333333', // Dark Charcoal hover color #333333
     button_disabled: '#383838', // Dark Gray for disabled buttons #383838
@@ -457,28 +457,28 @@ export const THEME_DARK = {
         textTransform: 'none',
     },
     components_MuiButton_containedPrimary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #1d3a2a
         },
     },
     components_MuiButton_containedSecondary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #1d3a2a
         },
     },
     components_MuiButton_outlinedPrimary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #2a2e51
         },
     },
     components_MuiButton_outlinedSecondary: {
-        backgroundColor: '#242424', // #264431
+        backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
             backgroundColor: '#333333', // #1d3a2a
@@ -619,6 +619,9 @@ export const COMMON_SETTINGS = {
     typography_h6: { fontSize: '14px', fontWeight: 600 },
     typography_h6_italic: { fontSize: '14px', fontStyle: 'italic' },
     typography_h6_underline: { fontSize: '14px', textDecoration: 'underline' },
+    typography_h7: { fontSize: '12px', fontWeight: 600 },
+    typography_h7_italic: { fontSize: '12px', fontStyle: 'italic' },
+    typography_h7_underline: { fontSize: '12px', textDecoration: 'underline' },
     typography_body1: { fontSize: '18px' },
     typography_body1_italic: { fontSize: '18px', fontStyle: 'italic' },
     typography_body1_underline: { fontSize: '18px', textDecoration: 'underline' },

@@ -32,9 +32,6 @@ import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import GitHubIssueModal from "../pages/GitHubIssueModal.js";
 import HelpCenterIcon from '@mui/icons-material/HelpCenter';
 
-
-
-
 axios.defaults.withCredentials = true;
 
 const Header = () => {
@@ -55,7 +52,7 @@ const Header = () => {
     const pageTitles = {
         "/": "Home",
         "/data": "Data Management",
-        "/dependencies": "Parts & Recipes",
+        "/dependencies": "Part Dependencies",
         "/tracker": "My Tracker",
     };
 
@@ -167,11 +164,14 @@ const Header = () => {
                 {/* Only show Data Management and Tester Management if user is an admin */}
                 {user?.role === "admin" && (
                     <>
-                        <MenuItem component={Link} to="/data" onClick={handleMenuClose}                    >
+                        <MenuItem component={Link} to="/data" onClick={handleMenuClose}>
                             <TableViewIcon sx={{ marginRight: 1 }} /> Data Management
                         </MenuItem>
-                        <MenuItem component={Link} to="/admin/testers" onClick={handleMenuClose}                    >
+                        <MenuItem component={Link} to="/admin/testers" onClick={handleMenuClose}>
                             <PersonSearchIcon sx={{ marginRight: 1 }} /> Tester Request Management
+                        </MenuItem>
+                        <MenuItem component={Link} to="/admin/dashboard" onClick={handleMenuClose}>
+                            <DashboardIcon sx={{ marginRight: 1 }} /> Admin Dashboard
                         </MenuItem>
                     </>
 
@@ -181,7 +181,7 @@ const Header = () => {
                 {user && (
                     <>
                         <MenuItem component={Link} to="/dependencies" onClick={handleMenuClose}>
-                            <LibraryAddIcon sx={{ marginRight: 1 }} /> Parts & Recipes
+                            <LibraryAddIcon sx={{ marginRight: 1 }} /> Part Dependencies
                         </MenuItem>
                         <MenuItem component={Link} to="/tracker" onClick={handleMenuClose}>
                             <StackedLineChartIcon sx={{ marginRight: 1 }} /> Tracker
@@ -246,16 +246,6 @@ const Header = () => {
                         </MenuItem>
                         <MenuItem component="a" href="https://patreon.com/your-link" target="_blank">
                             <PaidIcon sx={{ marginRight: 1 }} /> Pledge on Patreon
-                        </MenuItem>
-                    </>
-                )}
-
-                {/* Tester Request Button (Always Visible) */}
-                {!user && (
-                    <>
-                        <Divider />
-                        <MenuItem onClick={() => setTesterModalOpen(true)}>
-                            <FavoriteIcon sx={{ marginRight: 1, color: "red" }} /> Request Tester Access
                         </MenuItem>
                     </>
                 )}

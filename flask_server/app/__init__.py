@@ -17,9 +17,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 def create_app():
     # Construct the absolute path to the config file
-    config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
+    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+    print(f"base path: {base_path}")
+        
+    config_path = os.path.join(base_path, "config.py")
     print(f"Loading config from: {config_path}")
     logging.debug(f"Loading config from: {config_path}")
+    
+    
     logger = setup_logger("__init__")
     app = Flask(__name__, static_folder=None) # Explicity set static_folder to None to disable static file serving from default location
     CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True) # Enable CORS for all domains on all routes with credentials support
@@ -47,7 +52,6 @@ def create_app():
     
     with app.app_context():
         # Import models to ensure they are registered
-        #TODO: None of the imported tables are being used. Should they be included in the db.create_all() call?
         from .models import User, Part, Recipe, Alternate_Recipe, Machine_Level, Node_Purity, Power_Shards, Miner_Supply, Data_Validation, Tracker, User_Save, Machine, Recipe_Mapping, Resource_Node
         #db.create_all()  # Ensure tables are created
 
@@ -55,9 +59,15 @@ def create_app():
     from .routes import main
     app.register_blueprint(main)
 
-    # print("Registered Routes:")
-    # for rule in app.url_map.iter_rules():
-    #     print(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")
+    print("Registered Routes:")
+    x = 0
+    for rule in app.url_map.iter_rules():
+        x += 1
+        logger.debug(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")        
+        print(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")    
+    print(f"Total Routes Registered: {x}")
+    logger.info(f"Total Routes Registered: {x}")
+    logging.info(f"Total Routes Registered: {x}")
     
     logger.info("✅ Flask Application successfully created")
     logging.info("Flask Application successfully created")

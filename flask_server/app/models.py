@@ -267,14 +267,16 @@ class User_Save_Pipes(db.Model):
 class Project_Assembly_Phases(db.Model):
     __tablename__ = 'project_assembly_phases'
     id = db.Column(db.Integer, primary_key=True)
-    phase_id = db.Column(db.Integer, nullable=False)
     phase_name = db.Column(db.String(100), nullable=False)
-    phase_description = db.Column(db.String(200), nullable=True)
+    phase_description = db.Column(db.String(200), nullable=True)       
+
+class Project_Assembly_Parts(db.Model):
+    __tablename__ = 'project_assembly_parts'
+    id = db.Column(db.Integer, primary_key=True)
+    phase_id = db.Column(db.Integer, db.ForeignKey('project_assembly_phases.id'), nullable=False)
     phase_part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=False)
     phase_part_quantity = db.Column(db.Float, nullable=False)
-    __table_args__ = (
-        db.UniqueConstraint('phase_id', 'phase_name', 'phase_part_id', name='unique_project_phase'),
-    )
+    
 
 class User_Connection_Data(db.Model):
     __tablename__ = 'user_connection_data'
@@ -327,3 +329,20 @@ class User_Tester_Registrations(db.Model):
     is_approved = db.Column(db.Boolean, default=False)
     reviewed_at = db.Column(db.DateTime, nullable=True)
     db.UniqueConstraint('email_address', 'username', name='unique_tester_registration')
+
+class Admin_Settings(db.Model):
+    __tablename__ = 'admin_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    setting_category = db.Column(db.String(100), nullable=False)
+    setting_key = db.Column(db.String(100), nullable=False)
+    setting_type = db.Column(db.String(100), nullable=False)
+    value_text = db.Column(db.Text, nullable=True)
+    value_boolean = db.Column(db.Boolean, nullable=True)
+    value_float = db.Column(db.Float, nullable=True)
+    value_integer = db.Column(db.Integer, nullable=True)
+    value_datetime = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    __table_args__ = (
+        db.UniqueConstraint('setting_category', 'setting_key', name='unique_admin_setting'),
+    )

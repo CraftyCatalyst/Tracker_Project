@@ -48,16 +48,16 @@ const Footer = () => {
                     View GitHub Logos
                 </Link>
                 <br />
-                <Link href="https://www.flaticon.com/free-icons/question-mark" title="question-mark icons"
+                {/* <Link href="https://www.flaticon.com/free-icons/question-mark" title="question-mark icons"
                     target="_blank"
                     rel="noopener noreferrer"
                     color="inherit"
                     underline="hover">
                     Question-mark icons created by Fathema Khanom - Flaticon
-                </Link>
+                </Link> */}
             </Typography>
             {/* Quick Links */}
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "center", marginBottom: 1 }}>
+            {/* <Box sx={{ display: "flex", gap: 2, justifyContent: "center", marginBottom: 1 }}>
                 <Link href="https://github.com/your-repo" target="_blank" color="inherit" underline="none">
                     <GitHubIcon sx={{ fontSize: 24 }} /> GitHub
                 </Link>
@@ -68,7 +68,7 @@ const Footer = () => {
                     <PolicyIcon sx={{ fontSize: 24 }} /> Privacy Policy
                 </Link>
 
-            </Box>
+            </Box> */}
 
             {/* Copyright Notice */}
             <Typography variant="caption">

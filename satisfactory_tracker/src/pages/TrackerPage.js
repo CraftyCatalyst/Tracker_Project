@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
 import { useDropzone } from "react-dropzone";
-import { Box, Typography, CircularProgress, Tab } from "@mui/material";
+import { Box, Typography, CircularProgress, Tab, Button } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { CheckCircle, ErrorOutline } from "@mui/icons-material";
 import { TabContext, TabList, TabPanel } from "@mui/lab";
@@ -17,6 +17,9 @@ import { useTheme } from "@mui/material/styles";
 import { useAlert } from "../context/AlertContext";
 import { motion } from "framer-motion";
 import Tooltip from "@mui/material/Tooltip";
+import AddToTrackerModal from "./AddToTrackerModal";
+import AlternateRecipesModal from "./AlternateRecipesModal";
+
 
 
 const TrackerPage = () => {
@@ -45,6 +48,9 @@ const TrackerPage = () => {
   const [activeTab, setActiveTab] = useState("1");
   const uploadedFileName = hasUploadedSaveFile ? userSaveData[0]?.sav_file_name : "";
   const { resetGraphData } = useUserContext();
+  const [trackerModalOpen, setTrackerModalOpen] = useState(false);
+  const [recipeModalOpen, setRecipeModalOpen] = useState(false);
+  const [hasTrackerData, setHasTrackerData] = useState(false);
 
 
   useEffect(() => {
@@ -60,10 +66,10 @@ const TrackerPage = () => {
     try {
       const response = await axios.get(API_ENDPOINTS.tracker_reports);
       setTrackerReports(response.data);
-      console.log("Tracker reports:", response.data);
+      // console.log("Tracker reports:", response.data);
 
       setFlattenedTreeData(flattenDependencyTrees(response.data));
-      console.log("Flattened tree data:", flattenedTreeData);
+      // console.log("Flattened tree data:", flattenedTreeData);
 
       return response.data;
 
@@ -136,8 +142,8 @@ const TrackerPage = () => {
       const response = await axios.post(API_ENDPOINTS.production_report, {
         trackerData,
         saveData
-      });
-
+       });
+      setHasTrackerData(true);
       return response.data;
     } catch (error) {
       console.error("Error fetching production report:", error);
@@ -206,7 +212,7 @@ const TrackerPage = () => {
     { field: "recipe", headerName: "Recipe Name", flex: 1 },
   ];
 
-    const recalculateTotals = (modifiers) => {
+  const recalculateTotals = (modifiers) => {
     const updatedTotals = {}; // Perform calculations here
     setTotals(updatedTotals);
   };
@@ -307,7 +313,7 @@ const TrackerPage = () => {
     }}
     >
 
-      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", mb: 2, width: "50%" }}>
+      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", mb: 2, width: "100%", gap : 2 }}>
 
         {/* Drag and Drop Zone */}
         <Tooltip
@@ -381,6 +387,18 @@ const TrackerPage = () => {
             )}
           </Box>
         </Tooltip>
+        <Button variant="contained" onClick={() => setTrackerModalOpen(true)}>
+            Add Parts To Track
+          </Button>
+          {trackerModalOpen && (  // ✅ Only render when open
+            <AddToTrackerModal open={trackerModalOpen} onClose={() => setTrackerModalOpen(false)} />
+          )}
+          <Button variant="contained" onClick={() => setRecipeModalOpen(true)}>
+            Choose Alternate Recipes
+          </Button>
+          {recipeModalOpen && (  // ✅ Only render when open
+            <AlternateRecipesModal open={recipeModalOpen} onClose={() => setRecipeModalOpen(false)} />
+          )}
       </Box>
       {/* Tabs Container */}
       <TabContext value={activeTab}>
@@ -396,8 +414,8 @@ const TrackerPage = () => {
         </Box>
 
         {/* Charts Panel */}
-        <TabPanel value="1">
-          {hasUploadedSaveFile ? (
+        <TabPanel value="1">          
+          {hasUploadedSaveFile && hasTrackerData ? (
             !isDataReady ? (
               // ✅ Show spinner while waiting for reports
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
@@ -422,7 +440,7 @@ const TrackerPage = () => {
             )
           ) : (
             <Typography variant="h6" sx={{ textAlign: "center", mt: 4, color: "gray" }}>
-              Upload a save file to generate reports.
+              Upload a save file & add parts to track to view target v actual charts
             </Typography>
           )}
         </TabPanel>
@@ -434,6 +452,7 @@ const TrackerPage = () => {
               <CircularProgress />
             ) : (
               <>
+                
                 <Box sx={theme.trackerPageStyles.reportBox}>
                   <DataGrid density="compact" rows={userSaveData} columns={userColumns} />
                 </Box>
@@ -451,7 +470,7 @@ const TrackerPage = () => {
               <>
 
                 <Box sx={theme.trackerPageStyles.reportBox}>
-                  <ConnectionData/>
+                  <ConnectionData />
                 </Box>
               </>
             )}
@@ -467,7 +486,7 @@ const TrackerPage = () => {
               <>
 
                 <Box sx={theme.trackerPageStyles.reportBox}>
-                  <PipeData/>
+                  <PipeData />
                 </Box>
               </>
             )}

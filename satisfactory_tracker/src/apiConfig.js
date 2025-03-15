@@ -20,13 +20,12 @@ if (process.env.REACT_APP_RUN_MODE === 'prod') {
 console.log("API_CONFIG: Flask port is " + flask_port);
 
 export const API_ENDPOINTS = {
+  system_status: `${flask_port}/api/get_system_status`,
   tables: `${flask_port}/api/tables`,  
-  table_name: (tableName) => `${flask_port}/api/${tableName}`, // Dynamic endpoint
   part_names: `${flask_port}/api/part_names`,
   alternate_recipe: `${flask_port}/api/alternate_recipe`,
   selected_recipes: `${flask_port}/api/selected_recipes`,
   recipe: `${flask_port}/api/recipe`,
-  get_recipe_id: (partId) => `${flask_port}/api/recipe_id/${partId}`,
   build_tree: `${flask_port}/api/build_tree`,
   part: `${flask_port}/api/part`,
   signup: `${flask_port}/api/signup`,
@@ -59,4 +58,14 @@ export const API_ENDPOINTS = {
   change_password: `${flask_port}/api/change_password`,
   github_issue: `${flask_port}/api/github_issue`,
   upload_screenshot: `${flask_port}/api/upload_screenshot`,
-  };
+  user_activity: `${flask_port}/api/user_activity`,
+  active_users: `${flask_port}/api/active_users`,
+  get_assembly_phases: `${flask_port}/api/get_assembly_phases`,
+  get_all_assembly_phase_details: `${flask_port}/api/get_all_assembly_phase_details`,
+  get_recipe_id: (partId) => `${flask_port}/api/recipe_id/${partId}`,
+  get_assembly_phase_parts: (phaseId) => `${flask_port}/api/get_assembly_phase_parts/${phaseId}`,
+  get_assembly_phase_details: (phaseId) => `${flask_port}/api/get_assembly_phase_details/${phaseId}`,
+  user_selected_recipe_check_part: (partId) => `${flask_port}/api/user_selected_recipe_check_part/${partId}`,
+  get_admin_setting: (category, key, type) => `${flask_port}/api/get_admin_setting/${category}/${key}/${type}`,
+  table_name: (tableName) => `${flask_port}/api/${tableName}`,
+};
