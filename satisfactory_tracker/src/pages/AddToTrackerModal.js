@@ -65,7 +65,7 @@ const AddToTrackerModal = ({ open, onClose }) => {
     useEffect(() => {
         const fetchParts = async () => {
             try {
-                console.log("Getting Part Names", API_ENDPOINTS.part_names);
+                // console.log("Getting Part Names", API_ENDPOINTS.part_names);
                 const partsResponse = await axios.get(API_ENDPOINTS.part_names);
                 const partsData = partsResponse.data;
                 setParts(Array.isArray(partsData) ? partsData : []);
@@ -81,7 +81,7 @@ const AddToTrackerModal = ({ open, onClose }) => {
     }, []);
 
     const handleAddToTracker = async (partId, targetQuantity, suppressAlert) => {
-        console.log("Adding Part to Tracker:", partId, targetQuantity, suppressAlert);
+        // console.log("Adding Part to Tracker:", partId, targetQuantity, suppressAlert);
         try {
             let useRecipeId = 0;
 
@@ -89,17 +89,17 @@ const AddToTrackerModal = ({ open, onClose }) => {
             // if it comes back with a result then set the variable useRecipeId=result otherwise let the if block below it fetch the standard
             // recipeID for that part.
 
-            console.log("Checking for user selected alternate recipe for Part:", partId);
+            // console.log("Checking for user selected alternate recipe for Part:", partId);
             const response = await axios.get(API_ENDPOINTS.user_selected_recipe_check_part(partId));
             const userSelectedRecipe = response.data;
 
             if (userSelectedRecipe.length > 0) {
                 useRecipeId = userSelectedRecipe[0].recipe_id;
-                console.log("Found User Selected Recipe ID:", useRecipeId);
+                // console.log("Found User Selected Recipe ID:", useRecipeId);
             }
 
             if (useRecipeId === 0) {
-                console.log("Fetching _Standard for Part:", partId);
+                // console.log("Fetching _Standard for Part:", partId);
                 const response = await axios.get(API_ENDPOINTS.get_recipe_id(partId), {
                     params: { recipe_name: recipeName },
                 });
@@ -111,10 +111,10 @@ const AddToTrackerModal = ({ open, onClose }) => {
                 }
 
                 useRecipeId = recipes[0].id; // Extract the first recipe_id
-                console.log("Retrieved Recipe ID:", useRecipeId);
+                // console.log("Retrieved Recipe ID:", useRecipeId);
             }
 
-            console.log("Adding Part to Tracker:", partId, targetQuantity, useRecipeId);
+            // console.log("Adding Part to Tracker:", partId, targetQuantity, useRecipeId);
             const addToTrackerResponse = await axios.post(API_ENDPOINTS.add_to_tracker, {
                 partId,
                 targetQuantity,
@@ -122,7 +122,7 @@ const AddToTrackerModal = ({ open, onClose }) => {
             });
 
             if (addToTrackerResponse.status === 200) {
-                console.log("Part added to tracker:", addToTrackerResponse.data);
+                // console.log("Part added to tracker:", addToTrackerResponse.data);
                 if (suppressAlert)
                     showAlert("success", "Part added to your tracker!");
 
@@ -194,11 +194,11 @@ const AddToTrackerModal = ({ open, onClose }) => {
     };
 
     const fetchAssemblyPhases = async () => {
-        console.log("Fetching Assembly Phases...");
+        // console.log("Fetching Assembly Phases...");
         try {
             const response = await axios.get(API_ENDPOINTS.get_assembly_phases);
             setAssemblyPhases(response.data);
-            console.log("Assembly Phases:", response.data);
+            // console.log("Assembly Phases:", response.data);
             return response.data;
 
         } catch (error) {
@@ -210,13 +210,13 @@ const AddToTrackerModal = ({ open, onClose }) => {
 
     
     const handleAddAssemblyPhaseParts = async () => {
-        console.log("Fetching Assembly Phases...");
+        // console.log("Fetching Assembly Phases...");
         try {
             setLoading(true);
-            console.log("Fetching Assembly Phase Parts for Phase:", selectedPhase, selectedPhaseName);
+            // console.log("Fetching Assembly Phase Parts for Phase:", selectedPhase, selectedPhaseName);
             const response = await axios.get(API_ENDPOINTS.get_assembly_phase_parts(selectedPhase));
             setSelectedAssemblyParts(response.data);
-            console.log("Selected Assembly Parts:", response.data);
+            // console.log("Selected Assembly Parts:", response.data);
 
             // #NEW: call handleAddToTracker for each phase_part_id in selectedAssemblyParts, 
             // part=phase_part_id, target_quantity=phase_part_quantity and suppressAlert=true to the tracker
@@ -296,7 +296,7 @@ const AddToTrackerModal = ({ open, onClose }) => {
             try {
                 const response = await axios.get(API_ENDPOINTS.get_all_assembly_phase_details);
                 setAssemblyPhaseDetails(response.data);
-                console.log("Assembly Phase Details:", response.data);
+                // console.log("Assembly Phase Details:", response.data);
             } catch (error) {
                 console.error("Error fetching assembly phase details:", error);
             }

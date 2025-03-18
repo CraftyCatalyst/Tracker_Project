@@ -80,7 +80,7 @@ const DependencyTreePage = () => {
             setTreeData(response.data); // Use the tree structure from the backend directly
             setFlattenedData(flattenTree(response.data)); // Flatten the tree for the DataGrid
             setVisualData(buildTreeData(response.data)); // Build the tree data structure for the visual tab
-            console.log("Fetched Tree Data:", response.data, treeData);
+            // console.log("Fetched Tree Data:", response.data, treeData);
         } catch (error) {
             setError("Failed to fetch dependency tree. Check console for details.");
             console.error("Error fetching dependency tree:", error);
@@ -115,7 +115,7 @@ const DependencyTreePage = () => {
                     : [],
 
             };
-            console.log("Current Node:", key, "Unique id:", uniqueId, "Subtree:", value.Subtree);
+            // console.log("Current Node:", key, "Unique id:", uniqueId, "Subtree:", value.Subtree);
 
             if (!newNode.id || newNode.id === "undefined") {
                 console.error("Node with missing ID:", newNode); // Catch undefined IDs
@@ -154,7 +154,7 @@ const DependencyTreePage = () => {
                 return null; // Skip invalid nodes
             }
 
-            console.log("Rendering Node:", node.id, node.name); // Confirm valid node
+            // console.log("Rendering Node:", node.id, node.name); // Confirm valid node
 
             return (
                 <TreeItem
@@ -319,12 +319,12 @@ const DependencyTreePage = () => {
     useEffect(() => {
         const fetchPartsAndRecipes = async () => {
             try {
-                console.log("Getting Part Names", API_ENDPOINTS.part_names);
+                // console.log("Getting Part Names", API_ENDPOINTS.part_names);
                 const partsResponse = await axios.get(API_ENDPOINTS.part_names);
                 const partsData = partsResponse.data;
                 setParts(Array.isArray(partsData) ? partsData : []);
 
-                console.log("Getting Alt Recipes", API_ENDPOINTS.alternate_recipe);
+                // console.log("Getting Alt Recipes", API_ENDPOINTS.alternate_recipe);
                 const recipesResponse = await axios.get(API_ENDPOINTS.alternate_recipe);
                 // console.log("Fetched Alternate Recipes:", recipesResponse.data);
 
@@ -442,7 +442,7 @@ const DependencyTreePage = () => {
                 const response = await axios.delete(`${API_ENDPOINTS.selected_recipes}/${recipeId}`);
                 if (response.status === 200) {
                     showAlert("success", "Recipe removed successfully.");
-                    console.log("Recipe removed successfully.");
+                    // console.log("Recipe removed successfully.");
                     setSelectedRecipes(selectedRecipes.filter((id) => id !== recipeId)); // Remove from the selectedRecipes array
                 } else {
                     console.error("Unexpected response from backend:", response);
@@ -455,7 +455,7 @@ const DependencyTreePage = () => {
                 });
                 if (response.status === 200) {
                     showAlert("success", "Recipe added successfully.");
-                    console.log("Recipe added successfully.");
+                    // console.log("Recipe added successfully.");
 
                 } else {
                     console.error("Unexpected response from backend:", response);
@@ -491,7 +491,7 @@ const DependencyTreePage = () => {
         }
 
         try {
-            console.log("Fetching Recipe ID for Part:", partId, "and Recipe Name:", recipeName);
+            // console.log("Fetching Recipe ID for Part:", partId, "and Recipe Name:", recipeName);
             const response = await axios.get(API_ENDPOINTS.get_recipe_id(partId), {
                 params: { recipe_name: recipeName },
             });
@@ -503,9 +503,9 @@ const DependencyTreePage = () => {
             }
 
             const recipeId = recipes[0].id; // Extract the first recipe_id
-            console.log("Retrieved Recipe ID:", recipeId);
+            // console.log("Retrieved Recipe ID:", recipeId);
 
-            console.log("Adding Part to Tracker:", partId, targetQuantity, recipeId);
+            // console.log("Adding Part to Tracker:", partId, targetQuantity, recipeId);
             const addToTrackerResponse = await axios.post(API_ENDPOINTS.add_to_tracker, {
                 partId,
                 targetQuantity,
@@ -513,7 +513,7 @@ const DependencyTreePage = () => {
             });
 
             if (addToTrackerResponse.status === 200) {
-                console.log("Part added to tracker:", addToTrackerResponse.data);
+                // console.log("Part added to tracker:", addToTrackerResponse.data);
                 showAlert("success", "Part added to your tracker!");
                 fetchTrackerData(); // Refresh the tracker data
             } else {
@@ -811,7 +811,7 @@ const DependencyTreePage = () => {
                 const selectedPartId = Number(selectedPart); // Convert selectedPart to a number
                 const selectedPartData = parts.find((part) => part.id === selectedPartId);
                 const partName = selectedPartData ? selectedPartData.name : "Unknown Part";
-                console.log("User", user, "Part Data:", parts, "Selected Part ID:", selectedPartId, "Part Name:", partName);
+                // console.log("User", user, "Part Data:", parts, "Selected Part ID:", selectedPartId, "Part Name:", partName);
 
                 const columns = [
                     { field: "part_name", headerName: "Part", flex: 1 },
@@ -1064,7 +1064,7 @@ const DependencyTreePage = () => {
                 {[
                     { id: "alternateRecipes", label: "Alternate Recipes" },
                     { id: "visualiseTree", label: "Visualise Tree", disabled: !treeData },
-                    { id: "tracker", label: "Tracker" },
+                    // { id: "tracker", label: "Tracker" },
                     // { id: "spiderDiagram", label: "Spider Diagram" }
                 ].map((tab) => (
                     <Button

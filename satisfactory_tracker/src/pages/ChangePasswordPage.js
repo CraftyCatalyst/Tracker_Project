@@ -19,7 +19,7 @@ const ChangePasswordPage = () => {
     setError("");
     setSuccess("");
 
-    console.log("Sending user_id:", userId);  // Log user_id before sending
+    // console.log("Sending user_id:", userId);  // Log user_id before sending
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");

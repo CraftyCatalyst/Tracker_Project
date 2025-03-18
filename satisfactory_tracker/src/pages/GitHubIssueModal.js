@@ -31,11 +31,11 @@ const GitHubIssueModal = ({ open, onClose }) => {
   // Remove file function
   const handleRemoveFile = (index) => {
     setUploadedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
-    console.log("Files after removal:", uploadedFiles); // Debugging
+    // console.log("Files after removal:", uploadedFiles); // Debugging
   };
 
   useEffect(() => {
-    console.log("Updated file list:", uploadedFiles);
+    // console.log("Updated file list:", uploadedFiles);
   }, [uploadedFiles]);
 
   const pageTitles = {

@@ -71,7 +71,7 @@ const AlternateRecipesModal = ({ open, onClose }) => {
     useEffect(() => {
         const fetchRecipes = async () => {
             try {
-                console.log("Getting Alt Recipes", API_ENDPOINTS.alternate_recipe);
+                // console.log("Getting Alt Recipes", API_ENDPOINTS.alternate_recipe);
                 const recipesResponse = await axios.get(API_ENDPOINTS.alternate_recipe);
 
                 setAlternateRecipes(recipesResponse.data);
@@ -139,7 +139,7 @@ const AlternateRecipesModal = ({ open, onClose }) => {
                 const response = await axios.delete(`${API_ENDPOINTS.selected_recipes}/${recipeId}`);
                 if (response.status === 200) {
                     showAlert("success", "Recipe removed successfully.");
-                    console.log("Recipe removed successfully.");
+                    // console.log("Recipe removed successfully.");
                     setSelectedRecipes(selectedRecipes.filter((id) => id !== recipeId)); // Remove from the selectedRecipes array
                 } else {
                     console.error("Unexpected response from backend:", response);
@@ -152,7 +152,7 @@ const AlternateRecipesModal = ({ open, onClose }) => {
                 });
                 if (response.status === 200) {
                     showAlert("success", "Recipe added successfully.");
-                    console.log("Recipe added successfully.");
+                    // console.log("Recipe added successfully.");
 
                 } else {
                     console.error("Unexpected response from backend:", response);

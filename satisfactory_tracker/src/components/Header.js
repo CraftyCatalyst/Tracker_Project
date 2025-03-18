@@ -106,13 +106,22 @@ const Header = () => {
                     {user && (
                         <>
                             <Button variant="contained" color="warning" onClick={() => setIssueModalOpen(true)}>
-                                Report an Issue
+                                Report An Issue
                             </Button>
                             {issueModalOpen && (  // ✅ Only render when open
                                 <GitHubIssueModal open={issueModalOpen} onClose={() => setIssueModalOpen(false)} />
                             )}
                         </>
                     )}
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        href="https://github.com/CraftyCatalyst/Tracker_Project/issues"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Review All Issues
+                    </Button>
 
                 </Box>
 
@@ -161,22 +170,6 @@ const Header = () => {
                     <HomeIcon sx={{ marginRight: 1 }} /> Home
                 </MenuItem>
 
-                {/* Only show Data Management and Tester Management if user is an admin */}
-                {user?.role === "admin" && (
-                    <>
-                        <MenuItem component={Link} to="/data" onClick={handleMenuClose}>
-                            <TableViewIcon sx={{ marginRight: 1 }} /> Data Management
-                        </MenuItem>
-                        <MenuItem component={Link} to="/admin/testers" onClick={handleMenuClose}>
-                            <PersonSearchIcon sx={{ marginRight: 1 }} /> Tester Request Management
-                        </MenuItem>
-                        <MenuItem component={Link} to="/admin/dashboard" onClick={handleMenuClose}>
-                            <DashboardIcon sx={{ marginRight: 1 }} /> Admin Dashboard
-                        </MenuItem>
-                    </>
-
-                )}
-
                 {/* Restricted Menu Items - Only visible if logged in */}
                 {user && (
                     <>
@@ -190,6 +183,24 @@ const Header = () => {
 
                     </>
                 )}
+                {/* Only show Data Management and Tester Management if user is an admin */}
+                {user?.role === "admin" && (
+                    <>
+                        <Divider sx={{ borderColor: theme.palette.primary.contrastText, borderWidth: "2px", opacity: 0.7 }} />
+                        <MenuItem component={Link} to="/admin/user_management" onClick={handleMenuClose}>
+                            <PersonSearchIcon sx={{ marginRight: 1 }} /> User Management
+                        </MenuItem>
+                        <MenuItem component={Link} to="/data" onClick={handleMenuClose}>
+                            <TableViewIcon sx={{ marginRight: 1 }} /> Data Management
+                        </MenuItem>                        
+                        <MenuItem component={Link} to="/admin/dashboard" onClick={handleMenuClose}>
+                            <DashboardIcon sx={{ marginRight: 1 }} /> Admin Dashboard
+                        </MenuItem>
+                    </>
+
+                )}
+
+
                 <Divider sx={{ borderColor: theme.palette.primary.contrastText, borderWidth: "2px", opacity: 0.7 }} />
                 {/* User Section */}
                 {user ? (
@@ -224,28 +235,30 @@ const Header = () => {
                 {user && (
                     <>
                         {/* Contribute Section */}
-                        <MenuItem disabled><Favorite sx={{ marginRight: 1, color: "red" }} /> <b>Help make the site better</b></MenuItem>
+                        <MenuItem disabled><Favorite sx={{ marginRight: 1, color: "#4FC3F7" }} /> <b>Help make the site better</b></MenuItem>
+                        <Divider />
                         <MenuItem component="a" href="https://your-discord-link.com" target="_blank">
                             <DiscordIcon style={{ width: 24, height: 24, marginRight: 8 }} />
-                            Join Discord
+                            Join Discord - Coming soon
                         </MenuItem>
                         <MenuItem component="a" href="https://github.com/your-repo" target="_blank">
                             <GitHubIcon style={{ width: 24, height: 24, marginRight: 8 }} />
                             GitHub Repository
                         </MenuItem>
                         <MenuItem component="a" href="https://your-feedback-form.com" target="_blank">
-                            <Comment sx={{ marginRight: 1 }} /> Leave a Comment
+                            <Comment sx={{ marginRight: 1 }} /> Leave a Comment - Coming soon
                         </MenuItem>
 
                         <Divider sx={{ borderColor: theme.palette.primary.contrastText, borderWidth: "2px", opacity: 0.7 }} />
 
                         {/* Support Section */}
-                        <MenuItem disabled><Favorite sx={{ marginRight: 1, color: "red" }} /> <b>Help keep the site running</b></MenuItem>
+                        <MenuItem disabled><Favorite sx={{ marginRight: 1, color: "#4FC3F7" }} /> <b>Help keep the site running</b></MenuItem>
+                        <Divider />
                         <MenuItem component="a" href="https://paypal.me/your-link" target="_blank">
-                            <AttachMoney sx={{ marginRight: 1 }} /> Donate through PayPal
+                            <AttachMoney sx={{ marginRight: 1 }} /> Donate through PayPal - Coming soon
                         </MenuItem>
                         <MenuItem component="a" href="https://patreon.com/your-link" target="_blank">
-                            <PaidIcon sx={{ marginRight: 1 }} /> Pledge on Patreon
+                            <PaidIcon sx={{ marginRight: 1 }} /> Pledge on Patreon - Coming soon
                         </MenuItem>
                     </>
                 )}
