@@ -63,8 +63,8 @@ def create_app():
     x = 0
     for rule in app.url_map.iter_rules():
         x += 1
-        logger.debug(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")        
-        print(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")    
+        # logger.debug(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")        
+        # print(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")    
     print(f"Total Routes Registered: {x}")
     logger.info(f"Total Routes Registered: {x}")
     logging.info(f"Total Routes Registered: {x}")

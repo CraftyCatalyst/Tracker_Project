@@ -18,7 +18,7 @@ import { UserProvider } from './context/UserContext';
 import TrackerPage from './pages/TrackerPage';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import UserSettings from './pages/UserSettingsPage';
-import TesterManagementPage from './pages/TesterManagementPage.js';
+import UserManagementPage from './pages/UserManagementPage.js';
 import ChangePasswordPage from './pages/ChangePasswordPage.js';
 import HelpPage from './pages/HelpPage.js';
 import { Box } from "@mui/material";
@@ -86,13 +86,12 @@ function App() {
                   <Route path="/tracker" element={<TrackerPage />} />
                   <Route path="/signup" element={<SignupPage />} />
                   <Route path="/settings" element={<UserSettings />} />
-                  <Route path="/admin/testers" element={<TesterManagementPage />} />
+                  <Route path="/admin/user_management" element={<UserManagementPage />} />
                   <Route path="/change-password" element={<ChangePasswordPage />} />
                   <Route path="/help" element={<HelpPage />} />
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 </Routes>
               </Box>
-
               <Footer />
             </Box>
           </Router>

@@ -35,19 +35,19 @@ logging.debug(f"Config.RUN_MODE: {Config.RUN_MODE}")
 # Set DB config values based on REACT_APP_RUN_MODE
 if Config.RUN_MODE == 'local':
     # print("Entering local condition")
-    logging.debug("Entering local condition")
+    # logging.debug("Entering local condition")
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_LOCAL')
     REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
     REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
 elif Config.RUN_MODE == 'docker':
     # print("Entering docker condition")
-    logging.debug("Entering docker condition")
+    # logging.debug("Entering docker condition")
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_DOCKER')
     REACT_BUILD_DIR = f'{os.path.join(basedir, "app", "build")}'
     REACT_STATIC_DIR = f'{os.path.join(basedir, "app", "build", "static")}'
 elif Config.RUN_MODE == 'prod':
     # print("Entering prod condition")
-    logging.debug("Entering prod condition")
+    # logging.debug("Entering prod condition")
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_PROD')
     REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
     REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
@@ -64,7 +64,7 @@ else:
     raise ValueError('REACT_APP_RUN_MODE environment variable not set. Please set REACT_APP_RUN_MODE to "local", "docker", "prod", or "prod_local"')
 
 #print(f'SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}')
-logging.debug(f'SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}')
+# logging.debug(f'SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}')
 # Flask-login variables
 SECRET_KEY = os.getenv('SECRET_KEY') or 'dev_default_secret_key'
 SESSION_TYPE = 'filesystem'

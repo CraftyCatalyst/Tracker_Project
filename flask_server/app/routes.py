@@ -33,7 +33,9 @@ from datetime import datetime, timedelta, timezone
 from .logging_util import setup_logger
 import secrets
 import base64
-# from .read_save_file import process_save_file  # Import the processing function
+import subprocess
+import shutil
+
 
 # config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
 base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
@@ -91,10 +93,9 @@ print("AT THE TOP OF routes.py!")
 
 @main.before_request
 def debug_request():
-    logger.info(f"Incoming request: {request.method} {request.path}")
-    logging.info(f"Incoming request: {request.method} {request.path}")
-    print(f"Incoming request: {request.method} {request.path}")
-
+    if request.path != '/api/active_users':
+        logging.debug(f"Routes: Incoming request: {request.method} {request.path} Current user: {current_user.username if current_user.is_authenticated else 'Anonymous'}")
+    
 @main.route('/')
 def serve_react_app():
     """SERVE REACT APP - Serve the React app's index.html file."""
@@ -302,6 +303,7 @@ def build_tree_route():
     return jsonify(result)
 
 @main.route('/api/get_system_status', methods=['GET'])
+@login_required
 def system_status():
     """Returns system-wide status information for the admin dashboard."""
     logger.info("ENTERED system_status ROUTE!")  # 🔹 Add a log
@@ -327,7 +329,9 @@ def system_status():
     # Check Nginx Status (only if running in production mode)
     if RUN_MODE in ["prod", "prod_local"]:
         try:
-            nginx_status = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
+            #nginx_status = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
+            nginx_status = subprocess.run(["/bin/sudo", "/usr/bin/systemctl", "is-active", "nginx"], capture_output=True, text=True)
+            logging.debug(f"NGINX STATUS: {nginx_status} - {nginx_status.stdout}")
             nginx_status = "Running" if "active" in nginx_status.stdout else "Not Running"
         except Exception as e:
             nginx_status = f"Error: {str(e)}"
@@ -343,22 +347,22 @@ def system_status():
         "nginx_status": nginx_status
     })
 
-# @main.route('/api/<table_name>', methods=['GET'])
-# def get_table_entries(table_name):
-#     """Fetch all rows from the specified table."""
-#     logger.info(f"Getting all rows from table: {table_name}")
-#     logging.info(f"Getting all rows from table: {table_name}")
-#     # Validate table name against a whitelist for security
-#     if table_name not in config.VALID_TABLES:
-#         return jsonify({"error": f"Invalid table name: {table_name}"}), 400
+@main.route('/api/<table_name>', methods=['GET'])
+def get_table_entries(table_name):
+    """Fetch all rows from the specified table."""
+    logger.info(f"Getting all rows from table: {table_name}")
+    logging.info(f"Getting all rows from table: {table_name}")
+    # Validate table name against a whitelist for security
+    if table_name not in config.VALID_TABLES:
+        return jsonify({"error": f"Invalid table name: {table_name}"}), 400
 
-#     # Fetch data from the specified table
-#     query = text(f"SELECT * FROM {table_name}")
-#     try:
-#         rows = db.session.execute(query).fetchall()
-#         return jsonify([dict(row._mapping) for row in rows])
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+    # Fetch data from the specified table
+    query = text(f"SELECT * FROM {table_name}")
+    try:
+        rows = db.session.execute(query).fetchall()
+        return jsonify([dict(row._mapping) for row in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
 @main.route('/api/tables', methods=['GET'])
 def get_tables():
@@ -1427,6 +1431,7 @@ def upload_screenshot():
 ACTIVE_USERS = {}
 
 @main.route('/api/user_activity', methods=['POST'])
+@login_required
 def update_user_activity():
     """Updates the last active time and page for a user."""
     if not current_user.is_authenticated:
@@ -1446,6 +1451,7 @@ def update_user_activity():
 
 
 @main.route('/api/active_users', methods=['GET'])
+@login_required
 def get_active_users():
     """Returns a list of active users and their last activity."""
     return jsonify(ACTIVE_USERS)
@@ -1542,6 +1548,7 @@ def selected_recipe_check_part(part_id):
     ])
 
 @main.route('/api/get_admin_settings', methods=['GET'])
+@login_required
 def get_admin_settings():
     settings = Admin_Settings.query.all()
     # return the following fields id, setting_category, setting_key, setting_type, value_text, value_boolean, value_float, value_integer, value_datetime, created_at, updated_at
@@ -1563,6 +1570,7 @@ def get_admin_settings():
     ])
 
 @main.route('/api/get_admin_setting/<category>/<key>/<type>', methods=['GET'])
+@login_required
 def get_admin_setting(category, key, type):
     setting = Admin_Settings.query.filter_by(setting_category=category, setting_key=key, setting_type=type).first()
     if not setting:
@@ -1583,6 +1591,7 @@ def get_admin_setting(category, key, type):
     
 
 @main.route('/api/add_admin_setting', methods=['POST'])
+@login_required
 def add_admin_setting():
     data = request.json
     category = data.get('category')
@@ -1618,6 +1627,7 @@ def add_admin_setting():
         return jsonify({"error": str(e)}), 500
     
 @main.route('/api/update_admin_setting', methods=['PUT'])
+@login_required
 def update_admin_setting():
     data = request.json
     id = data.get('id')
@@ -1657,6 +1667,136 @@ def update_admin_setting():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+@main.route('/api/fetch_logs/<service_name>', methods=['GET'])
+@login_required
+def fetch_logs(service_name):
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized access"}), 403
+
+    logging.debug(f"Fetching logs for service: {service_name}")
+    commands = {
+        "nginx": ["/usr/bin/tail", "-n", "100", "/var/log/nginx/error.log"],
+        "flask-app": ["/usr/bin/journalctl", "-u", "flask-app", "--no-pager", "--lines=100"],
+        "flask-dev": ["/usr/bin/journalctl", "-u", "flask-dev", "--no-pager", "--lines=100"],
+        "mysql": ["/usr/bin/sudo", "/usr/bin/journalctl", "-u", "mysql", "--no-pager", "--lines=100"]
+    }
+
+    command = commands.get(service_name)
+    logging.debug(f"Command: {command}")
+
+    if not command:
+        logging.error(f"Invalid service name: {service_name}")
+        return jsonify({"error": "Invalid service name"}), 400
+
+    try:
+        logging.debug(f"Running command: {command}")
+        output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode('utf-8')
+        logging.debug(f"Output: {output}")
+        log_lines = output.splitlines()
+        return jsonify({"logs": log_lines}), 200
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to fetch logs: {e.output.decode('utf-8')} {e}")
+        return jsonify({"error": f"Failed to fetch logs: {e.output.decode('utf-8')}"}), 500
+    except Exception as e:
+        logging.error(f"Failed to fetch logs: {str(e)} {e}")
+        return jsonify({"error": f"Failed to fetch logs: {str(e)}"}), 500
+        #return jsonify({"error": str(e)}), 500
+    
+@main.route('/api/restart_service/<service_name>', methods=['POST'])
+@login_required
+def restart_service(service_name):
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized access"}), 403
+
+    allowed_services = ['nginx', 'mysql', 'flask-app', 'flask-dev']
+    if service_name not in allowed_services:
+        return jsonify({"error": "Invalid service name"}), 400
+
+    try:
+        subprocess.run(['sudo', 'systemctl', 'restart', service_name], check=True)
+        return jsonify({"message": f"{service_name} restarted successfully"}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Failed to restart {service_name}: {str(e)}"}), 500
+    
+@main.route('/api/system_resources', methods=['GET'])
+@login_required
+def get_system_resources():
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        cpu_usage = subprocess.check_output(["top", "-bn1"]).decode('utf-8').split('\n')[2]
+        memory_usage = subprocess.check_output(["free", "-m"]).decode('utf-8').split('\n')[1]
+        disk_usage = subprocess.check_output(["df", "-h", "/"]).decode('utf-8').splitlines()[1]
+
+        return jsonify({
+            "cpu_usage": cpu_usage,
+            "memory_usage": memory_usage,
+            "disk_usage": disk_usage
+        })
+    except Exception as e:
+        return jsonify({"error": f"Could not fetch resources: {str(e)}"}), 500
+
+
+# New route to update the must_change_password field for a user
+@main.route('/api/update_must_change_password/<service_name>/<new_value>', methods=['PUT'])
+@login_required
+def update_must_change_password(userId, new_value):
+    try:
+        """Updates the must_change_password field for a user."""
+        logging.info(f"Updating must_change_password for user ID: {userId} to: {new_value}")
+
+        if not userId:
+            logging.error("User ID is required.")
+            return jsonify({"error": "User ID is required."}), 400
+
+        user = User.query.get(userId)
+        logging.info(f"Updating must_change_password for user ID: {userId}")
+        if not user:
+            logging.error(f"User not found for ID: {userId}")
+            return jsonify({"error": "User not found."}), 404
+
+        user.must_change_password = new_value
+        db.session.commit()
+        logging.info(f"must_change_password updated successfully for user ID: {userId} to: {new_value}")
+        return jsonify({"message": "must_change_password updated successfully!"}), 200
+    except Exception as e:
+        logging.error(f"Failed to update must_change_password: {str(e)}")
+        return jsonify({"error": f"Failed to update must_change_password: {str(e)}"}), 500
+
+# New route to reset a user's password
+@main.route('/api/reset_user_password/<userId>', methods=['PUT'])
+@login_required
+def reset_user_password(userId):
+    try:
+        logging.info(f"Resetting password for user ID: {userId}")
+
+        if not userId:
+            logging.error("User ID is required.")
+            return jsonify({"error": "User ID is required."}), 400
+
+        # Generate a temporary password
+        temp_password = secrets.token_urlsafe(8)  # Example: 'Xyz12345'
+        hashed_password = generate_password_hash(temp_password, method='pbkdf2:sha256')
+
+        user = User.query.get(userId)
+        if not user:
+            logging.error(f"User not found for ID: {userId}")
+            return jsonify({"error": "User not found."}), 404
+
+        # ✅ Correctly update the user's password
+        user.password = generate_password_hash(hashed_password, method="pbkdf2:sha256")
+        user.must_change_password = True  # Force password reset on first login
+        db.session.commit()
+
+        logging.info(f"Password reset successfully for user ID: {userId}")
+        return jsonify({
+        "message": "Tester approved and user account created.",
+        "temp_password": temp_password  # ⚠️ Only for testing; send securely via email later
+    })
+    except Exception as e:
+        logging.error(f"Failed to reset password: {str(e)}")
+        return jsonify({"error": f"Failed to reset password: {str(e)}"}), 500
 
 @main.route('/<path:path>')
 def catchall(path):

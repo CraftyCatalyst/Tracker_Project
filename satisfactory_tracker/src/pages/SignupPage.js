@@ -23,7 +23,7 @@ const SignupPage = () => {
   // logToBackend("SignupPage - Using reCAPTCHA site key: " + RECAPTCHA_SITE_KEY, "INFO");
   
   useEffect(() => {
-    console.log("reCAPTCHA container state:", document.getElementById('recaptcha-container'));
+    // console.log("reCAPTCHA container state:", document.getElementById('recaptcha-container'));
     if (window.grecaptcha && !recaptchaRendered) {
       console.log('reCAPTCHA script loaded.');
       window.grecaptcha.ready(() => {

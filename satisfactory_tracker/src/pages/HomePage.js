@@ -37,7 +37,7 @@ const HomePage = () => {
                     setIsLoggedIn(true);
                 })
                 .catch(error => {
-                    // console.error("Error logging in automatically:", error);
+                    console.error("Error logging in automatically:", error);
                     if (error.response?.status === 401) {
                         logout();
                     }
@@ -96,7 +96,7 @@ const HomePage = () => {
                             🚧 Closed Testing Phase 🚧
                         </Typography>
                         <Typography variant="body1">
-                            I'm be looking for a small number of dedicated Satisfactory players to help in a closed Beta test.
+                            I'm looking for a small number of dedicated Satisfactory players to help in a closed Beta test.
                             <br />
                             If you’d like to participate, register below!
                             <br />
@@ -109,13 +109,24 @@ const HomePage = () => {
                             🚧 Closed Testing Phase 🚧
                         </Typography>
                         <Typography variant="body1">
-                            We are currently conducting closed Beta testing.
+                            In the near future I'll be looking for a small number of dedicated Satisfactory players to help in a closed Beta test.
                             <br />
-                            Tester registration is closed.
-                            <br />
-                            Keep an eye out for the public release!
+                            Keep checking back for updates!                            
                         </Typography>
                     </CardContent>
+                    
+                    // <CardContent sx={{ color: theme.palette.primary.contrastText }}>
+                    //     <Typography variant="h1" gutterBottom>
+                    //         🚧 Closed Testing Phase 🚧
+                    //     </Typography>
+                    //     <Typography variant="body1">
+                    //         We are currently conducting closed Beta testing.
+                    //         <br />
+                    //         Tester registration is closed.
+                    //         <br />
+                    //         Keep an eye out for the public release!
+                    //     </Typography>
+                    // </CardContent>
                 )}
                 <Button
                     variant="contained"

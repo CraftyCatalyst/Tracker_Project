@@ -62,7 +62,7 @@ const TrackerPage = () => {
   };
 
   const fetchTrackerReports = async () => {
-    console.log("Fetching tracker reports...");
+    // console.log("Fetching tracker reports...");
     try {
       const response = await axios.get(API_ENDPOINTS.tracker_reports);
       setTrackerReports(response.data);
@@ -142,7 +142,7 @@ const TrackerPage = () => {
       const response = await axios.post(API_ENDPOINTS.production_report, {
         trackerData,
         saveData
-       });
+      });
       setHasTrackerData(true);
       return response.data;
     } catch (error) {
@@ -224,7 +224,7 @@ const TrackerPage = () => {
     if (acceptedFiles.length === 0) return;
 
     const file = acceptedFiles[0];
-    console.log("Uploading file:", file);
+    // console.log("Uploading file:", file);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -313,7 +313,7 @@ const TrackerPage = () => {
     }}
     >
 
-      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", mb: 2, width: "100%", gap : 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", mb: 2, width: "100%", gap: 2 }}>
 
         {/* Drag and Drop Zone */}
         <Tooltip
@@ -387,34 +387,98 @@ const TrackerPage = () => {
             )}
           </Box>
         </Tooltip>
+        <Button variant="contained" onClick={() => setRecipeModalOpen(true)}>
+          Choose Alternate Recipes
+        </Button>
+        {recipeModalOpen && (  // ✅ Only render when open
+          <AlternateRecipesModal open={recipeModalOpen} onClose={() => setRecipeModalOpen(false)} />
+        )}
         <Button variant="contained" onClick={() => setTrackerModalOpen(true)}>
-            Add Parts To Track
-          </Button>
-          {trackerModalOpen && (  // ✅ Only render when open
-            <AddToTrackerModal open={trackerModalOpen} onClose={() => setTrackerModalOpen(false)} />
-          )}
-          <Button variant="contained" onClick={() => setRecipeModalOpen(true)}>
-            Choose Alternate Recipes
-          </Button>
-          {recipeModalOpen && (  // ✅ Only render when open
-            <AlternateRecipesModal open={recipeModalOpen} onClose={() => setRecipeModalOpen(false)} />
-          )}
+          Add Parts To Track
+        </Button>
+        {trackerModalOpen && (  // ✅ Only render when open
+          <AddToTrackerModal open={trackerModalOpen} onClose={() => setTrackerModalOpen(false)} />
+        )}        
       </Box>
       {/* Tabs Container */}
       <TabContext value={activeTab}>
         <Box sx={theme.trackerPageStyles.tabsContainer}>
           <TabList onChange={handleChange} aria-label="Tracker Sections" sx={theme.trackerPageStyles.tabList}>
-            <Tab label="Charts" value="1" />
-            <Tab label="Save File Data" value="2" />
-            <Tab label="Conveyor Network" value="3" />
-            <Tab label="Pipe Network" value="4" />
-            <Tab label="Main Tables" value="5" />
-            <Tab label="Dependency Data" value="6" />
+            <Tab label="Save File Data" value="1" />
+            <Tab label="Conveyor Network" value="2" />
+            <Tab label="Pipe Network" value="3" />
+            <Tab label="Dependency Data" value="4" />
+            <Tab label="Charts" value="5" />
+            <Tab label="Main Tables" value="6" />
           </TabList>
         </Box>
 
+        
+
+        {/* User Save Data Panel */}
+        <TabPanel value="1">
+          <Box sx={theme.trackerPageStyles.tabPanelBox}>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <>
+
+                <Box sx={theme.trackerPageStyles.reportBox}>
+                  <DataGrid density="compact" rows={userSaveData} columns={userColumns} />
+                </Box>
+              </>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Conveyor Network */}
+        <TabPanel value="2">
+          <Box sx={theme.trackerPageStyles.tabPanelBox}>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <>
+
+                <Box sx={theme.trackerPageStyles.reportBox}>
+                  <ConnectionData />
+                </Box>
+              </>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Pipe Network */}
+        <TabPanel value="3">
+          <Box sx={theme.trackerPageStyles.tabPanelBox}>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <>
+
+                <Box sx={theme.trackerPageStyles.reportBox}>
+                  <PipeData />
+                </Box>
+              </>
+            )}
+          </Box>
+        </TabPanel>
+        {/* Dependency Data Panel */}
+        <TabPanel value="4">
+          <Box sx={theme.trackerPageStyles.tabPanelBox}>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <>
+                <Box sx={theme.trackerPageStyles.reportBox}>
+                  <DataGrid density="compact" rows={flattenedTreeData} columns={columns} />
+                </Box>
+
+              </>
+            )}
+          </Box>
+        </TabPanel>
         {/* Charts Panel */}
-        <TabPanel value="1">          
+        <TabPanel value="5">
           {hasUploadedSaveFile && hasTrackerData ? (
             !isDataReady ? (
               // ✅ Show spinner while waiting for reports
@@ -444,58 +508,13 @@ const TrackerPage = () => {
             </Typography>
           )}
         </TabPanel>
-
-        {/* User Save Data Panel */}
-        <TabPanel value="2">
-          <Box sx={theme.trackerPageStyles.tabPanelBox}>
-            {loading ? (
-              <CircularProgress />
-            ) : (
-              <>
-                
-                <Box sx={theme.trackerPageStyles.reportBox}>
-                  <DataGrid density="compact" rows={userSaveData} columns={userColumns} />
-                </Box>
-              </>
-            )}
-          </Box>
-        </TabPanel>
-
-        {/* Conveyor Network */}
-        <TabPanel value="3">
-          <Box sx={theme.trackerPageStyles.tabPanelBox}>
-            {loading ? (
-              <CircularProgress />
-            ) : (
-              <>
-
-                <Box sx={theme.trackerPageStyles.reportBox}>
-                  <ConnectionData />
-                </Box>
-              </>
-            )}
-          </Box>
-        </TabPanel>
-
-        {/* Pipe Network */}
-        <TabPanel value="4">
-          <Box sx={theme.trackerPageStyles.tabPanelBox}>
-            {loading ? (
-              <CircularProgress />
-            ) : (
-              <>
-
-                <Box sx={theme.trackerPageStyles.reportBox}>
-                  <PipeData />
-                </Box>
-              </>
-            )}
-          </Box>
-        </TabPanel>
-
+        
         {/* Main Tables Section */}
-        <TabPanel value="5">
+        <TabPanel value="6">
           <Box sx={theme.trackerPageStyles.tabPanelBox}>
+            <Typography variant="h2">More reports coming soon!</Typography>
+          </Box>
+          {/* <Box sx={theme.trackerPageStyles.tabPanelBox}>
             {loading ? (
               <CircularProgress />
             ) : (
@@ -509,23 +528,7 @@ const TrackerPage = () => {
 
               </>
             )}
-          </Box>
-        </TabPanel>
-
-        {/* Dependency Data Panel */}
-        <TabPanel value="6">
-          <Box sx={theme.trackerPageStyles.tabPanelBox}>
-            {loading ? (
-              <CircularProgress />
-            ) : (
-              <>
-                <Box sx={theme.trackerPageStyles.reportBox}>
-                  <DataGrid density="compact" rows={flattenedTreeData} columns={columns} />
-                </Box>
-
-              </>
-            )}
-          </Box>
+          </Box> */}
         </TabPanel>
       </TabContext>
     </Box>

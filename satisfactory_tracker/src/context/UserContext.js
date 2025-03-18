@@ -34,7 +34,7 @@ const UserProvider = ({ children }) => {
     // Login function
     const login = (userInfo, authToken) => {
         // Store user info and token in localStorage
-        console.log("Logging in user:", userInfo, authToken);
+        // console.log("Logging in user:", userInfo, authToken);
         localStorage.setItem('user_info', JSON.stringify(userInfo));
         localStorage.setItem('auth_token', authToken);
         // Update state
@@ -45,7 +45,7 @@ const UserProvider = ({ children }) => {
     // Logout function
     const logout = () => {
         // Clear user info and token from localStorage
-        console.log("Logging out user:", user, token);
+        // console.log("Logging out user:", user, token);
         localStorage.removeItem('user_info');
         localStorage.removeItem('auth_token');
         
