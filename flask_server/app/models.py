@@ -1,3 +1,12 @@
+# Description: This file contains the database models for the application.
+# The models are used to define the structure of the database tables.
+# FLASK DB COMMANDS
+# cd flask_server
+# flask db stamp head # Set the current revision to the most recent revision
+# flask db migrate -m "your description" # Create a new migration
+# flask db upgrade # Upgrade the database to the latest migration.
+
+
 from . import db
 from flask_login import UserMixin
 from . import login_manager
@@ -335,14 +344,7 @@ class Admin_Settings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     setting_category = db.Column(db.String(100), nullable=False)
     setting_key = db.Column(db.String(100), nullable=False)
-    setting_type = db.Column(db.String(100), nullable=False)
-    value_text = db.Column(db.Text, nullable=True)
-    value_boolean = db.Column(db.Boolean, nullable=True)
-    value_float = db.Column(db.Float, nullable=True)
-    value_integer = db.Column(db.Integer, nullable=True)
-    value_datetime = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    setting_value = db.Column(db.String(150), nullable=False)
     __table_args__ = (
         db.UniqueConstraint('setting_category', 'setting_key', name='unique_admin_setting'),
     )

@@ -5,7 +5,25 @@ axios.defaults.withCredentials = true;
 
 // Determine the base URL based on the run mode
 const runMode = process.env.RUN_MODE;
-const baseURL = runMode === 'prod' ? process.env.REACT_CLIENT_BASE_URL : process.env.REACT_CLIENT_BASE_URL_LOCAL;
+let baseURL = '';
+
+switch (runMode) {
+  case 'prod':
+    baseURL = process.env.REACT_APP_CLIENT_BASE_URL;
+    break;
+  case 'qa':
+    baseURL = process.env.REACT_APP_CLIENT_BASE_URL_QA;
+    break;
+  case 'local':
+    baseURL = process.env.REACT_APP_CLIENT_BASE_URL_LOCAL;
+    break;
+  case 'docker':
+    baseURL = process.env.REACT_APP_CLIENT_BASE_URL_DOCKER;
+    break;
+  default:
+    baseURL = process.env.REACT_APP_CLIENT_BASE_URL_LOCAL;
+    break;
+}
 
 // logToBackend("api.js - Run Mode: " + runMode, "INFO");
 
