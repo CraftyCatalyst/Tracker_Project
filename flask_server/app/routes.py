@@ -16,7 +16,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from . import db
 from .build_tree import build_tree
 from .build_connection_graph import format_graph_for_frontend, build_factory_graph
-from flask import request, flash, redirect, url_for
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -35,6 +34,8 @@ import secrets
 import base64
 import subprocess
 import shutil
+import platform
+import psutil
 
 
 # config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
@@ -91,9 +92,18 @@ def allowed_file(filename):
 
 print("AT THE TOP OF routes.py!")
 
-@main.before_request
-def debug_request():
-    if request.path != '/api/active_users':
+def check_maintenance_mode():
+    setting = Admin_Settings.query.filter_by(setting_category="site_settings", setting_key="maintenance_mode").first()
+    logging.debug(f"Setting: {setting}")
+    if setting and setting.setting_value == "on":
+        # Allow access to login page and admins
+        logging.debug(f"Maintenance mode is ON {current_user.isauthenticated}, {current_user.role}")
+        if request.path.startswith("/login") or (current_user.is_authenticated and current_user.role == "admin"):
+            return None  # ✅ Allow admins through
+        
+        return jsonify({"maintenance_mode": True}), 503
+    
+    if request.path != '/api/active_users' and request.path != '/api/system_resources':      
         logging.debug(f"Routes: Incoming request: {request.method} {request.path} Current user: {current_user.username if current_user.is_authenticated else 'Anonymous'}")
     
 @main.route('/')
@@ -165,7 +175,7 @@ def login():
             "email": current_user.email if current_user.is_authenticated else None,
             "role": current_user.role if current_user.is_authenticated else None
         }
-        logging.info(f"Current user: {user_info.username}")
+        # logging.info(f"Current user: {user_info.username}")
         return jsonify({
             "message": "Please log in via the POST method.",
             "current_user": user_info
@@ -336,7 +346,7 @@ def system_status():
         except Exception as e:
             nginx_status = f"Error: {str(e)}"
     else:
-        nginx_status = "Not applicable (RUN_MODE is not 'prod')"
+        nginx_status = "Not available in local run mode"
 
     print(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")
     logger.info(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")    
@@ -479,23 +489,26 @@ def get_alternate_recipe():
     alternate_recipe = [dict(row._mapping) for row in result]
     return jsonify(alternate_recipe)
 
-@main.route('/api/dependencies', methods=['GET'])
-def get_dependencies():
-    """GET DEPENDENCIES - Retrieve all dependencies from the database."""
-    query = text('SELECT * FROM dependencies')
-    dependencies = db.session.execute(query).fetchall()
-    return jsonify([dict(row._mapping) for row in dependencies])
+# NOT USED - COMMENTED OUT - 18/03/2025
+# @main.route('/api/dependencies', methods=['GET'])
+# def get_dependencies():
+#     """GET DEPENDENCIES - Retrieve all dependencies from the database."""
+#     query = text('SELECT * FROM dependencies')
+#     dependencies = db.session.execute(query).fetchall()
+#     return jsonify([dict(row._mapping) for row in dependencies])
 
-@main.route('/tracker', methods=['GET'])
-def tracker():
-    """TRACKER - Render the tracker page."""
-    return render_template('tracker.html') #TODO: Implement tracker.html
-    
-@main.route('/api/dashboard')
-@login_required
-def dashboard():
-    """DASHBOARD - Render the dashboard page."""
-    return f'Welcome, {current_user.username}!' #TODO: Implement dashboard.html
+# NOT USED - COMMENTED OUT - 18/03/2025
+# @main.route('/tracker', methods=['GET'])
+# def tracker():
+#     """TRACKER - Render the tracker page."""
+#     return render_template('tracker.html') #TODO: Implement tracker.html
+
+# NOT USED - COMMENTED OUT - 18/03/2025    
+# @main.route('/api/dashboard')
+# @login_required
+# def dashboard():
+#     """DASHBOARD - Render the dashboard page."""
+#     return f'Welcome, {current_user.username}!' #TODO: Implement dashboard.html
     
 
 @main.route('/api/validation', methods=['GET'])
@@ -730,7 +743,8 @@ def log_message():
     log_level = log_levels.get(level.upper(), logging.INFO)
 
     # Log the message
-    logger.log(log_level, f"Frontend: {message}")
+    logging.log(log_level, f"Frontend: {message}")
+    #logger.log(log_level, f"Frontend: {message}")
     return jsonify({"message": "Log recorded"}), 200
 
 @main.route("/api/upload_sav", methods=["POST"])
@@ -1547,47 +1561,14 @@ def selected_recipe_check_part(part_id):
         for req in requests
     ])
 
-@main.route('/api/get_admin_settings', methods=['GET'])
+@main.route('/api/get_admin_setting/<category>/<key>', methods=['GET'])
 @login_required
-def get_admin_settings():
-    settings = Admin_Settings.query.all()
-    # return the following fields id, setting_category, setting_key, setting_type, value_text, value_boolean, value_float, value_integer, value_datetime, created_at, updated_at
-    
-    return jsonify([
-        {
-            "id": settings.id,
-            "setting_category": settings.setting_category,
-            "setting_key": settings.setting_key,
-            "setting_type": settings.setting_type,
-            "value_text": settings.value_text,
-            "value_boolean": settings.value_boolean,
-            "value_float": settings.value_float,
-            "value_integer": settings.value_integer,
-            "value_datetime": settings.value_datetime,
-            "created_at": settings.created_at,
-            "updated_at": settings.updated_at,
-        }
-    ])
-
-@main.route('/api/get_admin_setting/<category>/<key>/<type>', methods=['GET'])
-@login_required
-def get_admin_setting(category, key, type):
-    setting = Admin_Settings.query.filter_by(setting_category=category, setting_key=key, setting_type=type).first()
+def get_admin_setting(category, key):
+    setting = Admin_Settings.query.filter_by(setting_category=category, setting_key=key).first()
     if not setting:
         return jsonify({"error": "Setting not found"}), 404
-    
-    if type == 'text':
-        return jsonify({"value": setting.value_text})
-    elif type == 'boolean':
-        return jsonify({"value": setting.value_boolean})
-    elif type == 'float':
-        return jsonify({"value": setting.value_float})
-    elif type == 'integer':
-        return jsonify({"value": setting.value_integer})
-    elif type == 'datetime':
-        return jsonify({"value": setting.value_datetime})
-    else:
-        return jsonify({"error": "Invalid setting type"}), 400
+        
+    return jsonify({"value": setting.setting_value}), 200
     
 
 @main.route('/api/add_admin_setting', methods=['POST'])
@@ -1596,29 +1577,15 @@ def add_admin_setting():
     data = request.json
     category = data.get('category')
     key = data.get('key')
-    type = data.get('type')
     value = data.get('value')
 
     if not category or not key or not type or value is None:
         return jsonify({"error": "Category, key, type, and value are required"}), 400
 
-    setting = Admin_Settings.query.filter_by(setting_category=category, setting_key=key, setting_type=type).first()
+    setting = Admin_Settings.query.filter_by(setting_category=category, setting_key=key, setting_value=value).first()
     if not setting:
-        return jsonify({"error": "Setting not found"}), 404
-
-    if type == 'text':
-        setting.value_text = value
-    elif type == 'boolean':
-        setting.value_boolean = value
-    elif type == 'float':
-        setting.value_float = value
-    elif type == 'integer':
-        setting.value_integer = value
-    elif type == 'datetime':
-        setting.value_datetime = value
-    else:
-        return jsonify({"error": "Invalid setting type"}), 400
-
+        return jsonify({"error": "Setting not found"}), 404  
+    
     try:
         db.session.commit()
         return jsonify({"message": "Setting updated successfully"}), 200
@@ -1626,47 +1593,6 @@ def add_admin_setting():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
     
-@main.route('/api/update_admin_setting', methods=['PUT'])
-@login_required
-def update_admin_setting():
-    data = request.json
-    id = data.get('id')
-    category = data.get('category')
-    key = data.get('key')
-    type = data.get('type')
-    value = data.get('value')
-
-    if not category or not key or not type or value is None:
-        return jsonify({"error": "Category, key, type, and value are required"}), 400
-
-    setting = Admin_Settings.query.filter_by(id).first()
-    if not setting:
-        return jsonify({"error": "Setting not found"}), 404
-
-    setting.category = category
-    setting.key = key
-    setting.type = type
-
-    if type == 'text':
-        setting.value_text = value
-    elif type == 'boolean':
-        setting.value_boolean = value
-    elif type == 'float':
-        setting.value_float = value
-    elif type == 'integer':
-        setting.value_integer = value
-    elif type == 'datetime':
-        setting.value_datetime = value
-    else:
-        return jsonify({"error": "Invalid setting type"}), 400
-
-    try:
-        db.session.commit()
-        return jsonify({"message": "Setting updated successfully"}), 200
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
 @main.route('/api/fetch_logs/<service_name>', methods=['GET'])
 @login_required
 def fetch_logs(service_name):
@@ -1725,20 +1651,49 @@ def get_system_resources():
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        cpu_usage = subprocess.check_output(["top", "-bn1"]).decode('utf-8').split('\n')[2]
-        memory_usage = subprocess.check_output(["free", "-m"]).decode('utf-8').split('\n')[1]
-        disk_usage = subprocess.check_output(["df", "-h", "/"]).decode('utf-8').splitlines()[1]
+        system_os = platform.system()  # Detect OS (Windows/Linux)
+        
+        if system_os == "Linux":
+            # Get CPU Usage
+            cpu_usage_output = subprocess.check_output(["/usr/bin/top", "-bn1"]).decode("utf-8")
+            cpu_usage_line = next(line for line in cpu_usage_output.split("\n") if "Cpu(s)" in line)
+            cpu_usage_value = cpu_usage_line.split(",")[0].strip().split(":")[1]
+            cpu_usage = float(cpu_usage_value.split()[0])
+
+            # Get Memory Usage
+            memory_output = subprocess.check_output(["/usr/bin/free", "-m"]).decode("utf-8")
+            memory_lines = memory_output.split("\n")
+            mem_total, mem_used, mem_free = memory_lines[1].split()[1:4]
+
+            # Get Disk Usage
+            disk_output = subprocess.check_output(["/bin/df", "-h", "/"]).decode("utf-8")
+            disk_lines = disk_output.split("\n")
+            disk_total, disk_used, disk_avail = disk_lines[1].split()[1:4]
+        elif system_os == "Windows":
+            # ✅ Windows-friendly method using `psutil`
+            cpu_usage = f"{psutil.cpu_percent()}%"
+
+            memory = psutil.virtual_memory()
+            mem_total = f"{memory.total // (1024 * 1024)} MB"
+            mem_used = f"{memory.used // (1024 * 1024)} MB"
+            mem_free = f"{memory.available // (1024 * 1024)} MB"
+
+            disk = psutil.disk_usage('/')
+            disk_total = f"{disk.total // (1024 ** 3)} GB"
+            disk_used = f"{disk.used // (1024 ** 3)} GB"
+            disk_avail = f"{disk.free // (1024 ** 3)} GB"
+
+        else:
+            return jsonify({"error": f"Unsupported OS: {system_os}"}), 500
 
         return jsonify({
             "cpu_usage": cpu_usage,
-            "memory_usage": memory_usage,
-            "disk_usage": disk_usage
-        })
+            "memory": {"total": mem_total, "used": mem_used, "free": mem_free},
+            "disk": {"total": disk_total, "used": disk_used, "available": disk_avail}
+        }), 200
     except Exception as e:
-        return jsonify({"error": f"Could not fetch resources: {str(e)}"}), 500
+        return jsonify({"error": f"Could not fetch system resources: {str(e)}"}), 500
 
-
-# New route to update the must_change_password field for a user
 @main.route('/api/update_must_change_password/<service_name>/<new_value>', methods=['PUT'])
 @login_required
 def update_must_change_password(userId, new_value):
@@ -1797,6 +1752,325 @@ def reset_user_password(userId):
     except Exception as e:
         logging.error(f"Failed to reset password: {str(e)}")
         return jsonify({"error": f"Failed to reset password: {str(e)}"}), 500
+    
+
+@main.route('/api/functional_tests', methods=['GET'])
+@login_required
+def run_functional_tests():
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    if RUN_MODE == "prod":
+        base_url = "https://dev.satisfactorytracker.com"
+    elif RUN_MODE == "local":
+        base_url = "http://localhost:5000"
+    results = {}
+
+     # ✅ Step 1: Grab the User's Session Cookie
+    session_cookies = request.cookies
+    if not session_cookies:
+        return jsonify({"error": "No session cookies found"}), 400
+    
+    # ✅ Test Pages
+    pages = ["/", "/tracker", "/admin/dashboard", "/login", "/data", "/dependencies","/signup", "/change-password", "/help","/admin/user_management", "/settings"]
+    for page in pages:
+        try:
+            res = requests.get(f"{base_url}{page}", timeout=5)
+            results[f"Page: {page}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
+        except Exception as e:
+            results[f"Page: {page}"] = f"Fail ({str(e)})"
+
+    # ✅ Test API Endpoints
+    api_endpoints = ["/api/system_resources", "/api/active_users", "/api/part_names", "/api/check_login", "/api/tables"]
+    for endpoint in api_endpoints:
+        try:
+            res = requests.get(
+                f"{base_url}{endpoint}",
+                cookies=session_cookies,
+                timeout=5
+            )
+            results[f"API: {endpoint}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
+        except Exception as e:
+            results[f"API: {endpoint}"] = f"Fail ({str(e)})"
+
+    return jsonify(results), 200
+
+@main.route('/api/test_pages', methods=['GET'])
+@login_required
+def test_pages():
+    """Run tests on page accessibility by reading from admin_settings."""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # Get base URL based on environment
+    base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
+
+    # Fetch pages dynamically from the admin_settings table
+    test_pages = Admin_Settings.query.filter_by(setting_category="system_test_pages").all()
+    page_urls = [page.setting_value for page in test_pages]
+
+    results = {}
+
+    for page in page_urls:
+        try:
+            res = requests.get(f"{base_url}{page}", timeout=5)
+            results[f"Page: {page}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
+        except Exception as e:
+            results[f"Page: {page}"] = f"Fail ({str(e)})"
+
+    return jsonify(results), 200
+
+@main.route('/api/test_apis', methods=['GET'])
+@login_required
+def test_apis():
+    """Run tests on API functionality by reading from admin_settings."""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # Get base URL based on environment
+    base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
+
+    # Fetch API endpoints dynamically from the admin_settings table
+    test_apis = Admin_Settings.query.filter_by(setting_category="system_test_APIs").all()
+    api_urls = [api.setting_value for api in test_apis]
+
+    results = {}
+
+    # ✅ Step 1: Grab the User's Session Cookie
+    session_cookies = request.cookies
+    if not session_cookies:
+        return jsonify({"error": "No session cookies found"}), 400
+
+    for endpoint in api_urls:
+        try:
+            res = requests.get(
+                f"{base_url}{endpoint}",
+                cookies=session_cookies,
+                timeout=5
+            )
+            results[f"API: {endpoint}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
+        except Exception as e:
+            results[f"API: {endpoint}"] = f"Fail ({str(e)})"
+
+    return jsonify(results), 200
+
+
+@main.route('/api/maintenance_mode', methods=['GET', 'POST'])
+@login_required
+def maintenance_mode():
+    if request.method == 'GET':
+        setting = Admin_Settings.query.filter_by(setting_category="site_settings", setting_key="maintenance_mode").first()
+        return jsonify({"maintenance_mode": setting.setting_value if setting else "off"})
+
+    if request.method == 'POST':
+        if current_user.role != 'admin':
+            return jsonify({"error": "Unauthorized"}), 403
+
+        data = request.get_json()
+        new_value = "on" if data.get("enabled") else "off"
+
+        setting = Admin_Settings.query.filter_by(setting_category="site_settings", setting_key="maintenance_mode").first()
+        if setting:
+            setting.setting_value = new_value
+        else:
+            db.session.add(Admin_Settings(setting_category="site_settings", setting_key="maintenance_mode", setting_value=new_value))  # ✅ Insert new setting
+
+        db.session.commit()
+
+        return jsonify({"message": f"Maintenance mode set to {new_value}"})
+    
+@main.route('/api/tester_registration_mode', methods=['GET', 'POST'])
+@login_required
+def tester_registration_mode():
+    if request.method == 'GET':
+        setting = Admin_Settings.query.filter_by(setting_category="site_settings", setting_key="registration_button").first()
+        logging.info(f"GET Setting: {setting} - {setting.setting_value}")
+        return jsonify({"registration_button": setting.setting_value if setting else "off"})
+
+
+    if request.method == 'POST':
+        if current_user.role != 'admin':
+            return jsonify({"error": "Unauthorized"}), 403
+
+        data = request.get_json()
+        new_value = "on" if data.get("enabled") else "off"
+        logging.info(f"POST - New Value: {new_value}")
+        setting = Admin_Settings.query.filter_by(setting_category="site_settings", setting_key="registration_button").first()
+        logging.info(f"POST Setting: {setting}")
+
+        if setting:
+            setting.setting_value = new_value
+        else:
+            db.session.add(Admin_Settings(setting_category="site_settings", setting_key="registration_button", setting_value=new_value))
+
+        db.session.commit()
+
+        return jsonify({"message": f"Maintenance mode set to {new_value}"})
+
+@main.route("/api/admin_settings", methods=["GET"])
+@login_required
+def get_admin_settings():
+    """Fetch all admin settings."""
+    settings = Admin_Settings.query.filter(Admin_Settings.setting_category.in_(["site_settings"])).all()
+    settings_list = [
+        {
+            "id": setting.id,
+            "category": setting.setting_category,
+            "key": setting.setting_key,
+            "value": setting.setting_value,
+        }
+        for setting in settings
+    ]
+    return jsonify(settings_list), 200
+
+@main.route("/api/admin_settings", methods=["PATCH"])
+@login_required
+def update_admin_setting():
+    """Update a specific admin setting."""
+    data = request.json
+    setting_id = data.get("id")
+    new_value = str(data.get("value"))  # Ensure it's stored as a string
+
+    if not setting_id or new_value is None:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    setting = Admin_Settings.query.filter_by(id=setting_id).first()
+    
+    if not setting:
+        return jsonify({"error": "Setting not found"}), 404
+
+    # Validate value based on known categories (extend as needed)
+    if setting.setting_key in ["maintenance_mode", "registration_button"]:
+        if new_value not in ["on", "off"]:
+            return jsonify({"error": "Invalid value for boolean setting"}), 400
+
+    setting.setting_value = new_value  # ✅ Update value
+    db.session.commit()
+
+    return jsonify({"message": "Setting updated successfully"}), 200
+
+@main.route('/api/system_test_list', methods=['GET'])
+@login_required
+def get_system_tests():
+    """Fetch test cases from admin_settings table"""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    tests = Admin_Settings.query.filter(Admin_Settings.setting_category.in_(["system_test_pages", "system_test_APIs"])).all()
+    
+    test_cases = {test.id: {"type": test.setting_category, "name": test.setting_key, "endpoint": test.setting_value} for test in tests}
+
+    return jsonify(test_cases), 200
+
+@main.route('/api/run_system_test', methods=['GET'])
+@login_required
+def run_single_test():
+    """Runs a single test based on test ID"""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    test_id = request.args.get('test_id')
+    test = Admin_Settings.query.get(test_id)
+    
+    if not test:
+        return jsonify({"error": "Test not found"}), 404
+
+    base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
+
+    # ✅ Get user's session cookies
+    session_cookies = request.cookies
+    if not session_cookies:
+        return jsonify({"error": "No session cookies found"}), 400
+    
+    # ✅ Run the test
+    try:
+        full_url = f"{base_url}{test.setting_value}"
+        res = requests.get(full_url, cookies=session_cookies, timeout=5)
+        result = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
+    except Exception as e:
+        result = f"Fail ({str(e)})"
+
+    return jsonify({test.setting_key: result}), 200
+
+@main.route('/api/system_tests', methods=['GET'])
+@login_required
+def get_all_system_tests():
+    """Fetch all system tests from admin_settings"""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    tests = Admin_Settings.query.filter(Admin_Settings.setting_category.in_(["system_test_pages", "system_test_APIs"])).all()
+    
+    test_cases = [
+        {
+            "id": test.id,
+            "category": test.setting_category,
+            "key": test.setting_key,
+            "value": test.setting_value
+        } 
+        for test in tests
+    ]
+
+    return jsonify(test_cases), 200
+
+@main.route('/api/system_tests', methods=['POST'])
+@login_required
+def add_system_test():
+    """Add a new system test"""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.json
+    category = data.get("category")
+    key = data.get("key")
+    value = data.get("value")
+
+    if not category or not key or not value:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    new_test = Admin_Settings(setting_category=category, setting_key=key, setting_value=value)
+    db.session.add(new_test)
+    db.session.commit()
+
+    return jsonify({"message": "Test case added successfully", "id": new_test.id}), 201
+
+@main.route('/api/system_tests/<int:test_id>', methods=['PATCH'])
+@login_required
+def update_system_test(test_id):
+    """Update an existing system test"""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    test = Admin_Settings.query.get(test_id)
+    if not test:
+        return jsonify({"error": "Test case not found"}), 404
+
+    data = request.json
+    if "category" in data:
+        test.setting_category = data["category"]
+    if "key" in data:
+        test.setting_key = data["key"]
+    if "value" in data:
+        test.setting_value = data["value"]
+
+    db.session.commit()
+    return jsonify({"message": "Test case updated successfully"}), 200
+
+@main.route('/api/system_tests/<int:test_id>', methods=['DELETE'])
+@login_required
+def delete_system_test(test_id):
+    """Delete a system test"""
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    test = Admin_Settings.query.get(test_id)
+    if not test:
+        return jsonify({"error": "Test case not found"}), 404
+
+    db.session.delete(test)
+    db.session.commit()
+    return jsonify({"message": "Test case deleted successfully"}), 200
+
 
 @main.route('/<path:path>')
 def catchall(path):

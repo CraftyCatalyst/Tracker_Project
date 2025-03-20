@@ -47,8 +47,10 @@ const Header = () => {
     const handleMenuClose = () => setMenuAnchorEl(null);
     const [testerModalOpen, setTesterModalOpen] = useState(false);
     const [issueModalOpen, setIssueModalOpen] = useState(false);
-
-
+    const [isMaintenanceMode, setMaintenanceMode] = useState(false);
+    const isAdmin = user && user.role === "admin"; // ✅ Check if user is an admin
+    const isLocked = isMaintenanceMode && !isAdmin; // ✅ Disable UI for non-admins when maintenance is ON
+    
     const pageTitles = {
         "/": "Home",
         "/data": "Data Management",
@@ -56,8 +58,20 @@ const Header = () => {
         "/tracker": "My Tracker",
     };
 
-    // Get the current page title, default to "Satisfactory Tracker" if route not found
-    const currentPageTitle = pageTitles[location.pathname] || "Satisfactory Tracker";
+    // NOT USED, REMOVE - Commented out 19/03/2025
+    // const currentPageTitle = pageTitles[location.pathname] || "Satisfactory Tracker";
+
+    useEffect(() => {
+        const fetchMaintenanceMode = async () => {
+            try {
+                const response = await axios.get(API_ENDPOINTS.get_admin_setting("site_settings", "maintenance_mode"));
+                setMaintenanceMode(response.data.value === "on"); // Convert string to boolean
+            } catch (error) {
+                console.error("Error fetching maintenance mode:", error);
+            }
+        };
+        fetchMaintenanceMode();
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -84,6 +98,7 @@ const Header = () => {
             zIndex: 1100,
             backgroundColor: theme.palette.primary.secondary,
             boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)"
+            // border: isMaintenanceMode ? "8px solid red" : "none",
         }}>
             {/* Top Section: Menu (Left), Banner (Center), User Info (Right) */}
             <Box sx={{
@@ -93,25 +108,23 @@ const Header = () => {
                 alignItems: 'center',
                 justifyContent: 'space-between',
             }}>
-                {/* Left Section: Menu + Report Issue Button */}
+            {/* Left Section: Menu (Disabled for non-admins in Maintenance Mode) */}
                 <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", cursor: "pointer" }} onClick={handleMenuOpen}>
-                        <IconButton color="inherit" sx={{ fontSize: 32 }}>
+                <Box sx={{ display: "flex", alignItems: "center", cursor: isLocked ? "default" : "pointer" }} onClick={isLocked ? null : handleMenuOpen}>
+                    <IconButton color="inherit" sx={{ fontSize: 32 }} disabled={isLocked}>
                             <MenuIcon sx={{ fontSize: 32 }} />
                         </IconButton>
                         <Typography variant="h4" sx={{ color: theme.palette.primary.contrastText }}>Menu</Typography>
                     </Box>
 
-                    {/* ✅ Only show if user is logged in */}
-                    {user && (
+                {/* ✅ Hide or Disable Buttons */}
+                {!isLocked && user && (
                         <>
                             <Button variant="contained" color="warning" onClick={() => setIssueModalOpen(true)}>
                                 Report An Issue
                             </Button>
-                            {issueModalOpen && (  // ✅ Only render when open
+                        {issueModalOpen && (
                                 <GitHubIssueModal open={issueModalOpen} onClose={() => setIssueModalOpen(false)} />
-                            )}
-                        </>
                     )}
                     <Button
                         variant="contained"
@@ -122,9 +135,9 @@ const Header = () => {
                     >
                         Review All Issues
                     </Button>
-
+                    </>
+                )}
                 </Box>
-
 
                 {/* Center Section: Banner */}
                 <Box sx={{ display: "flex", justifyContent: "center", flexGrow: 1 }}>
@@ -136,18 +149,22 @@ const Header = () => {
                     </Tooltip>
                 </Box>
 
-                {/* Right Section: User Info & Login/Logout */}
+            {/* Right Section: User Info (Disabled for non-admins in Maintenance Mode) */}
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    {user ? (
+                {isMaintenanceMode ? (
+                    <Typography variant="h5" align="center" color="error">⚠ Maintenance Mode Active ⚠</Typography>
+                ) : user ? (
                         <Typography variant="h5" align="center">Logged in as:<br />{user.username}</Typography>
                     ) : (
                         <Typography variant="h5">Log In</Typography>
                     )}
+                {!isMaintenanceMode && (
                     <Tooltip title={user ? "Logout" : "Login"} arrow>
-                        <IconButton color="inherit" onClick={user ? handleLogout : handleLogin}>
+                        <IconButton color="inherit"  onClick={user ? handleLogout : handleLogin}>
                             {user ? <LogoutIcon /> : <LoginIcon />}
                         </IconButton>
                     </Tooltip>
+                )}
                 </Box>
             </Box>
 

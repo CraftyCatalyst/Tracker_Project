@@ -28,7 +28,7 @@ export const THEME_LIGHT = {
     // Button color palette
     button_main: '#0A3D62', // Dark Gray #242424 change to Deep Ocean Blue #0A3D62
     button_contrastText: '#FFFFFF', // White text on buttons #FFFFFF
-    button_hover: '#333333', // Dark Charcoal hover color #333333
+    button_hover: '#003b6f', // Dark Charcoal hover color #333333 changed to Tardis Blue #003b6f
     button_disabled: '#383838', // Dark Gray for disabled buttons #383838
     button_disabledText: '#A6A6A6', // Light Gray for disabled text #A6A6A6 
     // Other controls
@@ -321,7 +321,7 @@ export const THEME_DARK = {
     // Button color palette
     button_main: '#0A3D62', //'#242424', // Dark Gray #242424 change to Deep Ocean Blue #0A3D62
     button_contrastText: '#FFFFFF', // White text on buttons #FFFFFF
-    button_hover: '#333333', // Dark Charcoal hover color #333333
+    button_hover: '#003b6f', // Dark Charcoal hover color #333333 changed to Tardis Blue #003b6f
     button_disabled: '#383838', // Dark Gray for disabled buttons #383838
     button_disabledText: '#A6A6A6', // Light Gray for disabled text #A6A6A6 
     // Progress indicator color palette
@@ -460,28 +460,28 @@ export const THEME_DARK = {
         backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
-            backgroundColor: '#333333', // #1d3a2a
+            backgroundColor: '#000080', // Dark Charcoal hover color #333333 changed to  #000080
         },
     },
     components_MuiButton_containedSecondary: {
         backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
-            backgroundColor: '#333333', // #1d3a2a
+            backgroundColor: '#000080', // Dark Charcoal hover color #333333 changed to  #000080
         },
     },
     components_MuiButton_outlinedPrimary: {
         backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
-            backgroundColor: '#333333', // #2a2e51
+            backgroundColor: '#000080', // Dark Charcoal hover color #333333 changed to  #000080
         },
     },
     components_MuiButton_outlinedSecondary: {
         backgroundColor: '#0A3D62', // #242424 changed to #0A3D62
         color: '#FFFFFF', // White text color #FFFFFF
         '&:hover': {
-            backgroundColor: '#333333', // #1d3a2a
+            backgroundColor: '#000080', // Dark Charcoal hover color #333333 changed to  #000080
         },
     },
 
