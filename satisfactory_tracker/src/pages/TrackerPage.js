@@ -51,11 +51,27 @@ const TrackerPage = () => {
   const [trackerModalOpen, setTrackerModalOpen] = useState(false);
   const [recipeModalOpen, setRecipeModalOpen] = useState(false);
   const [hasTrackerData, setHasTrackerData] = useState(false);
+  const [showSaveFile, setShowSaveFile] = useState(false);
 
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // useEffect(() => {
+  //   console.log("uploadSuccess changed:", uploadSuccess);
+  //   let timer;
+
+  //   // Only start timer when uploadSuccess becomes true
+  //   if (uploadSuccess) {
+  //     timer = setTimeout(() => {
+  //       setShowSaveFile(true);
+  //     }, 10000); // 10 seconds
+  //   }
+
+  // Clean up the timer if component unmounts or uploadSuccess changes
+  //   return () => clearTimeout(timer);
+  // }, [uploadSuccess]);
 
   const handleChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -88,17 +104,37 @@ const TrackerPage = () => {
       const traverseTree = (node, parent = "Root", level = 0) => {
         Object.keys(node).forEach((key, index) => {
           const item = node[key];
-          const rowId = `${reportIndex}-${key}-${index}`;
+          const rowId = `${report.part_id}-${report.recipe_name}-${level}-${index}-${Math.random().toString(36).slice(2, 7)
+            }`;
+
+          const requiredQuantity = item["Required Quantity"] || 0;
+          const requiredPartsPm = item["Required Parts PM"] || 0;
+          const timeInMinutes = item["Timeframe"] || 0; //requiredPartsPm > 0 ? requiredQuantity / requiredPartsPm : 0;
+
+          // Format to hh:mm:ss
+          const hours = Math.floor(timeInMinutes / 60);
+          const minutes = Math.round(timeInMinutes % 60);
+          const formattedTime = `${hours}h ${minutes}m ${Math.round(timeInMinutes % 1 * 60)}s`;
+
           flattened.push({
             id: rowId,
             parent,
             node: key,
             level,
-            requiredQuantity: item["Required Quantity"] || 0,
+            requiredQuantity,
+            requiredPartsPm,
+            timeFrame: formattedTime,  // ✅ NEW FIELD
             producedIn: item["Produced In"] || "N/A",
             machines: item["No. of Machines"] || 0,
             recipe: item["Recipe"] || "N/A",
+            partSupplyPM: item["Part Supply PM"] || null,
+            partSupplyQty: item["Part Supply Quantity"] || null,
+            ingredientDemandPM: item["Ingredient Demand PM"] || null,
+            ingredientDemandQty: item["Ingredient Demand Quantity"] || null,
+            ingredientSupplyPM: item["Ingredient Supply PM"] || null,
+            ingredientSupplyQty: item["Ingredient Supply Quantity"] || null,
           });
+
           if (item.Subtree) {
             traverseTree(item.Subtree, key, level + 1);
           }
@@ -109,6 +145,24 @@ const TrackerPage = () => {
 
     return flattened;
   };
+
+  const columns = [
+    { field: "parent", headerName: "Parent Part", flex: 1 },
+    { field: "node", headerName: "Ingredient", flex: 1 },
+    { field: "level", headerName: "Level", flex: 0.5, type: "number" },
+    { field: "requiredQuantity", headerName: "Required Quantity", flex: 1, type: "number" },
+    { field: "requiredPartsPm", headerName: "Parts / Min", flex: 1, type: "number" },
+    { field: "timeFrame", headerName: "Time to Complete", flex: 1 },
+    { field: "producedIn", headerName: "Produced In", flex: 1 },
+    { field: "machines", headerName: "No. of Machines", flex: 1, type: "number" },
+    { field: "recipe", headerName: "Recipe Name", flex: 1 },
+    { field: "partSupplyPM", headerName: "Part Supply PM", flex: 1, type: "number" },
+    { field: "partSupplyQty", headerName: "Part Supply Qty", flex: 1, type: "number" },
+    { field: "ingredientDemandPM", headerName: "Ingredient Demand PM", flex: 1, type: "number" },
+    { field: "ingredientDemandQty", headerName: "Ingredient Demand Qty", flex: 1, type: "number" },
+    { field: "ingredientSupplyPM", headerName: "Ingredient Supply PM", flex: 1, type: "number" },
+    { field: "ingredientSupplyQty", headerName: "Ingredient Supply Qty", flex: 1, type: "number" },
+  ];
 
 
 
@@ -163,7 +217,6 @@ const TrackerPage = () => {
 
       setMachineUsageReports(response.data);
 
-
       return response.data;
 
     } catch (error) {
@@ -202,16 +255,7 @@ const TrackerPage = () => {
     }
   };
 
-  const columns = [
-    { field: "parent", headerName: "Parent Part", flex: 1 },
-    { field: "node", headerName: "Ingredient", flex: 1 },
-    { field: "level", headerName: "Level", flex: 0.5, type: "number" },
-    { field: "requiredQuantity", headerName: "Required Quantity", flex: 1, type: "number" },
-    { field: "producedIn", headerName: "Produced In", flex: 1 },
-    { field: "machines", headerName: "No. of Machines", flex: 1, type: "number" },
-    { field: "recipe", headerName: "Recipe Name", flex: 1 },
-  ];
-
+  
   const recalculateTotals = (modifiers) => {
     const updatedTotals = {}; // Perform calculations here
     setTotals(updatedTotals);
@@ -295,7 +339,7 @@ const TrackerPage = () => {
     { field: "machine_level", headerName: "Machine Level", width: 200 },
     { field: "resource_node_purity", headerName: "Node Purity", width: 200 },
     { field: "machine_power_modifier", headerName: "Power Modifier", width: 150 },
-    { field: "base_supply_pm", headerName: "Base Supply PM", width: 200 },
+    { field: "part_supply_pm", headerName: "Part Supply PM", width: 200 },
     { field: "actual_ppm", headerName: "Actual PPM", width: 200 },
     { field: "created_at", headerName: "Created", width: 180 },
     { field: "sav_file_name", headerName: "Save File", width: 180 },
@@ -367,14 +411,22 @@ const TrackerPage = () => {
             {/* Animated Upload State */}
             {uploading ? (
               <>
-                <Typography variant="body3">Extracting save file data...This may take a few moments</Typography>
-                <Typography variant="body3_underline" sx={{ color: "orange" }}>DO NOT REFRESH YOUR BROWSWER</Typography>
-                <CircularProgress color="progressIndicator.main" />
+                <Typography variant="body3">Extracting save file data...This may take some time</Typography>
+                <Typography variant="body4_underline_bold" sx={{ color: "orange" }}>DO NOT REFRESH YOUR BROWSER</Typography>
+                <CircularProgress color="progressIndicator.main" size={20} />
+                {/* {showSaveFile ? (
+                  <Typography variant="body4" sx={{ fontWeight: "bold", color: "success.main" }}>
+                    Current save file <br />
+                    {uploadedFileName}
+                  </Typography>
+                ) : (
+                  <CircularProgress color="progressIndicator.main" size={20} />
+                )} */}
               </>
             ) : uploadSuccess === true ? (
-              <CheckCircle sx={{ fontSize: 50, color: "success.main" }} />
+              <CheckCircle sx={{ fontSize: 30, color: "success.main" }} />
             ) : uploadSuccess === false ? (
-              <ErrorOutline sx={{ fontSize: 50, color: "red" }} />
+              <ErrorOutline sx={{ fontSize: 30, color: "red" }} />
             ) : hasUploadedSaveFile ? (
               <Typography variant="body4" sx={{ fontWeight: "bold", color: "success.main" }}>
                 Current save file <br />
@@ -387,18 +439,27 @@ const TrackerPage = () => {
             )}
           </Box>
         </Tooltip>
-        <Button variant="contained" onClick={() => setRecipeModalOpen(true)}>
-          Choose Alternate Recipes
-        </Button>
-        {recipeModalOpen && (  // ✅ Only render when open
-          <AlternateRecipesModal open={recipeModalOpen} onClose={() => setRecipeModalOpen(false)} />
-        )}
-        <Button variant="contained" onClick={() => setTrackerModalOpen(true)}>
-          Add Parts To Track
-        </Button>
+        <Box sx={{ display: "flex", flexDirection: "row", gap: 2 }}>
+          <Button variant="contained" onClick={() => setRecipeModalOpen(true)}>
+            Choose Alternate Recipes
+          </Button>
+          {recipeModalOpen && (  // ✅ Only render when open
+            <AlternateRecipesModal open={recipeModalOpen} onClose={() => setRecipeModalOpen(false)} />
+          )}
+          <Button variant="contained" onClick={() => setTrackerModalOpen(true)}>
+            Add Parts To Track
+          </Button>
+        </Box>
         {trackerModalOpen && (  // ✅ Only render when open
-          <AddToTrackerModal open={trackerModalOpen} onClose={() => setTrackerModalOpen(false)} />
-        )}        
+          // <AddToTrackerModal open={trackerModalOpen} onClose={() => setTrackerModalOpen(false)} />
+          <AddToTrackerModal
+            open={trackerModalOpen}
+            onClose={() => {
+              setTrackerModalOpen(false);
+              fetchTrackerReports();
+            }}
+          />
+        )}
       </Box>
       {/* Tabs Container */}
       <TabContext value={activeTab}>
@@ -413,7 +474,7 @@ const TrackerPage = () => {
           </TabList>
         </Box>
 
-        
+
 
         {/* User Save Data Panel */}
         <TabPanel value="1">
@@ -424,7 +485,9 @@ const TrackerPage = () => {
               <>
 
                 <Box sx={theme.trackerPageStyles.reportBox}>
+                <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
                   <DataGrid density="compact" rows={userSaveData} columns={userColumns} />
+                </div>
                 </Box>
               </>
             )}
@@ -469,7 +532,7 @@ const TrackerPage = () => {
               <CircularProgress />
             ) : (
               <>
-                <Box sx={theme.trackerPageStyles.reportBox}>
+                <Box sx={theme.trackerPageStyles.reportBox}>                  
                   <DataGrid density="compact" rows={flattenedTreeData} columns={columns} />
                 </Box>
 
@@ -508,7 +571,7 @@ const TrackerPage = () => {
             </Typography>
           )}
         </TabPanel>
-        
+
         {/* Main Tables Section */}
         <TabPanel value="6">
           <Box sx={theme.trackerPageStyles.tabPanelBox}>

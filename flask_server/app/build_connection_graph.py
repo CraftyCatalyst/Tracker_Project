@@ -91,7 +91,7 @@ def build_factory_graph(user_id, visited=None):
         # 🔹 Step 2: Fetch machine metadata
         metadata_query = text("""
             SELECT us.output_inventory, m.machine_name, p.part_name AS produced_item, 
-                   r.base_supply_pm, cs.supply_pm AS conveyor_speed, i.icon_path AS icon_path
+                   r.part_supply_pm, cs.supply_pm AS conveyor_speed, i.icon_path AS icon_path
             FROM user_save us
             JOIN machine m ON us.machine_id = m.id
             JOIN recipe r ON us.recipe_id = r.id

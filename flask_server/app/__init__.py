@@ -59,7 +59,7 @@ def create_app():
     from .routes import main
     app.register_blueprint(main)
 
-    print("Registered Routes:")
+    # print("Registered Routes:")
     x = 0
     for rule in app.url_map.iter_rules():
         x += 1

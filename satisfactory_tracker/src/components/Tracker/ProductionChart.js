@@ -44,8 +44,14 @@ const ProductionChart = ({ data }) => {
       <Typography variant="h3" sx={{ textAlign: "center", width: "100%" }}>
         Actual vs. Target Production <br /> (Parts Per Minute)
       </Typography>
-      <ResponsiveContainer width="100%" height={2500}>
-        <BarChart layout="vertical" data={normalizedChartData} width={100} margin={{ top: 10, right: 100, left: -8, bottom: 5 }}>
+      <ResponsiveContainer width="100%" height={barSize * (normalizedChartData.length) * 2}>
+        <BarChart 
+          layout="vertical" 
+          data={normalizedChartData} 
+          width={100} 
+          margin={{ top: 10, right: 30, left: -8, bottom: 5 }}
+          padding={{ top: 10, right: 5, bottom: 5, left: 5 }}        
+        >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             type="number"
@@ -59,7 +65,7 @@ const ProductionChart = ({ data }) => {
             width={250}
             orientation="left"
             height={barSize * normalizedChartData.length}
-            tick={{ fontSize: barSize - 4, fill: "#FFFFFF" }}
+            tick={{ fontSize: barSize - 2, fill: "#FFFFFF" }}
             interval={0}
           />
           <Tooltip content={({ active, payload, label }) => {

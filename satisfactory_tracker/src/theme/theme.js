@@ -43,7 +43,7 @@ const theme = createTheme({
       tabs: scheme.background_tabs
     },
     border: {
-      tabs: scheme.border_tabs      
+      tabs: scheme.border_tabs
     },
     text: {
       primary: scheme.text_primary,
@@ -68,7 +68,7 @@ const theme = createTheme({
       colour: scheme.menu_divider,
     },
     tooltip77: {
-      background: scheme.tooltip_background,      
+      background: scheme.tooltip_background,
     },
 
   },
@@ -96,15 +96,19 @@ const theme = createTheme({
     body1: COMMON_SETTINGS.typography_body1,
     body1_italic: COMMON_SETTINGS.typography_body1_italic,
     body1_underline: COMMON_SETTINGS.typography_body1_underline,
+    body1_underline_bold: COMMON_SETTINGS.typography_body1_underline_bold,
     body2: COMMON_SETTINGS.typography_body2,
     body2_italic: COMMON_SETTINGS.typography_body2_italic,
     body2_underline: COMMON_SETTINGS.typography_body2_underline,
+    body2_underline_bold: COMMON_SETTINGS.typography_body2_underline_bold,
     body3: COMMON_SETTINGS.typography_body3,
     body3_italic: COMMON_SETTINGS.typography_body3_italic,
     body3_underline: COMMON_SETTINGS.typography_body3_underline,
+    body3_underline_bold: COMMON_SETTINGS.typography_body3_underline_bold,
     body4: COMMON_SETTINGS.typography_body4,
     body4_italic: COMMON_SETTINGS.typography_body4_italic,
     body4_underline: COMMON_SETTINGS.typography_body4_underline,
+    body4_underline_bold: COMMON_SETTINGS.typography_body4_underline_bold,
   },
 
   spacing: COMMON_SETTINGS.spacing,
@@ -143,16 +147,21 @@ const theme = createTheme({
     },
 
     MuiDataGrid: {
-      defaultProps: scheme.components_MuiDataGrid_defaultProps,
       styleOverrides: {
         root: scheme.components_MuiDataGrid_root,
         columnHeaders: scheme.components_MuiDataGrid_columnHeaders,
         row: scheme.components_MuiDataGrid_row,
+        cell: {
+          ...scheme.components_MuiDataGrid_cell,
+          "&.MuiDataGrid-cell--editable": {
+            ...scheme.components_MuiDataGrid_editableCell,
+          },
+        },
         columnSeparator: scheme.components_MuiDataGrid_columnSeparator,
-        cell: scheme.components_MuiDataGrid_cell,
-        footerContainer: scheme.components_MuiDataGrid_footerContainer,
-        toolbar: scheme.components_MuiDataGrid_toolbar,
+        footerContainer: scheme.components_MuiDataGridfooter_Container,
+        toolbarContainer: scheme.components_MuiDataGrid_toolbar,
       },
+      defaultProps: scheme.components_MuiDataGrid_defaultProps,
     },
     MuiButton: {
       styleOverrides: {
@@ -190,6 +199,7 @@ const theme = createTheme({
   },
   trackerPageStyles: scheme.trackerPageStyles,
   // trackerPageSettings: scheme.trackerPageSettings // Uncommented for future use
+
 });
 
 

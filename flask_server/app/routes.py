@@ -90,7 +90,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-print("AT THE TOP OF routes.py!")
+# print("AT THE TOP OF routes.py!")
 
 def check_maintenance_mode():
     setting = Admin_Settings.query.filter_by(setting_category="site_settings", setting_key="maintenance_mode").first()
@@ -302,13 +302,15 @@ def build_tree_route():
     part_id = request.args.get('part_id')
     recipe_name = request.args.get('recipe_name', '_Standard')
     target_quantity = request.args.get('target_quantity', 1, type=int)
+    target_parts_pm = request.args.get('target_parts_pm')
+    target_timeframe = request.args.get('target_timeframe')
     visited = request.args.get('visited')
 
     if not part_id:
         logger.error("❌ part_id is required")
         return jsonify({"error": "part_id is required"}), 400
     
-    result = build_tree(part_id, recipe_name, target_quantity, visited)
+    result = build_tree(part_id, recipe_name, target_quantity, target_parts_pm, target_timeframe, visited)
     #logger.info(f"Build Tree Result: {result}")
     return jsonify(result)
 
@@ -521,34 +523,42 @@ def get_data_validation():
 
 @main.route('/api/tracker_reports', methods=['GET'])
 def get_tracker_reports():
+    logging.info("Generating tracker reports")
     user_id = current_user.id
 
     try:
         # Query the tracker table for the user's tracked parts
         query = """
-            SELECT t.part_id, t.recipe_id, t.target_quantity, p.part_name, r.recipe_name
+            SELECT t.part_id, t.recipe_id, t.target_quantity, t.target_parts_pm, t.target_timeframe ,p.part_name, r.recipe_name
             FROM tracker t
             JOIN part p ON t.part_id = p.id
             JOIN recipe r ON t.recipe_id = r.id
             WHERE t.user_id = :user_id
         """
-        # logger.info(f"tracker_reports Query: {query}, User: {user_id}")
         tracked_parts = db.session.execute(text(query), {"user_id": user_id}).fetchall()
-        # logger.info(f"User: {user_id}, Tracked parts: {tracked_parts}")
+        logging.info(f"Tracked parts: {tracked_parts}")
+
         # Generate dependency trees for each tracked part
         reports = []
         for part in tracked_parts:
             part_id = part.part_id
             recipe_name = part.recipe_name
             target_quantity = part.target_quantity
+            target_ppm = part.target_parts_pm
+            target_timeframe = part.target_timeframe
+
+            logging.info(f"Generating tracker report for part_id: {part_id}, recipe_name: {recipe_name}, target_quantity: {target_quantity}, target_parts_pm: {target_ppm}, target_timeframe: {target_timeframe}")
 
             # Call build_tree for each tracked part
-            tree = build_tree(part_id, recipe_name, target_quantity)
+            logging.info(f"Building tree for part_id: {part_id}, recipe_name: {recipe_name}, target_quantity: {target_quantity}, target_parts_pm: {target_ppm}, target_timeframe: {target_timeframe}")
+            tree = build_tree(part_id, recipe_name, target_quantity, target_ppm, target_timeframe)
             reports.append({
                 "part_id": part_id,
                 "part_name": part.part_name,
                 "recipe_name": recipe_name,
                 "target_quantity": target_quantity,
+                "target_parts_pm": target_ppm,
+                "target_timeframe": target_timeframe,
                 "tree": tree
             })
 
@@ -569,6 +579,8 @@ def add_to_tracker():
     part_id = data.get('partId')
     target_quantity = data.get('targetQuantity')
     recipe_id = data.get('recipeId')
+    target_parts_pm = data.get('targetPartsPm')
+    target_timeframe = data.get('targetTimeframe')
 
     logger.info(f"Part ID: {part_id}, Recipe Name: {recipe_id}, Target Quantity: {target_quantity}")
     if not part_id or not recipe_id:
@@ -591,6 +603,8 @@ def add_to_tracker():
         recipe_id=recipe_id,
         user_id=current_user.id,
         target_quantity=target_quantity,
+        target_parts_pm=target_parts_pm,
+        target_timeframe=target_timeframe,
         created_at=current_time,
         updated_at=current_time
     )
@@ -605,7 +619,7 @@ def add_to_tracker():
 def get_tracker_data():
     user_id = current_user.id
     tracker_data_query = """
-        SELECT t.id, t.target_quantity, p.part_name, r.recipe_name, t.created_at, t.updated_at
+        SELECT t.id, t.target_quantity, t.target_parts_pm, t.target_timeframe, p.part_name, r.recipe_name, t.created_at, t.updated_at
         FROM tracker t
         JOIN part p ON t.part_id = p.id
         JOIN recipe r ON t.recipe_id = r.id
@@ -642,6 +656,9 @@ def update_tracker_item(tracker_id):
     try:
         data = request.json
         target_quantity = data.get("target_quantity")
+        target_parts_pm = data.get("target_parts_pm")  # NEW
+        target_timeframe = data.get("target_timeframe")  # NEW
+
         if target_quantity is None:
             return jsonify({"error": "Target quantity is required"}), 400
 
@@ -649,7 +666,11 @@ def update_tracker_item(tracker_id):
         if not tracker_item:
             return jsonify({"error": "Tracker item not found or you don't have permission to update it"}), 404
 
+        # Update fields
         tracker_item.target_quantity = target_quantity
+        tracker_item.target_parts_pm = target_parts_pm  # NEW
+        tracker_item.target_timeframe = target_timeframe  # NEW
+
         db.session.commit()
         return jsonify({"message": "Tracker item updated successfully"}), 200
     except Exception as e:
@@ -792,7 +813,7 @@ def get_user_save():
             User_Save.id,
             Part.part_name,
             Recipe.recipe_name,
-            Recipe.base_supply_pm,
+            Recipe.part_supply_pm,
             User_Save.machine_id,
             Machine.machine_name,
             Machine_Level.machine_level,
@@ -823,8 +844,8 @@ def get_user_save():
             "machine_level": us.machine_level,
             "node_purity": us.node_purity,
             "machine_power_modifier": us.machine_power_modifier or 1,
-            "base_supply_pm": us.base_supply_pm or 0,
-            "actual_ppm": (us.base_supply_pm or 0) * (us.machine_power_modifier or 1), 
+            "part_supply_pm": us.part_supply_pm or 0,
+            "actual_ppm": (us.part_supply_pm or 0) * (us.machine_power_modifier or 1), 
             "created_at": us.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "sav_file_name": us.sav_file_name,
         } for us in user_saves
@@ -874,13 +895,10 @@ def update_user_settings():
 @login_required
 def get_production_report():
     try:
-        #logger.info("Generating production report")
         data = request.json
         tracker_data = data.get("trackerData", [])
         save_data = data.get("saveData", [])
         
-        #logger.info(f"Tracker Data: {tracker_data}, Save Data: {save_data}")
-
         if not tracker_data or not save_data:
             return jsonify({"error": "trackerData and saveData are required"}), 400
         
@@ -892,14 +910,17 @@ def get_production_report():
                 if part_name not in part_production:
                     part_production[part_name] = {"target": 0, "actual": 0}
                 
-                # Add required quantity
-                part_production[part_name]["target"] += details.get("Required Quantity", 0)
+                # Add required parts pm
+                # Updated "Required Quantity" to "Required Parts PM" - #TODO - reflect this in build_tree.py
+                value = details.get("Required Parts PM")
+                if value is not None:
+                    part_production[part_name]["target"] += value
+
 
                 # Recursively process the subtree
                 if "Subtree" in details and isinstance(details["Subtree"], dict):
                     extract_required_quantities(details["Subtree"], part_production)
 
-        #logger.info("Processing trackerData for target production")
         # Process trackerData for target production
         for report in tracker_data:
             if not report.get("tree"):
@@ -910,28 +931,25 @@ def get_production_report():
                 continue
             extract_required_quantities(report["tree"], part_production)
         
-        #logger.info("Processing saveData for actual production")
-        # Process saveData for actual production using base_supply_pm
+        # Process saveData for actual production using part_supply_pm and machine_power_modifier
         for save in save_data:
-            base_supply_pm = save["base_supply_pm"] if save["base_supply_pm"] is not None else 0.0
+            part_supply_pm = save["part_supply_pm"] if save["part_supply_pm"] is not None else 0.0
             machine_power_modifier = save["machine_power_modifier"] if save["machine_power_modifier"] is not None else 1.0
             
-            actual_ppm = base_supply_pm * machine_power_modifier
+            actual_ppm = part_supply_pm * machine_power_modifier
 
             save_part_name = save["part_name"] if save["part_name"] else "UNKNOWN_PART"
             
             if save_part_name == "UNKNOWN_PART":
-                #logger.warning(f"Missing part name detected in user save data: {save}")
                 continue
 
             if save_part_name not in part_production:
                 part_production[save["part_name"]] = {"target": 0, "actual": 0}
             
             part_production[save["part_name"]]["actual"] += actual_ppm
-            #logger.info(f"Save File Actual: {part_production[save_part_name]['actual']}")
         return jsonify(part_production), 200
     except Exception as e:
-        logger.error(f"❌ Error generating production report: {e}")
+        logging.error(f"❌ Error generating production report: {e}")
         return jsonify({"error": "Failed to generate production report"}), 500
     
 @main.route('/api/machine_usage_report', methods=['POST'])
@@ -1067,7 +1085,7 @@ def get_machine_connections():
                     us.output_inventory, 
                     m.machine_name, 
                     p.part_name, 
-                    r.base_supply_pm, 
+                    r.part_supply_pm, 
                     usc.conveyor_speed
                 FROM user_save_connections usc
                 LEFT JOIN user_save us ON usc.connection_inventory = us.output_inventory
@@ -1084,7 +1102,7 @@ def get_machine_connections():
                     output_inventory, 
                     MAX(machine_name) AS machine_name,  -- ✅ Keep machine data if available
                     MAX(part_name) AS part_name, 
-                    MAX(base_supply_pm) AS base_supply_pm, 
+                    MAX(part_supply_pm) AS part_supply_pm, 
                     MAX(conveyor_speed) AS conveyor_speed
                 FROM conveyor_data
                 GROUP BY connected_component, connection_inventory, direction, outer_path_name, output_inventory
@@ -1120,7 +1138,7 @@ def get_machine_metadata():
     try:
         query = text("""
             SELECT us.output_inventory, m.machine_name, p.part_name AS produced_item, 
-                     r.base_supply_pm, cs.supply_pm AS conveyor_speed, i.icon_path AS icon_path
+                     r.part_supply_pm, cs.supply_pm AS conveyor_speed, i.icon_path AS icon_path
             FROM user_save us
             JOIN machine m ON us.machine_id = m.id
             JOIN recipe r ON us.recipe_id = r.id
@@ -1485,16 +1503,46 @@ def get_assembly_phases():
 
 @main.route('/api/get_assembly_phase_parts/<int:phase_id>', methods=['GET'])
 def get_assembly_phases_parts(phase_id):
+    results = []
     requests = Project_Assembly_Parts.query.filter_by(phase_id=phase_id).all()
-    return jsonify([
-        {
+    
+    for req in requests:
+        ingredient_input_id = req.phase_part_id
+        ingredient_recipe = "_Standard"
+        # Lookup the selected recipe for this ingredient from user_selected_recipe
+        selected_recipe_query = """
+            SELECT r.recipe_name
+            FROM user_selected_recipe usr
+            JOIN recipe r ON usr.recipe_id = r.id
+            WHERE usr.user_id = :user_id AND usr.part_id = :part_id
+        """
+        selected_recipe = db.session.execute(
+            text(selected_recipe_query),
+            {"user_id": current_user.id, "part_id": ingredient_input_id}
+        ).scalar()
+
+        # Use the selected recipe or default to the ingredient_recipe (from part_data)
+        final_recipe = selected_recipe if selected_recipe else ingredient_recipe
+
+        logging.debug(f"Final Recipe: {final_recipe}")
+
+        # Query the part_supply_pm for the ingredient_input_id and final_recipe
+        final_ingredient_supply_pm = db.session.execute(
+            text("SELECT part_supply_pm FROM recipe WHERE part_id = :part_id AND recipe_name = :recipe_name"),
+            {"part_id": ingredient_input_id, "recipe_name": final_recipe}
+        ).scalar()
+        logging.debug(f"get_assembly_phases_parts - ingredient_input_id: {ingredient_input_id}, final_recipe: {final_recipe} Final Ingredient Supply PM: {final_ingredient_supply_pm}")
+        logging.debug(f"SENDING BACK - id {req.id} phase_id {req.phase_id} phase_part_id {req.phase_part_id} phase_part_quantity {req.phase_part_quantity} phase_target_parts_pm {final_ingredient_supply_pm} phase_target_timeframe {req.phase_part_quantity / final_ingredient_supply_pm}")
+        results.append({
             "id": req.id,
             "phase_id": req.phase_id,
             "phase_part_id": req.phase_part_id,
             "phase_part_quantity": req.phase_part_quantity,
-        }
-        for req in requests
-    ])
+            "phase_target_parts_pm": round(float(final_ingredient_supply_pm), 4) if final_ingredient_supply_pm else None,
+            "phase_target_timeframe": round(float(req.phase_part_quantity) / float(final_ingredient_supply_pm), 4) if final_ingredient_supply_pm else None,
+        })
+
+    return jsonify(results)
 
 @main.route('/api/get_assembly_phase_details/<int:phase_id>', methods=['GET'])
 def get_assembly_phase_details(phase_id):

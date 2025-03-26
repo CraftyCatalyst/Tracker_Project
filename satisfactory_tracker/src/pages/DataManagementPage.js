@@ -32,7 +32,7 @@ const DataManagementPage = () => {
   const [newRow, setNewRow] = useState({}); // New row data
 
   const columnOrderConfig = {
-    recipe: ['id', 'part_id', 'recipe_name', 'ingredient_count', 'source_level', 'base_input', 'base_production_type', 'produced_in_automated', 'produced_in_manual', 'base_demand_pm', 'base_supply_pm', 'byproduct', 'byproduct_supply_pm'],
+    recipe: ['id', 'part_id', 'recipe_name', 'ingredient_count', 'source_level', 'production_type', 'produced_in_automated', 'produced_in_manual', 'ingredient_part_id', 'ingredient',  'ingredient_demand_pm', 'ingredient_demand_quantity', 'part_supply_pm', 'part_cycle_time_sec', 'part_supply_quantity', 'byproduct', 'byproduct_supply_pm', 'byproduct_supply_quantity'],
     alternate_recipe: ['id', 'part_id', 'recipe_id', 'selected'],
     node_purity: ['id', 'node_purity'],
     machine_level: ['id', 'machine_level'],

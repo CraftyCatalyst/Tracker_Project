@@ -83,16 +83,23 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # GitHub Personal Access Token
 GITHUB_REPO = os.getenv("GITHUB_REPO") # GitHub Repository
 
 # Table and column whitelist
-VALID_TABLES = {'alternate_recipe', 'data_validation', 'machine', 'machine_level', 'miner_supply', 'node_purity', 'part', 'power_shards', 
-                'recipe', 'recipe_mapping', 'resource_node', 'tracker', 'user', 'user_save', 'user_selected_recipe', 'conveyor_level' , 'user_save_connections', 'user_save_conveyors'
+VALID_TABLES = {'admin_settings', 'alternate_recipe', 'conveyor_level', 'conveyor_supply', 'data_validation', 'icon', 'machine', 
+                'machine_level', 'miner_supply', 'node_purity', 'part', 'pipeline_level', 'pipeline_supply', 'power_shards', 
+                'project_assembly_parts', 'project_assembly_phases', 'recipe', 'recipe_mapping', 'resource_node', 'splitter', 'storage', 
+                'tracker', 'user', 'user_connection_data', 'user_pipe_data', 'user_save', 'user_save_connections', 
+                'user_save_conveyors', 'user_save_pipes', 'user_selected_recipe', 'user_settings', 'user_tester_registrations'
                 }
-VALID_COLUMNS = {'id', 'selected', 'column_name', 'description', 'table_name', 'value', 'machine_level_id', 'machine_name', 'save_file_class_name', 
-                 'machine_level', 'base_supply_pm', 'node_purity_id', 'node_purity', 'save_file_path_name', 'category', 'level', 'part_name', 
-                 'output_increase', 'quantity', 'base_demand_pm', 'base_input', 'base_production_type', 'byproduct', 'byproduct_supply_pm', 
-                 'ingredient_count', 'part_id', 'produced_in_automated', 'produced_in_manual', 'recipe_name', 'source_level', 'save_file_recipe',
-                 'created_at', 'target_quantity', 'updated_at', 'user_id', 'email', 'is_verified', 'password', 'role', 'username', 'machine_id', 
-                 'machine_power_modifier', 'resource_node_id', 'sav_file_name', 'recipe_id',
-                 'conveyor_level_id', 'supply_pm', 'connected_component', 'connection_inventory', 'direction', 'conveyor_first_belt', 'conveyor_last_belt',
-                 'current_progress', 'input_inventory', 'output_inventory', 'time_since_last_change', 'production_duration', 'productivity_measurement_duration', 
-                 'productivity_monitor_enabled', 'is_producing'
+VALID_COLUMNS = {'id', 'setting_category', 'setting_key', 'setting_value', 'recipe_id', 'selected', 'conveyor_level', 'conveyor_level_id', 'supply_pm', 'column_name', 
+                 'description', 'table_name', 'value', 'icon_category', 'icon_name', 'icon_path', 'icon_id', 'machine_level_id', 'machine_name', 'save_file_class_name', 
+                 'machine_level', 'base_supply_pm', 'node_purity', 'category', 'level', 'part_name', 'pipeline_level', 'pipeline_level_id', 'output_increase', 'quantity', 
+                 'phase_id', 'phase_part_id', 'phase_part_quantity', 'phase_target_parts_pm', 'phase_target_timeframe', 'phase_description', 'phase_name', 'byproduct', 
+                 'byproduct_supply_pm', 'byproduct_supply_quantity', 'ingredient', 'ingredient_count', 'ingredient_demand_pm', 'ingredient_demand_quantity', 'ingredient_part_id', 
+                 'part_cycle_time_sec', 'part_id', 'part_supply_pm', 'part_supply_quantity', 'produced_in_automated', 'produced_in_manual', 'production_type', 'recipe_name', 
+                 'source_level', 'save_file_recipe', 'node_purity_id', 'save_file_path_name', 'splitter_name', 'storage_name', 'target_parts_pm', 'target_quantity', 'target_timeframe', 
+                 'updated_at', 'created_at', 'email', 'must_change_password', 'password', 'role', 'username', 'connection_type', 'conveyor_speed', 'direction', 'produced_item', 
+                 'source_component', 'source_reference_id', 'target_component', 'target_level', 'target_reference_id', 'pipe_flow_rate', 'pipe_network', 'current_progress', 
+                 'input_inventory', 'is_producing', 'machine_id', 'machine_power_modifier', 'output_inventory', 'production_duration', 'productivity_measurement_duration', 
+                 'productivity_monitor_enabled', 'resource_node_id', 'sav_file_name', 'time_since_last_change', 'connected_component', 'connection_inventory', 'outer_path_name', 
+                 'conveyor_first_belt', 'conveyor_last_belt', 'connection_points', 'fluid_type', 'instance_name', 'key', 'user_id', 'email_address', 'fav_satisfactory_thing', 
+                 'is_approved', 'reason', 'reviewed_at'
                 }

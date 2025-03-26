@@ -2,7 +2,7 @@ import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { dark } from '@mui/material/styles/createPalette';
 import logToBackend from "../services/logService";
 import { DensitySmall, WrapText } from '@mui/icons-material';
-import { fontSize, minHeight, typography } from '@mui/system';
+import { borderLeft, borderRight, fontSize, minHeight, typography, width } from '@mui/system';
 
 export const USE_THEME = 'dark'; // 'light' or 'dark'
 
@@ -272,7 +272,7 @@ export const THEME_LIGHT = {
                 height: "1px",
             },
         },
-        
+
         tabPanelBox: {
             display: "flex",
             justifyContent: "space-between",
@@ -418,14 +418,26 @@ export const THEME_DARK = {
         backgroundColor: "#242424", //  Darker Gray background color #242424
         borderRadius: "8px",
         color: "#FFFFFF",
-        border: `1px solid #1E1E2E`, //  Border color #C4C4C4
+        border: `1px solid #1E1E2E`, //  Border color #1E1E2E
     },
     components_MuiDataGrid_columnHeaders: {
-        backgroundColor: "#1E1E2E", //  Header background color #264431
+        backgroundColor: "#1E1E2E", //  Header background color #1E1E2E
         color: "#FFFFFF",
-        fontSize: "14px", // Use this font size for headers!
+        fontSize: "10px",
         fontWeight: "bold",
-        textTransform: "uppercase",
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+        // textTransform: "uppercase",
+        '& .MuiDataGrid-columnHeaderTitle': {
+            whiteSpace: "normal",
+            lineHeight: "1.2",     // Reduce spacing between lines
+            textAlign: "center",
+        },
+    },
+    components_MuiDataGrid_virtualScroller: {
+        overflow: "auto",
+        maxHeight: "60vh",
     },
     components_MuiDataGrid_row: {
         "&:nth-of-type(even)": {
@@ -451,7 +463,16 @@ export const THEME_DARK = {
         backgroundColor: "#1E1E2E", //  Toolbar background color #264431
         color: "#FFFFFF",
     },
-
+    components_MuiDataGrid_editableCell: {
+        backgroundColor: "rgba(66, 165, 245, 0.05)",  // Soft blue overlay
+        borderLeft: "2px solid #42a5f5",   // Blue accent
+        borderRight: "4px solid #42a5f5",   // Blue accent
+        fontWeight: 500,
+        color: "#FFFFFF",
+        "&:hover": {
+            backgroundColor: "#31344a",    // Slightly lighter on hover
+        },
+    },
     components_MuiButton_root: {
         borderRadius: 8,
         textTransform: 'none',
@@ -502,7 +523,7 @@ export const THEME_DARK = {
         color: '#FFFFFF', // White text color #FFFFFF
     },
 
-    
+
     components_Dropzone_root: {
         border: '2px dashed #8A2BE2', // Blue Violet border #8A2BE2
         padding: '5px',
@@ -517,7 +538,7 @@ export const THEME_DARK = {
         maxWidth: 500,
         minHeight: 40,
         display: "flex",
-        flexDirection: "row",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center"
     },
@@ -625,15 +646,19 @@ export const COMMON_SETTINGS = {
     typography_body1: { fontSize: '18px' },
     typography_body1_italic: { fontSize: '18px', fontStyle: 'italic' },
     typography_body1_underline: { fontSize: '18px', textDecoration: 'underline' },
+    typography_body1_underline_bold: { fontSize: '18px', textDecoration: 'underline', fontWeight: 600 },
     typography_body2: { fontSize: '16px' },
     typography_body2_italic: { fontSize: '16px', fontStyle: 'italic' },
     typography_body2_underline: { fontSize: '16px', textDecoration: 'underline' },
+    typography_body2_underline_bold: { fontSize: '16px', textDecoration: 'underline', fontWeight: 600 },
     typography_body3: { fontSize: '14px' },
     typography_body3_italic: { fontSize: '14px', fontStyle: 'italic' },
     typography_body3_underline: { fontSize: '14px', textDecoration: 'underline' },
+    typography_body3_underline_bold: { fontSize: '14px', textDecoration: 'underline', fontWeight: 600 },
     typography_body4: { fontSize: '12px' },
     typography_body4_italic: { fontSize: '12px', fontStyle: 'italic' },
     typography_body4_underline: { fontSize: '12px', textDecoration: 'underline' },
+    typography_body4_underline_bold: { fontSize: '12px', textDecoration: 'underline', fontWeight: 600 },
 
     // Spacing
     spacing: 4, // Default spacing unit
