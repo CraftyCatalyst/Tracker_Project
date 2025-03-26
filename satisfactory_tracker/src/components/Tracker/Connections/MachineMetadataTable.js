@@ -26,7 +26,7 @@ const MachineMetadataTable = () => {
   const columns = [
     { field: "machine_name", headerName: "Machine Name", flex: 1 },
     { field: "produced_item", headerName: "Produced Item", flex: 1 },
-    { field: "base_supply_pm", headerName: "Base Supply PM", flex: 1, type: "number" },
+    { field: "part_supply_pm", headerName: "Part Supply PM", flex: 1, type: "number" },
     { field: "conveyor_speed", headerName: "Conveyor Speed", flex: 1, type: "number" },
     { field: "output_inventory", headerName: "Output Inventory", flex: 2 },
   ];

@@ -35,9 +35,12 @@ const MachineChart = ({ data }) => {
     const displayActual = Math.min(actualPercent, 100); // Cap at 100%
     const displayTarget = actualPercent > 100 ? 0 : 100 - displayActual; // Remaining portion
     const actualColor = actualPercent > 100 ? "#084B3B" : "#0bc260"; // Darker green if exceeded
+    // capitalize the name of the machine
+    const machineName = machine.name.toUpperCase()
+
     // logToBackend(`************************Display Actual: ${displayActual}, Display Target: ${displayTarget}, Actual Color: ${actualColor}`, "INFO");
     return {
-      name: machine.name,
+      name: machineName,
       Target: displayTarget, // Display value (0-100%)
       Actual: displayActual, // Display value (0-100%)
       RealActualMachines: realActualMachines, // True value for tooltip
@@ -54,12 +57,12 @@ const MachineChart = ({ data }) => {
       <Typography variant="h3" sx={{ textAlign: "center", width: "100%" }}>
         Actual vs. Target Machines <br /> (Count)
       </Typography>
-      <ResponsiveContainer width="100%" height={500}>  {/* !!!!! Always set height! */}
+      <ResponsiveContainer width="100%" height={barSize * (normalizedChartData.length) * 2}>
         <BarChart 
           layout="vertical"
           barGap={0}
           data={normalizedChartData} 
-          margin={{ top: 10, right: 60, left: 5, bottom: 5 }}
+          margin={{ top: 10, right: 30, left: -8, bottom: 5 }}
           padding={{ top: 10, right: 5, bottom: 5, left: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" />

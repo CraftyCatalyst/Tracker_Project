@@ -7,6 +7,7 @@ import { useTheme } from '@mui/material/styles';
 import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 import StatusCard from "../components/StatusCard";
+import EditIcon from '@mui/icons-material/Edit';
 
 
 const AdminDashboard = () => {
@@ -121,6 +122,24 @@ const AdminDashboard = () => {
         { field: "last_active", headerName: "Last Active", flex: 1 }
     ];
 
+    const renderEditableCell = (params) => (
+        <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+            <span style={{ flexGrow: 1 }}>{params.value}</span>
+            <EditIcon
+                fontSize="small"
+                sx={{
+                    marginLeft: 1,
+                    color: "#888",
+                    opacity: 0,
+                    transition: "opacity 0.2s",
+                    "&:hover": { color: "#42a5f5" },
+                    ".MuiDataGrid-row:hover &": {
+                        opacity: 1
+                    }
+                }}
+            />
+        </Box>
+    );
     const fetchLogs = async (serviceName) => {
         setLogLoading(true);
         try {
@@ -281,7 +300,8 @@ const AdminDashboard = () => {
             headerName: "Setting Value",
             width: 200,
             editable: true,
-            renderEditCell: (params) => {
+            renderEditCell: 
+            (params) => {
                 const isBoolean = ["on", "off"].includes(params.value);
                 return isBoolean ? (
                     <Select
@@ -368,14 +388,14 @@ const AdminDashboard = () => {
 
     const system_test_columns = [
         { field: "category", headerName: "Category", width: 200, editable: true },
-        { field: "key", headerName: "Test Key", width: 250, editable: true },
-        { field: "value", headerName: "Endpoint", width: 300, editable: true },
+        { field: "key", headerName: "Test Key", width: 250, editable: true, renderCell: renderEditableCell },
+        { field: "value", headerName: "Endpoint", width: 300, editable: true, renderCell: renderEditableCell },
         {
             field: "actions",
             headerName: "Actions",
             width: 100,
             renderCell: (params) => (
-                <Button variant="contained" color="error" onClick={() => handleDeleteTest(params.id)}>Delete</Button>
+                <Button variant="contained" size="small" color="error" onClick={() => handleDeleteTest(params.id)}>Delete</Button>
             ),
         },
     ];
@@ -556,14 +576,15 @@ const AdminDashboard = () => {
                         <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
                             <Select
                                 value={newTest.category}
+                                size="small"
                                 onChange={(e) => setNewTest({ ...newTest, category: e.target.value })}
                             >
                                 <MenuItem value="system_test_pages">Page Test</MenuItem>
                                 <MenuItem value="system_test_APIs">API Test</MenuItem>
                             </Select>
-                            <TextField label="Test Key" value={newTest.key} onChange={(e) => setNewTest({ ...newTest, key: e.target.value })} />
-                            <TextField label="Endpoint" value={newTest.value} onChange={(e) => setNewTest({ ...newTest, value: e.target.value })} />
-                            <Button variant="contained" color="primary" onClick={handleAddTest}>Add</Button>
+                            <TextField label="Test Key" value={newTest.key} size="small" onChange={(e) => setNewTest({ ...newTest, key: e.target.value })} />
+                            <TextField label="Endpoint" value={newTest.value} size="small" onChange={(e) => setNewTest({ ...newTest, value: e.target.value })} />
+                            <Button variant="contained" color="primary" size="small" onClick={handleAddTest}>Add</Button>
                         </Box>
 
                         <Box sx={{ display: "flex", alignItems: "center", marginBottom: theme.spacing(1), gap: theme.spacing(2) }}>
@@ -575,8 +596,9 @@ const AdminDashboard = () => {
                             </Typography>
                         </Box>
                         {/* Tests Table */}
-                        <div style={{ flexGrow: 1, overflow: "auto", maxHeight: "50vh", width: "100%" }}>
+                        <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
                             <DataGrid
+                                density="compact"
                                 rows={tests}
                                 columns={system_test_columns}
                                 pageSize={25}
@@ -713,7 +735,7 @@ const AdminDashboard = () => {
                                     processRowUpdate={handleEditCellChange}
                                     experimentalFeatures={{ newEditingApi: true }}
                                     disableSelectionOnClick
-                                    
+
                                 />
                             </div>
                         </Box>

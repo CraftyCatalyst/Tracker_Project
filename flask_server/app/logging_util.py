@@ -24,10 +24,10 @@ def setup_logger(name):
   
     # Create a logger
     logger = logging.getLogger(name)
-    print(f"Initializing logger: {name}")
+    # print(f"Initializing logger: {name}")
 
     root_logger = logging.getLogger()
-    print(f"Root logger handlers: {root_logger.handlers}")
+    # print(f"Root logger handlers: {root_logger.handlers}")
     
 
     logger.setLevel(logging.DEBUG)

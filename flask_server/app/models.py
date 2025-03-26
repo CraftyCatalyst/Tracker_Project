@@ -48,15 +48,20 @@ class Recipe(db.Model):
     recipe_name = db.Column(db.String(200), nullable=False)
     ingredient_count = db.Column(db.Integer)
     source_level = db.Column(db.Integer)
-    base_production_type = db.Column(db.String(100))
+    production_type = db.Column(db.String(100))
     produced_in_automated = db.Column(db.String(100))
     produced_in_manual = db.Column(db.String(100))
-    base_input_part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=True)
-    base_input = db.Column(db.String(100))
-    base_demand_pm = db.Column(db.Float)
-    base_supply_pm = db.Column(db.Float)
+    ingredient_part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=True)
+    ingredient = db.Column(db.String(100))
+    ingredient_demand_pm = db.Column(db.Float)
+    part_supply_pm = db.Column(db.Float)
+    part_cycle_time_sec = db.Column(db.Float)
+    ingredient_demand_quantity = db.Column(db.Float)
+    part_supply_quantity = db.Column(db.Float)
     byproduct = db.Column(db.String(100))
     byproduct_supply_pm = db.Column(db.Float)
+    byproduct_supply_quantity = db.Column(db.Float)
+
 
 class Alternate_Recipe(db.Model):
     __tablename__ = 'alternate_recipe'
@@ -104,6 +109,8 @@ class Tracker(db.Model):
     part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=False)
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
     target_quantity = db.Column(db.Float, nullable=False, default=1)
+    target_parts_pm = db.Column(db.Float, nullable=True)
+    target_timeframe = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
     __table_args__ = (
@@ -285,6 +292,9 @@ class Project_Assembly_Parts(db.Model):
     phase_id = db.Column(db.Integer, db.ForeignKey('project_assembly_phases.id'), nullable=False)
     phase_part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=False)
     phase_part_quantity = db.Column(db.Float, nullable=False)
+    phase_target_parts_pm = db.Column(db.Float, nullable=True)
+    phase_target_timeframe = db.Column(db.Float, nullable=True)
+
     
 
 class User_Connection_Data(db.Model):

@@ -30,6 +30,7 @@ import { API_ENDPOINTS } from "../apiConfig";
 import { UserContext } from '../context/UserContext';
 import { useAlert } from "../context/AlertContext";
 import logToBackend from '../services/logService';
+import { formatHeader } from "../utils/formatHeader";
 
 const DependencyTreePage = () => {
     const theme = useTheme();
@@ -48,17 +49,20 @@ const DependencyTreePage = () => {
     const [visualData, setVisualData] = useState(null);
     const [flattenedData, setFlattenedData] = useState([]);
     const [error, setError] = useState("");
-    const [isCollapsed, setIsCollapsed] = useState(false); 
-    const [isExpanded, setIsExpanded] = useState(false); 
-    const [activeTab, setActiveTab] = useState(""); 
-    const [expandedNodes, setExpandedNodes] = useState([]); 
-    const [tabWidth, setTabWidth] = useState(0); 
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [activeTab, setActiveTab] = useState("");
+    const [expandedNodes, setExpandedNodes] = useState([]);
+    const [tabWidth, setTabWidth] = useState(0);
     const [isResizing, setIsResizing] = useState(false);
-    const [startX, setStartX] = useState(0); 
-    const [startWidth, setStartWidth] = useState(tabWidth); 
+    const [startX, setStartX] = useState(0);
+    const [startWidth, setStartWidth] = useState(tabWidth);
     const [trackerData, setTrackerData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedRows, setSelectedRows] = useState([]);
+    const [targetPartsPm, setTargetPartsPm] = useState(0);
+    const [targetTimeframe, setTargetTimeframe] = useState(null);
+
 
     // Filter states
     const [partFilter, setPartFilter] = useState("");
@@ -68,15 +72,18 @@ const DependencyTreePage = () => {
 
     const fetchTreeData = async () => {
         try {
+            console.log("Fetching Tree Data for Part:", selectedPart, "Recipe:", recipeName, "Target Quantity:", targetQuantity, "Target Parts PM:", targetPartsPm, "Target Timeframe:", targetTimeframe);
             const response = await axios.get(API_ENDPOINTS.build_tree, {
                 params: {
                     part_id: selectedPart,
                     recipe_name: recipeName,
                     target_quantity: targetQuantity,
+                    target_parts_pm: parseFloat(targetPartsPm),
+                    target_timeframe: parseFloat(targetTimeframe),
                 },
             });
             const tree = response.data;
-
+            console.log("Fetched Tree Data:", tree);
             setTreeData(response.data); // Use the tree structure from the backend directly
             setFlattenedData(flattenTree(response.data)); // Flatten the tree for the DataGrid
             setVisualData(buildTreeData(response.data)); // Build the tree data structure for the visual tab
@@ -98,7 +105,7 @@ const DependencyTreePage = () => {
 
         for (const [key, value] of Object.entries(node)) {
             // console.log("Node Key:", key, "Value:", value); // Debug log
-            if (!value || typeof value !== "object") continue; 
+            if (!value || typeof value !== "object") continue;
             // Generate a unique ID for this node
             const uniqueId = `${parentId}-${counter.id++}`;
             // console.log(`Generated ID: ${uniqueId} for Node: ${key}`); // Debug log
@@ -108,8 +115,12 @@ const DependencyTreePage = () => {
                 id: uniqueId,
                 name: key,
                 "Required Quantity": value["Required Quantity"] || "N/A",
+                "Required Parts PM": value["Required Parts PM"] || "N/A",
+                "Timeframe": value["Timeframe"] || "N/A",
                 "Produced In": value["Produced In"] || "N/A",
-                "No. of Machines": value["No. of Machines"] || "N/A",
+                "No. of Machines": typeof value["No. of Machines"] === "number"
+                    ? value["No. of Machines"].toFixed(2)
+                    : "N/A",
                 children: value.Subtree && typeof value.Subtree === "object"
                     ? buildTreeData(value.Subtree, uniqueId, counter)
                     : [],
@@ -127,23 +138,17 @@ const DependencyTreePage = () => {
         return tree;
     };
 
-    // console.log("Columns Definition:", [
-    //     { field: "part_name", headerName: "Part", flex: 1 },
-    //     { field: "recipe_name", headerName: "Recipe", flex: 1 },
-    //     {
-    //         field: "select",
-    //         headerName: "Select",
-    //         flex: 0.5,
-    //         sortable: false,
-    //         renderCell: (params) => (
-    //             <Checkbox
-    //                 checked={selectedRecipes.includes(params.row.recipe_id)}
-    //                 onChange={() => handleCheckboxChange(params.row.recipe_id, params.row.part_id)}
-    //             />
-    //         ),
-    //     },
-    // ]);
+    const formatMinutesAsHMS = (minutes) => {
+        if (!minutes || isNaN(minutes)) return "00:00:00";
 
+        const totalSeconds = Math.round(minutes * 60);
+        const hours = Math.floor(totalSeconds / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+        const secs = totalSeconds % 60;
+        const formattedTime = `${String(hours).padStart(2, "0")}h ${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
+        console.log("Formatted Time:", formattedTime);
+        return formattedTime;
+    };
     // Render the tree recursively
     const renderTree = (nodes) => {
         console.log("Rendering Tree Data:");
@@ -162,13 +167,17 @@ const DependencyTreePage = () => {
                     key={node.id}
                     nodeid={node.id}
                     label={
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                            <strong>{node.name}</strong>
-                            <span>Qty: {node["Required Quantity"]}</span>
-                            <span>Produced In: {node["Produced In"]}</span>
-                            <span>No. of Machines: {node["No. of Machines"]}</span>
-                            <span>Recipe: {node.Recipe}</span>
-                        </div>
+                        <Box sx={{ display: "flex", flexDirection: "column", fontSize: "14px" }}>
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                                <strong>{node.name}</strong>
+                                <span>Qty: {node["Required Quantity"]}</span>
+                                <span>Parts PM: {node["Required Parts PM"]}</span>
+                                <span>Timeframe: {node["Timeframe"]}</span>
+                                <span>Produced In: {node["Produced In"]}</span>
+                                <span>No. of Machines: {node["No. of Machines"]}</span>
+                                <span>Recipe: {node.Recipe}</span>
+                            </div>
+                        </Box>
                     }
                 >
                     {node.children.length > 0 && renderTree(node.children)}
@@ -223,8 +232,14 @@ const DependencyTreePage = () => {
             name: currentNode.Node,
             attributes: {
                 "Required Quantity": currentNode["Required Quantity"],
+                "Required Parts PM": currentNode["Required Parts PM"],
+                "Timeframe": currentNode["Timeframe"],
                 "Produced In": currentNode["Produced In"],
                 "No. of Machines": currentNode["No. of Machines"],
+                "Part Supply PM": currentNode["Part Supply PM"],
+                "Part Supply Quantity": currentNode["Part Supply Qty"],
+                "Ingredient Demand PM": currentNode["Ingredient Demand PM"],
+                "Ingredient Demand Quantity": currentNode["Ingredient Demand Qty"],
                 Recipe: currentNode.Recipe,
             },
             children: rows
@@ -241,10 +256,49 @@ const DependencyTreePage = () => {
         { field: 'parent', headerName: 'Part', flex: 1 },
         { field: 'node', headerName: 'Ingredient', flex: 1 },
         { field: 'level', headerName: 'Level', flex: 1, type: 'number' },
-        { field: 'requiredQuantity', headerName: 'Required Quantity', flex: 1, type: 'number' },
+        {
+            field: 'requiredQuantity', headerName: 'Required Quantity', flex: 1, type: 'number',
+            renderHeader: () => formatHeader("Required / Quantity"),
+
+        },
+        {
+            field: "target_parts_pm", headerName: "Target Parts/Min", flex: 1, type: "number",
+            renderHeader: () => formatHeader("Parts PM"),
+        },
+        {
+            field: "target_timeframe", headerName: "Estimated Completion", flex: 1,
+            renderHeader: () => formatHeader("Estimated / Completion"),
+        },
         { field: 'producedIn', headerName: 'Produced In', flex: 1 },
-        { field: 'machines', headerName: 'No. of Machines', flex: 1, type: 'number' },
+        {
+            field: 'machines', headerName: 'No. of Machines', flex: 1, type: 'number',
+            renderHeader: () => formatHeader("No. of / Machines"),
+        },
         { field: 'recipe', headerName: 'Recipe Name', flex: 1 },
+        {
+            field: "partSupplyPM", headerName: "Part Supply PM", flex: 1, type: "number",
+            renderHeader: () => formatHeader("Part / Supply PM"),
+        },
+        {
+            field: "partSupplyQty", headerName: "Part Supply Qty", flex: 1, type: "number",
+            renderHeader: () => formatHeader("Part / Supply Qty"),
+        },
+        {
+            field: "ingredientDemandPM", headerName: "Ingredient Demand PM", flex: 1, type: "number",
+            renderHeader: () => formatHeader("Ingredient / Demand PM"),
+        },
+        {
+            field: "ingredientDemandQty", headerName: "Ingredient Demand Qty", flex: 1, type: "number",
+            renderHeader: () => formatHeader("Ingredient / Demand Qty"),
+        },
+        {
+            field: "ingredientSupplyPM", headerName: "Ingredient Supply PM", flex: 1, type: "number",
+            renderHeader: () => formatHeader("Ingredient / Supply PM"),
+        },
+        {
+            field: "ingredientSupplyQty", headerName: "Ingredient Supply Qty", flex: 1, type: "number",
+            renderHeader: () => formatHeader("Ingredient / Supply Qty"),            
+        },
     ];
     // Flattened data for the DataGrid
     const rows = flattenedData.map((row, index) => ({
@@ -253,35 +307,19 @@ const DependencyTreePage = () => {
         node: row.Node,
         level: row.Level,
         requiredQuantity: row['Required Quantity'],
+        target_parts_pm: parseFloat(row['Required Parts PM']),
+        target_timeframe: formatMinutesAsHMS(parseFloat(row['Timeframe'])),
         producedIn: row['Produced In'],
         machines: row['No. of Machines'],
         recipe: row.Recipe,
+        partSupplyPM: row["Part Supply PM"] || null,
+        partSupplyQty: row["Part Supply Quantity"] || null,
+        ingredientDemandPM: row["Ingredient Demand PM"] || null,
+        ingredientDemandQty: row["Ingredient Demand Quantity"] || null,
+        ingredientSupplyPM: row["Ingredient Supply PM"] || null,
+        ingredientSupplyQty: row["Ingredient Supply Quantity"] || null,
     }));
-
-    // const altrows = displayedRecipes.map((recipe, index) => ({
-    //     id: index, ...recipe,
-    //     altpart_name: recipe.Part,
-    //     altrecipe_name: recipe.Recipe
-    // }));
-
-
-
-
-    // logToBackend("Alternate Rows: " + altrows, "INFO");
-
-    // const altcolumns = [
-    //     { field: "part_name", headerName: "Part", flex: 1 },
-    //     { field: "recipe_name", headerName: "Recipe", flex: 1 },
-    //     {
-    //         field: "select", headerName: "Select", flex: 0.5, sortable: false,
-    //         renderCell: (params) => (
-    //             <Checkbox
-    //                 checked={selectedRecipes.includes(params.row.recipe_id)}
-    //                 onChange={() => handleCheckboxChange(params.row.recipe_id, params.row.part_id)}
-    //             />
-    //         ),
-    //     },
-    // ];
+    console.log("Rows:", rows);
 
     // Collect all node IDs in the tree
     const collectAllNodeIds = (nodes) => {
@@ -383,26 +421,6 @@ const DependencyTreePage = () => {
         applyFilters();
     }, [partFilter, recipeFilter, alternateRecipes]);
 
-    // Build the dependency tree
-    // const handleFetchTree = async () => {
-    //     try {
-    //         const response = await axios.get(API_ENDPOINTS.build_tree, {
-    //             params: {
-    //                 part_id: selectedPart,
-    //                 recipe_name: recipeName,
-    //                 target_quantity: targetQuantity,
-    //             },
-    //         });
-    //         const tree = response.data;
-    //         setTreeData(tree); // Set the structured tree data
-    //         setFlattenedData(flattenTree(tree)); // Flatten the tree for the DataGrid
-    //         setError("");
-    //     } catch (err) {
-    //         setError("Failed to fetch dependency tree. Check console for details.");
-    //         console.error(err);
-    //     }
-    // };
-
     // Flatten the tree structure for the DataGrid
     const flattenTree = (tree, parent = "", level = 0) => {
         const rows = [];
@@ -413,8 +431,16 @@ const DependencyTreePage = () => {
                 Node: key,
                 Level: level,
                 "Required Quantity": node["Required Quantity"] || "N/A",
+                "Required Parts PM": node["Required Parts PM"] || "N/A",
+                "Timeframe": node["Timeframe"] || "N/A",
                 "Produced In": node["Produced In"] || "N/A",
                 "No. of Machines": node["No. of Machines"] || "N/A",
+                "Part Supply PM": node["Part Supply PM"] || "",
+                "Part Supply Quantity": node["Part Supply Quantity"] || "",
+                "Ingredient Demand PM": node["Ingredient Demand PM"] || "",
+                "Ingredient Demand Quantity": node["Ingredient Demand Quantity"] || "",
+                "Ingredient Supply PM": node["Ingredient Supply PM"] || "",
+                "Ingredient Supply Quantity": node["Ingredient Supply Quantity"] || "",
                 Recipe: node["Recipe"] || "N/A",
             });
 
@@ -422,6 +448,7 @@ const DependencyTreePage = () => {
                 rows.push(...flattenTree(node.Subtree, key, level + 1));
             }
         });
+        console.log("Flattened Rows:", rows);
         return rows;
     };
 
@@ -476,74 +503,11 @@ const DependencyTreePage = () => {
                 return ""; // Collapse the tab
             } else {
                 if (tabWidth === 0) {
-                    setTabWidth(700); // Set tab width to 700px
+                    setTabWidth(500); // Set tab width to 700px
                 }
                 return tab; // Set the active tab
             }
         });
-    };
-
-    const handleAddToTracker = async (partId, targetQuantity, recipeName) => {
-        if (!user) {
-            // Redirect to login page if user is not authenticated
-            window.location.href = "/login";
-            return;
-        }
-
-        try {
-            // console.log("Fetching Recipe ID for Part:", partId, "and Recipe Name:", recipeName);
-            const response = await axios.get(API_ENDPOINTS.get_recipe_id(partId), {
-                params: { recipe_name: recipeName },
-            });
-            const recipes = response.data;
-
-            if (recipes.length === 0) {
-                showAlert("warning", "No recipe found for the selected part and recipe name.");
-                return;
-            }
-
-            const recipeId = recipes[0].id; // Extract the first recipe_id
-            // console.log("Retrieved Recipe ID:", recipeId);
-
-            // console.log("Adding Part to Tracker:", partId, targetQuantity, recipeId);
-            const addToTrackerResponse = await axios.post(API_ENDPOINTS.add_to_tracker, {
-                partId,
-                targetQuantity,
-                recipeId,
-            });
-
-            if (addToTrackerResponse.status === 200) {
-                // console.log("Part added to tracker:", addToTrackerResponse.data);
-                showAlert("success", "Part added to your tracker!");
-                fetchTrackerData(); // Refresh the tracker data
-            } else {
-                showAlert("error", addToTrackerResponse.data.error || "Failed to add part to tracker.");
-            }
-        } catch (error) {
-            console.error("Error adding part to tracker:", error);
-            showAlert("error", "Failed to add part to tracker. Please log in.");
-        }
-    };
-
-    const handleDeleteSelected = async () => {
-        if (selectedRows.length === 0) {
-            showAlert("warning", "Please select at least one item to delete.");
-            return;
-        }
-
-        try {
-            await Promise.all(
-                selectedRows.map((id) =>
-                    axios.delete(`${API_ENDPOINTS.tracker_data}/${id}`)
-                )
-            );
-            showAlert("success", "Selected items deleted successfully.");
-            fetchTrackerData(); // Refresh the data
-            setSelectedRows([]); // Clear selected rows
-        } catch (error) {
-            console.error("Error deleting selected items:", error);
-            showAlert("error", "Failed to delete selected items. Please try again.");
-        }
     };
 
     const updateTrackerItem = async (id, updatedQuantity) => {
@@ -591,52 +555,6 @@ const DependencyTreePage = () => {
                 const displayedRecipes = showSelectedOnly
                     ? filteredRecipes.filter((recipe) => selectedRecipes.includes(recipe.recipe_id))
                     : filteredRecipes;
-                //logToBackend(displayedRecipes.map((recipe, index) => ({id: index, ...recipe })),"INFO");
-                //logToBackend("Transformed Rows:" + displayedRecipes.map((recipe, index) => ({ id: recipe.id || index, ...recipe })), "DEBUG");
-
-                // const flattenedAltRows = displayedRecipes.map((recipe, index) => ({
-                //     id: recipe.recipe_id ? `${recipe.recipe_id}-${index}` : `fallback-${index}`, // Ensures a unique ID
-                //     part_name: String(recipe.part_name || "Unknown"),
-                //     recipe_name: String(recipe.recipe_name || "Unknown"),
-                //     recipe_id: recipe.recipe_id,
-                //     part_id: recipe.part_id
-                // }));
-
-
-                // logToBackend("Flattened Rows: " + JSON.stringify(flattenedAltRows, null, 2), "DEBUG");
-                // logToBackend("Is array? " + Array.isArray(flattenedAltRows), "DEBUG");
-                // logToBackend("Flattened Rows Length: " + flattenedAltRows.length, "DEBUG");
-                // logToBackend("First Row: " + JSON.stringify(flattenedAltRows[0], null, 2), "DEBUG");
-
-                // const altColumns = [
-                //     { field: "part_name", headerName: "Part", flex: 1 },
-                //     { field: "recipe_name", headerName: "Recipe", flex: 1 },
-                //     {
-                //         field: "select",
-                //         headerName: "Select",
-                //         flex: 0.5,
-                //         sortable: false,
-                //         renderCell: (params) => {
-                //             console.log("RenderCell Params:", params.row); // Debugging output
-                //             if (!params.row || !params.row.recipe_id || !params.row.part_id) {
-                //                 return null; // Prevents function errors if params are undefined
-                //             }
-                //             return (
-                //                 <Checkbox
-                //                     checked={selectedRecipes.includes(params.row.recipe_id)}
-                //                     onChange={() => handleCheckboxChange(params.row.recipe_id, params.row.part_id)}
-                //                 />
-                //             );
-                //         },
-                //     },
-                // ];
-
-                // console.log("Final Columns Before DataGrid:", altColumns);
-                // logToBackend("Final Columns Before DataGrid: " + JSON.stringify(altColumns, null, 2), "DEBUG");
-                //console.log("Updated Columns Definition:", altColumns);
-                //console.log("Select Column:", altColumns.find(col => col.field === "select"));
-
-                // logToBackend("Updated Columns Definition: " + JSON.stringify(altColumns, null, 2), "DEBUG");
 
                 return (
                     <div>
@@ -650,13 +568,6 @@ const DependencyTreePage = () => {
                                 <select
                                     value={partFilter}
                                     onChange={(e) => setPartFilter(e.target.value)}
-                                // style={{
-                                //     padding: theme.spacing(1),
-                                //     borderRadius: theme.shape.borderRadius,
-                                //     border: `1px solid ${theme.palette.text.disabled}`,
-                                //     background: theme.palette.background.dropdown,
-                                //     color: theme.palette.text.dropdown,
-                                // }}
                                 >
                                     <option value="">-- Select Part --</option>
                                     {uniqueParts.map((part, index) => (
@@ -673,13 +584,6 @@ const DependencyTreePage = () => {
                                 <select
                                     value={recipeFilter}
                                     onChange={(e) => setRecipeFilter(e.target.value)}
-                                // style={{
-                                //     padding: theme.spacing(1),
-                                //     borderRadius: theme.shape.borderRadius,
-                                //     border: `1px solid ${theme.palette.text.disabled}`,
-                                //     background: theme.palette.background.dropdown,
-                                //     color: theme.palette.text.dropdown,
-                                // }}
                                 >
                                     <option value="">-- Select Recipe --</option>
                                     {uniqueRecipes.map((recipe, index) => (
@@ -690,6 +594,7 @@ const DependencyTreePage = () => {
                                 </select>
                             </div>
                         </Box>
+
                         {/* Second Row: Show Selected Filter */}
                         <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: theme.spacing(8) }}>
                             <label style={{ display: "flex", alignItems: "center", gap: theme.spacing(1) }}>
@@ -701,34 +606,11 @@ const DependencyTreePage = () => {
                                 />
                             </label>
                         </Box>
-                        {/* Filtered Table */}
-                        {/* component={Paper}
-                        sx={{
-                            marginTop: theme.spacing(1),
-                            width: "100%",
-                            flexGrow: 1, // Allows it to expand dynamically
-                            display: "flex",
-                            flexDirection: "column"
-                        }} */}
-
-                        {/* <DataGrid
-                            rows={flattenedAltRows}
-                            columns={altColumns}
-
-                            pageSize={10}
-                            rowsPerPageOptions={[5, 10, 20]}
-                            checkboxSelection={false} // No need for DataGrid's built-in checkboxes
-                            disableSelectionOnClick
-                            slots={{ toolbar: () => <GridToolbar /> }}
-                            slotProps={{ toolbar: { showQuickFilter: true } }}
-                            sortingOrder={['asc', 'desc']}
-                            sx={{ flexGrow: 1 }} // Makes the DataGrid take up the full height of its parent container
-                        /> */}
 
                         <TableContainer component={Paper} sx={{
                             marginTop: theme.spacing(1),
-                            maxHeight: "700px", // ✅ Limits height to enable scrolling
-                            overflow: "auto" // ✅ Enables scrollbars
+                            maxHeight: "700px",
+                            overflow: "auto",
                         }}
                         >
                             <Table stickyHeader>
@@ -757,12 +639,12 @@ const DependencyTreePage = () => {
                         </TableContainer>
                     </div>
                 );
-            case "visualiseTree":
+            case "treeView":
                 return (
                     <div>
-                        <Typography> <strong>Visualise Tree:</strong> </Typography>
+                        <Typography> <strong>Dependency Treeview:</strong> </Typography>
                         {/* Buttons for Expand/Collapse */}
-                        <           Box sx={{ display: "flex", gap: theme.spacing(1), mb: theme.spacing(1) }}>
+                        <           Box sx={{ display: "flex", gap: theme.spacing(1), mb: theme.spacing(2), mt: theme.spacing(1) }}>
                             <Button
                                 variant="contained"
                                 // color="secondary"
@@ -785,8 +667,6 @@ const DependencyTreePage = () => {
                                         defaultCollapseIcon: "🔽",
                                         defaultExpandIcon: "▶",
                                     }}
-                                    // defaultCollapseIcon="🔽"
-                                    // defaultExpandIcon="▶"
                                     expandedItems={expandedNodes}
                                     onExpandedItemsChange={(event, nodeIds) => setExpandedNodes(nodeIds)}
                                 >
@@ -807,83 +687,9 @@ const DependencyTreePage = () => {
                         {renderSpiderDiagram()}
                     </div>
                 );
-            case "tracker":
-                const selectedPartId = Number(selectedPart); // Convert selectedPart to a number
-                const selectedPartData = parts.find((part) => part.id === selectedPartId);
-                const partName = selectedPartData ? selectedPartData.name : "Unknown Part";
-                // console.log("User", user, "Part Data:", parts, "Selected Part ID:", selectedPartId, "Part Name:", partName);
-
-                const columns = [
-                    { field: "part_name", headerName: "Part", flex: 1 },
-                    { field: "recipe_name", headerName: "Recipe", flex: 1 },
-                    {
-                        field: "target_quantity",
-                        headerName: "Target Quantity",
-                        flex: 1,
-                        type: "number",
-                        editable: true, // Enable inline editing                        
-                    },
-                    { field: "created_at", headerName: "Created At", flex: 1 },
-                    { field: "updated_at", headerName: "Updated At", flex: 1 },
-                ];
-
-                const rows = trackerData.map((row, index) => ({
-                    id: row.id || index, // Ensure a unique ID
-                    ...row,
-                }));
-                return (
-                    <Box>
-                        <Typography variant="h2" gutterBottom>
-                            My Tracker Data
-                        </Typography>
-                        <Box key={selectedPart} sx={{ display: "flex", alignItems: "center", marginBottom: theme.spacing(2) }}>
-                            {treeData ? (
-                                <Typography variant="body1">{partName}, {recipeName}</Typography>
-                            ) : (
-                                <Typography variant="body1">No Part Selected</Typography>
-                            )}
-                            <Button
-                                variant="contained"
-                                // color="secondary"
-                                sx={{ marginLeft: theme.spacing(2) }}
-                                onClick={() => handleAddToTracker(selectedPartId, targetQuantity, recipeName)}
-                                disabled={!treeData}
-                            >
-                                Add to My Tracker
-                            </Button>
-                        </Box>
-                        <Box>
-                            <Typography variant="body3" gutterBottom>
-                                * Double-click on the <strong>Target Quantity</strong> field to edit. Press Enter to save.
-                            </Typography>
-                            <div style={{ height: 600, width: "100%" }}>
-                                <DataGrid 
-                                    density="compact"
-                                    rows={rows} 
-                                    columns={columns} 
-                                    loading={loading} 
-                                    onRowSelectionModelChange={(ids) => setSelectedRows(ids)}
-                                    processRowUpdate={handleProcessRowUpdate}
-                                    experimentalFeatures={{ newEditingApi: true }}
-                                
-                                /> 
-                            </div>
-                        </Box>
-
-                        <Box sx={{ marginTop: theme.spacing(2), textAlign: "right" }}>
-                            <Button
-                                variant="contained"
-                                color="error"
-                                onClick={handleDeleteSelected}
-                                disabled={selectedRows.length === 0}
-                            >
-                                Delete Selected
-                            </Button>
-                        </Box>
-                    </Box>
-                );
         };
     };
+
 
     // Extract unique filter options
     const uniqueParts = [...new Set(alternateRecipes.map((recipe) => recipe.part_name))];
@@ -899,7 +705,7 @@ const DependencyTreePage = () => {
                     width: `calc(100% - ${tabWidth}px)`, // Subtract the tab width for the main content
                     transition: isResizing ? "none" : "width 0.2s ease",
                     padding: theme.spacing(2),
-                    backgroundColor: theme.palette.background, //`linear-gradient(to right, ${theme.palette.background.linearGradientLeft}, ${theme.palette.background.linearGradientRight})`,
+                    backgroundColor: theme.palette.background,
                     color: theme.palette.text.primary,
                     overflow: "hidden",
                 }}
@@ -939,12 +745,13 @@ const DependencyTreePage = () => {
 
                     {/* Target Quantity */}
                     <Box sx={{ display: "flex", flexDirection: "column" }}>
-                        <label style={{ marginBottom: theme.spacing(0.5) }}>Target Quantity Per Minute:</label>
+                        <label style={{ marginBottom: theme.spacing(0.5) }}>Target Quantity</label>
                         <input
                             type="number"
                             placeholder="Enter Quantity"
                             value={targetQuantity}
-                            onChange={(e) => setTargetQuantity(e.target.value)}
+                            onChange={(e) =>
+                                setTargetQuantity(e.target.value)}
                             style={{
                                 padding: theme.spacing(1),
                                 borderRadius: theme.shape.borderRadius,
@@ -954,8 +761,58 @@ const DependencyTreePage = () => {
                             }}
                         />
                     </Box>
-                </Box>
 
+                    {/* Target Parts per Minute */}
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <label style={{ marginBottom: theme.spacing(0.5) }}>Target Parts / Minute:</label>
+                        <input
+                            type="number"
+                            value={targetPartsPm}
+                            onChange={(e) => {
+                                const newPartsPm = Number(e.target.value);
+                                setTargetPartsPm(parseFloat(newPartsPm));
+                                if (newPartsPm > 0) {
+                                    setTargetTimeframe(targetQuantity / newPartsPm);
+                                }
+                            }}
+                            placeholder="Auto or Manual"
+                            style={{
+                                padding: theme.spacing(1),
+                                borderRadius: theme.shape.borderRadius,
+                                border: `1px solid ${theme.palette.text.disabled}`,
+                                background: theme.palette.background.dropdown,
+                                color: theme.palette.text.dropdown,
+                            }}
+                        />
+                    </Box>
+
+                    {/* Target Timeframe */}
+                    <Box sx={{ display: "flex", flexDirection: "column" }} >
+                        <label style={{ marginBottom: theme.spacing(0.5) }}>Estimated Completion Time:</label>
+                        <input
+                            type="text"
+                            value={formatMinutesAsHMS(parseFloat(targetTimeframe))}
+                            disabled={true}
+                            onChange={(e) => {
+                                const newTimeframe = Number(e.target.value);
+                                setTargetTimeframe(parseFloat(newTimeframe));
+                                if (newTimeframe > 0) {
+                                    setTargetPartsPm(targetQuantity / newTimeframe);
+                                }
+                            }}
+
+                            placeholder=""
+                            style={{
+                                padding: theme.spacing(1),
+                                borderRadius: theme.shape.borderRadius,
+                                border: `1px solid ${theme.palette.text.disabled}`,
+                                background: theme.palette.background.dropdown,
+                                color: theme.palette.text.disabled,
+
+                            }}
+                        />
+                    </Box>
+                </Box>
                 {/* Fetch Dependencies Button */}
                 <Button
                     variant="contained"
@@ -967,20 +824,12 @@ const DependencyTreePage = () => {
                 </Button>
 
                 {/* DataGrid */}
-                <Box sx={{ height: 650, width: "100%" }}>
-                    <DataGrid density="compact" rows={rows} columns={columns} loading={loading} />
+                <Box sx={{ flexGrow: 1, width: "100%" }}>
+                    <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
+                        <DataGrid density="compact" rows={rows} columns={columns} loading={loading} />
+                    </div>
                 </Box>
             </Box>
-
-            {/* Resizer */}
-            {/* <Box
-                sx={{
-                    width: "5px",
-                    cursor: "col-resize",
-                    backgroundColor: "#00FFCC",
-                }}
-                onMouseDown={handleMouseDown}
-            ></Box> */}
 
             {/* Right Side: Content and Tabs Section */}
             <Box
@@ -1019,52 +868,9 @@ const DependencyTreePage = () => {
                     borderLeft: `2px solid ${theme.palette.text.disabled}`,
                 }}
             >
-                {/* <Button
-                    onClick={() => toggleTab("alternateRecipes")}
-                    sx={{
-                        textAlign: "center",
-                        padding: "8px",
-                        borderRadius: 2,
-                        borderWidth: "0 0 2px 1",
-                        backgroundColor: activeTab === "alternateRecipes" ? "#00FFCC" : "#0A553E",
-                        color: activeTab === "alternateRecipes" ? "#000" : "#CCFFFF",
-                        "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
-                    }}
-                >
-                    Alternate Recipes
-                </Button>
-                <Button
-                    onClick={() => toggleTab("visualiseTree")}
-                    disabled={!treeData}
-                    sx={{
-                        textAlign: "center",
-                        padding: "8px",
-                        borderRadius: 2,
-                        backgroundColor: activeTab === "visualiseTree" ? "#00FFCC" : "#0A5A3E",
-                        color: activeTab === "visualiseTree" ? "#000" : "#CCFFFF",
-                        "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
-                    }}
-                >
-                    Visualise Tree
-                </Button>
-                <Button
-                    onClick={() => toggleTab("tracker")}
-                    // disabled={!treeData}
-                    sx={{
-                        textAlign: "center",
-                        padding: "8px",
-                        borderRadius: 2,
-                        backgroundColor: activeTab === "tracker" ? "#00FFCC" : "#0A5F3E",
-                        color: activeTab === "tracker" ? "#000" : "#CCFFFF",
-                        "&:hover": { backgroundColor: "#00FFCC", color: "#000" },
-                    }}
-                >
-                    Tracker
-                </Button> */}
                 {[
                     { id: "alternateRecipes", label: "Alternate Recipes" },
-                    { id: "visualiseTree", label: "Visualise Tree", disabled: !treeData },
-                    // { id: "tracker", label: "Tracker" },
+                    { id: "treeView", label: "Treeview", disabled: !treeData },
                     // { id: "spiderDiagram", label: "Spider Diagram" }
                 ].map((tab) => (
                     <Button
