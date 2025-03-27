@@ -1,0 +1,47 @@
+[git]
+# Range of commits to include in the changelog
+conventional_commits = true
+filter_unconventional = false
+commit_preprocessors = []
+tag_pattern = "v[0-9].*"
+
+[changelog]
+header = "# 📦 CHANGELOG\n"
+body = """
+{% if version %}## [{{version}}] – {{timestamp | date(format="%Y-%m-%d")}}
+> This changelog includes all updates since the last production release.
+
+{% endif -%}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+
+{% for commit in commits %}
+- {{ commit.message | upper_first }}
+{% endfor %}
+{% endfor %}
+"""
+footer = """
+---
+
+## [Previous Releases]
+- _See tags on GitHub for prior production releases_
+"""
+
+[template]
+# Custom grouping of commit types
+group_by = "group"
+sort_commits = "date"
+commit_groups = [
+  { group = "🐛 Fixes",      regex = "^(fix|bug|hotfix)" },
+  { group = "🛠 Database Changes", regex = "^(db|database)" },
+  { group = "🔧 Backend Updates", regex = "^(refactor|backend|api)" },
+  { group = "🖥 Frontend Updates", regex = "^(frontend|ui|ux)" },
+  { group = "🎨 Theming & UI", regex = "^(style|theme|layout)" },
+  { group = "🛡 Admin Dashboard", regex = "^(admin|dashboard|monitoring)" },
+  { group = "🚀 Features",    regex = "^(feat|feature)" },
+  { group = "📦 Misc",        regex = "^(chore|docs|misc|ops)" },
+]
+
+[template.commit_parsers]
+# Break messages down if they follow a pattern like "type(scope): description"
+message = "(?P<type>\\w+)(\\((?P<scope>.*)\\))?: (?P<description>.+)"
