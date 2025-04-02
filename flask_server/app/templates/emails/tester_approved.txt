@@ -1,0 +1,14 @@
+Hello {{ username }},
+
+Congratulations! You have been approved as a tester for Satisfactory Tracker.
+
+You can now log in to your account using the following credentials:
+
+🔹 Email: {{ email }}
+🔹 Temporary Password: {{ temporary_password }}
+
+For security reasons, you will be required to change your password upon first login.  
+Login here: https://dev.satisfactorytracker.com/
+
+Welcome aboard! 🎉  
+Catalyst, Creator of Satisfactory Tracker

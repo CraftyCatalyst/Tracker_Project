@@ -79,27 +79,9 @@ Catalyst, Creator of Satisfactory Tracker`;
   const handleApprove = async (id) => {
     try {
       const response = await axios.post(`${API_ENDPOINTS.tester_approve}/${id}`);
-      const tempPassword = response.data.temp_password;
+      alert("Tester approved!" + response.data);
       const tester = testers.find(t => t.id === id);
-
-      // ✅ Generate email content
-      const emailText = `
-Hello ${tester.username},
-
-Congratulations! You have been approved as a tester for Satisfactory Tracker.
-
-You can now log in to your account using the following credentials:
-
-🔹 Email: ${tester.email}  
-🔹 Temporary Password: ${tempPassword}  
-
-For security reasons, you will be required to change your password upon first login.  
-Login here: dev.satisfactorytracker.com
-
-Welcome aboard! 🎉
-Catalyst, Creator of Satisfactory Tracker`;
-
-      setEmailContent(emailText); // Store email text for display
+      
       setTesters(testers.map(t => t.id === id ? { ...t, is_approved: true, reviewed_at: new Date().toISOString() } : t));
     } catch (error) {
       setError("Failed to approve tester.");
@@ -204,25 +186,7 @@ Catalyst, Creator of Satisfactory Tracker`;
         <TabPanel value="1">
         <Box sx={{ height: 500, width: "100%" }}>
             <DataGrid rows={users} columns={UserColumns} />
-        </Box>
-        {pwResetEmailContent && (
-            <Box sx={{ marginTop: 2 }}>
-              <Typography variant="h6">Generated Email:</Typography>
-              <textarea
-                value={pwResetEmailContent}
-                readOnly
-                style={{ width: "100%", height: "150px", padding: "10px", fontSize: "14px" }}
-              />
-              <Button
-                variant="contained"
-                color="primary"
-                sx={{ marginTop: 1 }}
-                onClick={() => navigator.clipboard.writeText(pwResetEmailContent)}
-              >
-                Copy to Clipboard
-              </Button>
-            </Box>
-          )}
+        </Box>        
         </TabPanel>
 
         {/* Tester Registrations Tab */}

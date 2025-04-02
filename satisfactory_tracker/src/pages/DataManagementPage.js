@@ -154,7 +154,7 @@ const DataManagementPage = () => {
   };
 //"100vh" }}>
   return (
-    <Box sx={{ display: "flex", height: "100vh", Width: "100%" }}> 
+    <Box sx={{ display: "flex", height: "100vh", width: "100%" }}> 
       <Box
         sx={{
           flex: 4,

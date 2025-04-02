@@ -318,8 +318,10 @@ export const THEME_DARK = {
     text_secondary: '#A6A6A6', // Light Gray for secondary text #A6A6A6
     text_disabled: '#757575', // Muted Gray for disabled text #757575
     text_dropdown: '#FFFFFF', // White text for dropdowns 
+    text_dark: '#000000', // Black text for white backgrounds #000000
+    text_info: '#4FC3F7', // Light Blue #4FC3F7
     // Button color palette
-    button_main: '#0A3D62', //'#242424', // Dark Gray #242424 change to Deep Ocean Blue #0A3D62
+    button_main: '#0A3D62', //'#242424', // Dark Gray #242424 changed to Deep Ocean Blue #0A3D62
     button_contrastText: '#FFFFFF', // White text on buttons #FFFFFF
     button_hover: '#003b6f', // Dark Charcoal hover color #333333 changed to Tardis Blue #003b6f
     button_disabled: '#383838', // Dark Gray for disabled buttons #383838
@@ -401,7 +403,8 @@ export const THEME_DARK = {
     },
 
     components_MuiDataGrid_defaultProps: {
-        rowHeight: 40,
+        density: "compact",
+        // rowHeight: 40,
         pageSize: 100,
         pageSizeOptions: [10, 25, 100, { value: -1, label: 'All' }],
         checkboxSelection: true,
@@ -472,6 +475,12 @@ export const THEME_DARK = {
         "&:hover": {
             backgroundColor: "#31344a",    // Slightly lighter on hover
         },
+    },
+    components_MuiButton_defaultProps: {
+        variant: 'contained',
+        color: 'primary',
+        height: 40,
+        width: 175,        
     },
     components_MuiButton_root: {
         borderRadius: 8,
@@ -618,31 +627,32 @@ export const THEME_DARK = {
     },
 };
 
+// Common settings for both light and dark themes
 export const COMMON_SETTINGS = {
 
     // Typography
     typography_fontFamily: 'Arial, sans-serif',
     typography_h1: { fontSize: '48px', fontWeight: 700 },
-    typography_h1_italic: { fontSize: '48px', fontStyle: 'italic' },
-    typography_h1_underline: { fontSize: '48px', textDecoration: 'underline' },
+    typography_h1_italic: { fontSize: '48px', fontStyle: 'italic', fontWeight: 700 },
+    typography_h1_underline: { fontSize: '48px', textDecoration: 'underline', fontWeight: 600 },
     typography_h2: { fontSize: '32px', fontWeight: 600 },
-    typography_h2_italic: { fontSize: '32px', fontStyle: 'italic' },
-    typography_h2_underline: { fontSize: '32px', textDecoration: 'underline' },
+    typography_h2_italic: { fontSize: '32px', fontStyle: 'italic', fontWeight: 600 },
+    typography_h2_underline: { fontSize: '32px', textDecoration: 'underline', fontWeight: 600 },
     typography_h3: { fontSize: '20px', fontWeight: 600 },
-    typography_h3_italic: { fontSize: '20px', fontStyle: 'italic' },
-    typography_h3_underline: { fontSize: '20px', textDecoration: 'underline' },
+    typography_h3_italic: { fontSize: '20px', fontStyle: 'italic', fontWeight: 600 },
+    typography_h3_underline: { fontSize: '20px', textDecoration: 'underline', fontWeight: 600 },
     typography_h4: { fontSize: '18px', fontWeight: 600 },
-    typography_h4_italic: { fontSize: '18px', fontStyle: 'italic' },
-    typography_h4_underline: { fontSize: '18px', textDecoration: 'underline' },
+    typography_h4_italic: { fontSize: '18px', fontStyle: 'italic', fontWeight: 600 },
+    typography_h4_underline: { fontSize: '18px', textDecoration: 'underline', fontWeight: 600 },
     typography_h5: { fontSize: '16px', fontWeight: 600 },
-    typography_h5_italic: { fontSize: '16px', fontStyle: 'italic' },
-    typography_h5_underline: { fontSize: '16px', textDecoration: 'underline' },
+    typography_h5_italic: { fontSize: '16px', fontStyle: 'italic', fontWeight: 600 },
+    typography_h5_underline: { fontSize: '16px', textDecoration: 'underline', fontWeight: 600 },
     typography_h6: { fontSize: '14px', fontWeight: 600 },
-    typography_h6_italic: { fontSize: '14px', fontStyle: 'italic' },
-    typography_h6_underline: { fontSize: '14px', textDecoration: 'underline' },
+    typography_h6_italic: { fontSize: '14px', fontStyle: 'italic', fontWeight: 600 },
+    typography_h6_underline: { fontSize: '14px', textDecoration: 'underline', fontWeight: 600 },
     typography_h7: { fontSize: '12px', fontWeight: 600 },
-    typography_h7_italic: { fontSize: '12px', fontStyle: 'italic' },
-    typography_h7_underline: { fontSize: '12px', textDecoration: 'underline' },
+    typography_h7_italic: { fontSize: '12px', fontStyle: 'italic', fontWeight: 600 },
+    typography_h7_underline: { fontSize: '12px', textDecoration: 'underline', fontWeight: 600 },
     typography_body1: { fontSize: '18px' },
     typography_body1_italic: { fontSize: '18px', fontStyle: 'italic' },
     typography_body1_underline: { fontSize: '18px', textDecoration: 'underline' },

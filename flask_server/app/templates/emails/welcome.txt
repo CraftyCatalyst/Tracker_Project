@@ -1,0 +1,6 @@
+Hi {{ username }} 👋
+
+Welcome to Satisfactory Tracker!
+
+Welcome aboard! 🎉  
+Catalyst, Creator of Satisfactory Tracker

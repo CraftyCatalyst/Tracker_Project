@@ -34,3 +34,4 @@ waitress
 pymysql
 cryptography
 satisfactory-save
+openai

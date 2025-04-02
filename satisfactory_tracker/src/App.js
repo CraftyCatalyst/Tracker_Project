@@ -25,6 +25,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage.js';
 import HelpPage from './pages/HelpPage.js';
 import { Box } from "@mui/material";
 import AdminDashboard from './pages/AdminDashboard';
+import SupportInbox from './pages/SupportInbox.js';
 import axios from "axios";
 import { API_ENDPOINTS } from "./apiConfig";
 
@@ -113,6 +114,7 @@ function App() {
                       <Route path="/help" element={<HelpPage />} />
                       <Route path="/admin/user_management" element={<UserManagementPage />} />
                       <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                      <Route path="/admin/support_inbox" element={<SupportInbox />} />
                     </>
                   ) : (
                     /* ✅ Redirect non-admins back to home */

@@ -11,7 +11,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import math
 import json
-from .models import User, Tracker, User_Save, Part, Recipe, Machine, Machine_Level, Node_Purity, Resource_Node, UserSettings, User_Save_Pipes, User_Tester_Registrations, Project_Assembly_Phases, Project_Assembly_Parts, UserSelectedRecipe, Admin_Settings
+from .models import User, Tracker, User_Save, Part, Recipe, Machine, Machine_Level, Node_Purity, Resource_Node, UserSettings, User_Save_Pipes, User_Tester_Registrations, Project_Assembly_Phases, Project_Assembly_Parts, UserSelectedRecipe, Admin_Settings, SupportMessage, SupportConversation, SupportResponse, SupportDraft
 from sqlalchemy.exc import SQLAlchemyError
 from . import db
 from .build_tree import build_tree
@@ -36,6 +36,11 @@ import subprocess
 import shutil
 import platform
 import psutil
+from .utils.email_util import send_email
+from .utils.ai_email_classifier import ai_classify_message
+from .utils.ai_thread_classifier import ai_summarise_thread
+import re
+
 
 
 # config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
@@ -318,23 +323,23 @@ def build_tree_route():
 @login_required
 def system_status():
     """Returns system-wide status information for the admin dashboard."""
-    logger.info("ENTERED system_status ROUTE!")  # 🔹 Add a log
-    print("ENTERED system_status ROUTE!")  # 🔹 Also print to console
+    # logger.info("ENTERED system_status ROUTE!")  # 🔹 Add a log
+    # print("ENTERED system_status ROUTE!")  # 🔹 Also print to console
     
     import subprocess
   
     # Check Flask Port
     flask_port = request.host.split(":")[-1]  # Extract from request URL
-    logger.info(f"SYSTEM STATUS FLASK_PORT: {flask_port}")
-    print(f"SYSTEM STATUS FLASK_PORT: {flask_port}")
-    logger.info(f"SYSTEM STATUS RUN_MODE: {RUN_MODE}")
-    print(f"SYSTEM STATUS RUN_MODE: {RUN_MODE}")
+    # logger.info(f"SYSTEM STATUS FLASK_PORT: {flask_port}")
+    # print(f"SYSTEM STATUS FLASK_PORT: {flask_port}")
+    # logger.info(f"SYSTEM STATUS RUN_MODE: {RUN_MODE}")
+    # print(f"SYSTEM STATUS RUN_MODE: {RUN_MODE}")
     # Check Database Connection
     try:
         db.session.execute(text("SELECT 1"))
         db_status = "Connected"
-        print(f"SYSTEM STATUS DB_STATUS: {db_status}")
-        logger.info(f"SYSTEM STATUS DB_STATUS: {db_status}")
+        # print(f"SYSTEM STATUS DB_STATUS: {db_status}")
+        # logger.info(f"SYSTEM STATUS DB_STATUS: {db_status}")
     except Exception as e:
         db_status = f"Error: {str(e)}"
     
@@ -343,15 +348,15 @@ def system_status():
         try:
             #nginx_status = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
             nginx_status = subprocess.run(["/bin/sudo", "/usr/bin/systemctl", "is-active", "nginx"], capture_output=True, text=True)
-            logging.debug(f"NGINX STATUS: {nginx_status} - {nginx_status.stdout}")
+            # logging.debug(f"NGINX STATUS: {nginx_status} - {nginx_status.stdout}")
             nginx_status = "Running" if "active" in nginx_status.stdout else "Not Running"
         except Exception as e:
             nginx_status = f"Error: {str(e)}"
     else:
         nginx_status = "Not available in local run mode"
 
-    print(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")
-    logger.info(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")    
+    # print(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")
+    # logger.info(f"SYSTEM STATUS NGINX_STATUS: {nginx_status}")    
     return jsonify({
         "run_mode": RUN_MODE,
         "flask_port": flask_port,
@@ -469,13 +474,13 @@ def get_recipe():
 @main.route('/api/recipe_id/<part_id>', methods=['GET'])
 def get_recipe_id(part_id):
     recipe_name = request.args.get('recipe_name', '_Standard')  # Default to '_Standard'
-    logger.info(f"Getting recipe ID for part_id: {part_id} and recipe_name: {recipe_name}")
+    # logger.info(f"Getting recipe ID for part_id: {part_id} and recipe_name: {recipe_name}")
 
     try:
         # Use parameterized query to fetch the recipe
         query = text("SELECT * FROM recipe WHERE part_id = :part_id AND recipe_name = :recipe_name")
         recipe = db.session.execute(query, {"part_id": part_id, "recipe_name": recipe_name}).fetchall()
-        logger.info(f"Query result: {recipe}")
+        # logger.info(f"Query result: {recipe}")
         return jsonify([dict(row._mapping) for row in recipe])
     except Exception as e:
         logger.error(f"❌ Error fetching recipe ID for part_id {part_id} and recipe_name {recipe_name}: {e}")
@@ -570,7 +575,7 @@ def get_tracker_reports():
 @main.route('/api/tracker_add', methods=['POST'])
 @login_required
 def add_to_tracker():
-    logger.info("Adding part and recipe to tracker")
+    # logger.info("Adding part and recipe to tracker")
     if not current_user.is_authenticated:
         #logger.info(f"{current_user}, User is not authenticated")
         return jsonify({"error": "User is not authenticated"}), 401
@@ -582,21 +587,21 @@ def add_to_tracker():
     target_parts_pm = data.get('targetPartsPm')
     target_timeframe = data.get('targetTimeframe')
 
-    logger.info(f"Part ID: {part_id}, Recipe Name: {recipe_id}, Target Quantity: {target_quantity}")
+    # logger.info(f"Part ID: {part_id}, Recipe Name: {recipe_id}, Target Quantity: {target_quantity}")
     if not part_id or not recipe_id:
         return jsonify({"error": "Part ID and Recipe ID are required"}), 400
 
     #(f"Current user: {current_user}")
     # Check if the part and recipe are already in the user's tracker
     existing_entry = Tracker.query.filter_by(part_id=part_id, recipe_id=recipe_id, user_id=current_user.id).first()
-    logger.info(f"Existing entry: {existing_entry}")
+    # logger.info(f"Existing entry: {existing_entry}")
     if existing_entry:
         return jsonify({"message": "Part and recipe are already in the tracker"}), 200
 
     # Get the current time formatted as dd/mm/yy hh:mm:ss
     current_time = datetime.now().strftime('%d/%m/%y %H:%M:%S')
 
-    logger.info(f"Adding new tracker entry for user: {current_user.id}, part: {part_id}, recipe: {recipe_id}, target quantity: {target_quantity}, recipe_id: {recipe_id}")
+    # logger.info(f"Adding new tracker entry for user: {current_user.id}, part: {part_id}, recipe: {recipe_id}, target quantity: {target_quantity}, recipe_id: {recipe_id}")
     # Add new tracker entry
     new_tracker_entry = Tracker(
         part_id=part_id,
@@ -636,11 +641,11 @@ def get_tracker_data():
 @login_required
 def delete_tracker_item(tracker_id):
     try:
-        logger.info(f"Deleting tracker item with ID: {tracker_id}")
+        # logger.info(f"Deleting tracker item with ID: {tracker_id}")
         tracker_item = Tracker.query.filter_by(id=tracker_id, user_id=current_user.id).first()
-        logger.info(f"Tracker item: {tracker_item}")
+        # logger.info(f"Tracker item: {tracker_item}")
         if not tracker_item:
-            logger.info("Tracker item not found or you don't have permission to delete it")
+            # logger.info("Tracker item not found or you don't have permission to delete it")
             return jsonify({"error": "Tracker item not found or you don't have permission to delete it"}), 404
 
         db.session.delete(tracker_item)
@@ -731,12 +736,12 @@ def delete_selected_recipe(recipe_id):
             DELETE FROM user_selected_recipe
             WHERE user_id = :user_id AND recipe_id = :recipe_id
         """
-        logger.info(f"Query: {query}, User: {user_id}, Recipe: {recipe_id}")
+        # logger.info(f"Query: {query}, User: {user_id}, Recipe: {recipe_id}")
         
         db.session.execute(text(query), {"user_id": user_id, "recipe_id": recipe_id})
         db.session.commit()
         
-        logger.info(f"Selected recipe deleted successfully: Recipe {recipe_id}, User {user_id}")
+        # logger.info(f"Selected recipe deleted successfully: Recipe {recipe_id}, User {user_id}")
         
         return jsonify({"message": "Selected recipe deleted successfully"}), 200
     except Exception as e:
@@ -791,7 +796,7 @@ def upload_sav():
         # Process file in a background task
         try:
             user_id = current_user.id  
-            logger.info(f"BEFORE PROCESS_SAVE_FILE CALL - Processing file: {filename} for user ID: {user_id}")
+            # logger.info(f"BEFORE PROCESS_SAVE_FILE CALL - Processing file: {filename} for user ID: {user_id}")
             process_save_file(filepath, user_id)
             PROCESSING_STATUS[processing_id] = "completed"
         except Exception as e:
@@ -1334,10 +1339,37 @@ def approve_tester(id):
     tester.reviewed_at = current_time  # Use formatted datetime string
     db.session.commit()
 
-    return jsonify({
-        "message": "Tester approved and user account created.",
-        "temp_password": temp_password  # ⚠️ Only for testing; send securely via email later
-    })
+    real_recipient = tester.email_address
+    redirected = False
+
+    if real_recipient.lower().endswith("@hotmail.com"):
+        logger.warning(f"⚠️ Skipping email to Hotmail address {real_recipient} due to deliverability issues.")
+        real_recipient = "satisfactorytracker@gmail.com"
+        redirected = True
+
+    # ✅ Send approval email
+    email_sent = send_email(
+        to=tester.email_address,
+        subject="🎉 Welcome to the Satisfactory Tracker Closed Beta Test!",
+        template_name="tester_approved",
+        context={
+            "username": tester.username,
+            "email": tester.email_address,
+            "temporary_password": temp_password
+        }
+    )
+
+    if not email_sent:
+        return jsonify({
+            "message": "Tester approved, but failed to send email."
+        }), 202  # Accepted with a warning
+
+    message = "Tester approved and welcome email sent successfully."
+    if redirected:
+        logger.warning(f"⚠️ Email redirected due to Hotmail block.")
+        message += " ⚠️ Email redirected due to Hotmail block."
+
+    return jsonify({ "message": message }), 200
 
 @main.route('/api/tester_reject/<int:id>', methods=['POST'])
 def reject_tester(id):
@@ -2036,7 +2068,7 @@ def run_single_test():
         res = requests.get(full_url, cookies=session_cookies, timeout=5)
         result = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
     except Exception as e:
-        result = f"Fail ({str(e)})"
+        result = f"Fail ({str(e)}, Response: {res.raw})"
 
     return jsonify({test.setting_key: result}), 200
 
@@ -2118,6 +2150,453 @@ def delete_system_test(test_id):
     db.session.delete(test)
     db.session.commit()
     return jsonify({"message": "Test case deleted successfully"}), 200
+
+@main.route('/api/send_test_email/<recipient>', methods=['POST'])
+def send_test_email(recipient):
+    """Sends a test email to the specified recipient."""
+    msg = Message(
+        subject="Test Email from Satisfactory Tracker",
+        recipients=[recipient],
+        body="🎉 Testing, Testing, 1..2..3.. Testing!"
+    )
+
+    try:
+        mail.send(msg)
+        return jsonify({"message": f"Email sent successfully to {recipient}"}), 200
+    except Exception as e:
+        logging.error(f"Failed to send test email: {str(e)}")
+        logger.error(f"Failed to send test email: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/test_render_template', methods=['GET'])
+def test_template():
+    from flask import render_template
+    return render_template("emails/tester_approved.txt", username="Tester", email="test@example.com", temporary_password="abc123")
+
+# @main.route('/api/send_email/<recipient_email>', methods=['POST'])
+# def send_email(recipient_email):
+#     """Sends a test email to the specified recipient."""
+#     try:
+#         logging.info(f"routes - Sending test email to: {recipient_email}")
+#         logger.info(f"routes - Sending test email to: {recipient_email}")
+#         send_email(
+#             to=recipient_email,
+#             subject="Test Email from Satisfactory Tracker",
+#             template_name="tester_approved",
+#             context={"recipient": recipient_email}
+#         )
+#         logging.info(f"routes - Email sent successfully to: {recipient_email}")
+#         logger.info(f"routes - Email sent successfully to: {recipient_email}")
+#         return jsonify({"message": f"Email sent successfully to {recipient_email}"}), 200
+#     except Exception as e:
+#         logging.error(f"Failed to send test email: {str(e)}")
+#         logger.error(f"Failed to send test email: {str(e)}")
+#         return jsonify({"error": str(e)}), 500
+    
+@main.route('/api/get_stored_support_messages', methods=['GET'])
+def get_stored_support_messages():
+    
+    MAILGUN_API_KEY = config.MAILGUN_API_KEY
+    MAILGUN_DOMAIN = config.MAILGUN_DOMAIN    
+    url = f"https://api.eu.mailgun.net/v3/{MAILGUN_DOMAIN}/events"
+    params = {"event": "stored"}
+    auth = ("api", MAILGUN_API_KEY)
+
+    try:
+        response = requests.get(url, auth=auth, params=params)
+        response.raise_for_status()
+        events = response.json().get("items", [])
+
+        messages = []
+        for event in events:
+            message = {
+                "id": event.get("storage", {}).get("key"),
+                "recipient": event.get("recipient"),
+                "from": event.get("message", {}).get("headers", {}).get("from"),
+                "subject": event.get("message", {}).get("headers", {}).get("subject"),
+                "timestamp": event.get("@timestamp"),
+                "storage_url": event.get("storage", {}).get("url"),
+            }
+            messages.append(message)
+
+        return jsonify(messages)
+    
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/support_stored_message/<string:storage_key>', methods=['GET'])
+def get_stored_support_message_detail(storage_key):
+    MAILGUN_API_KEY = config.MAILGUN_API_KEY
+
+    message_url = f"https://api.eu.mailgun.net/v3/domains/mg.satisfactorytracker.com/messages/{storage_key}"
+    auth = ("api", MAILGUN_API_KEY)
+
+    try:
+        response = requests.get(message_url, auth=auth)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+@main.route('/api/support_webhook', methods=['POST'])
+def receive_support_webhook():
+    data = request.form  # Mailgun sends data as x-www-form-urlencoded
+
+    # Extract fields from Mailgun webhook
+    sender = data.get("sender")
+    recipient = data.get("recipient")
+    subject = data.get("subject")
+    body_plain = data.get("body-plain")
+    body_html = data.get("body-html")
+    timestamp_unix = data.get("timestamp")
+    message_id = data.get("Message-Id") or data.get("message-id")
+
+    # Defensive checks
+    if not (sender and recipient and message_id):
+        return jsonify({"error": "Missing required fields."}), 400
+
+    # Prevent spam: match sender to registered user
+    
+    user = User.query.filter_by(email=sender).first()
+    unregistered_user_id = None
+    if not user:       
+        # TODO: Make sure user 99999 is prevented from accessing the system
+        unregistered_user_id = 99999  # Placeholder for unregistered users
+
+    # Check for duplicate message
+    existing = SupportMessage.query.filter_by(message_id=message_id).first()
+    if existing:
+        return jsonify({"message": "Message already received."}), 200
+    # 🔍 Check if subject contains existing support-id
+    
+    conversation_id = None
+    match = re.search(r"support-id-(\d+)", subject or "", re.IGNORECASE)
+    if match:
+        conversation_id = int(match.group(1))
+        conversation = SupportConversation.query.get(conversation_id)
+    else:
+        conversation = None
+
+    # 🧱 Create conversation if not found
+    if not conversation:
+        conversation = SupportConversation(
+            user_id=user.id,
+            subject=subject or "(No Subject)"
+        )
+        db.session.add(conversation)
+        db.session.flush()
+        conversation_id = conversation.id
+
+    # Generate the AI classification data
+    if not unregistered_user_id:
+        # Use AI classification only for registered users
+        ai_data = ai_classify_message(subject, body_plain)
+
+    try:
+        message = SupportMessage(
+            user_id=user.id if user else unregistered_user_id,
+            message_id=message_id,
+            conversation_id=conversation_id,
+            sender=sender,
+            recipient=recipient,
+            subject=subject,
+            body_plain=body_plain,
+            body_html=body_html,
+            timestamp=datetime.fromtimestamp(float(timestamp_unix), tz=timezone.utc),
+            tags=ai_data["category"],
+            summary=ai_data["summary"],
+            suggested_actions=json.dumps(ai_data["suggested_actions"]),
+        )
+        db.session.add(message)
+        db.session.commit()
+        # logger.debug(f"Support message received: {message}")
+        # Remove the conversation summary so it can be regenerated
+        if conversation.summary:
+            conversation.summary = None
+            db.session.commit()
+
+        logging.info(f"Incoming email: from {sender} with subject: {subject}")
+        logger.info(f"Incoming email: from {sender} with subject: {subject}")
+        #TODO: Send a confirmation email to the sender
+        return jsonify({"message": "Support message received successfully."}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Failed to save incoming email: {str(e)}")
+        logging.error(f"Failed to save incoming email: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/support_messages', methods=['GET'])
+def get_support_messages():
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        show_all = request.args.get("show_all", "false").lower() == "true"
+
+        messages = (
+            SupportMessage.query
+            .join(SupportConversation)
+            .filter(True if show_all else SupportConversation.resolved == False)
+            .order_by(SupportMessage.created_at.desc())
+            .all()
+        )
+
+        result = []
+        for msg in messages:
+            result.append({
+                "id": msg.id,
+                "user_id": msg.user_id,
+                "username": msg.user.username if msg.user else "Unregistered",
+                "conversation_id": msg.conversation_id,
+                "from": msg.sender,
+                "subject": msg.subject,
+                "body": msg.body_plain,
+                "created_at": msg.created_at.isoformat(),
+                "resolved": msg.conversation.resolved,
+                "resolved_at": msg.conversation.resolved_at.strftime('%d/%m/%y %H:%M:%S') if msg.conversation.resolved_at else None,
+                "resolved_by": msg.conversation.resolved_by_user.username if msg.conversation.resolved_by_user else None,
+                "subject": msg.subject,
+                "tags": msg.tags,
+                "summary": msg.summary,
+                "suggested_actions": json.loads(msg.suggested_actions) if msg.suggested_actions else None,
+            })
+
+        return jsonify(result)    
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/support_message/<int:id>', methods=['GET'])
+def get_support_message_detail(id):
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        msg = SupportMessage.query.get_or_404(id)
+        
+        if not msg.summary:
+            ai_data = ai_classify_message(msg.subject, msg.body_plain)
+            msg.summary = ai_data["summary"]
+            msg.tags = ai_data["category"]
+            msg.suggested_actions = json.dumps(ai_data["suggested_actions"])
+            db.session.commit()
+
+        return jsonify({
+            "id": msg.id,
+            "conversation_id": msg.conversation_id,
+            "from": msg.sender,
+            "to": msg.recipient,
+            "subject": msg.subject,
+            "body": msg.body_plain,
+            "timestamp": msg.timestamp.isoformat(),
+            "username": msg.user.username,
+            "created_at": msg.created_at.isoformat(),
+            "subject": msg.subject,
+            "tags": msg.tags,
+            "summary": msg.summary,
+            "suggested_actions": json.loads(msg.suggested_actions) if msg.suggested_actions else None,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/support_reply', methods=['POST'])
+def support_reply():
+    data = request.get_json()
+    to = data.get("to")
+    subject = data.get("subject")
+    body = data.get("body")
+    message_id = data.get("support_message_id")
+    conversation_id = data.get("conversation_id")
+
+    if not (to and subject and body and message_id and conversation_id):
+        return jsonify({"error": "Missing fields"}), 400
+
+    # Create message-id header for tracking
+    response = SupportResponse(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        responder_id=current_user.id,
+        body=body,
+        message_id_header=""  # placeholder, will set after flush
+    )
+
+    db.session.add(response)
+    db.session.flush()  # allows access to response.id before commit
+
+    # Generate a unique header
+    generated_id = f"support-response-{response.id}@mg.satisfactorytracker.com"
+    response.message_id_header = generated_id
+
+    # Commit now that everything is in place
+    db.session.commit()
+
+    # Send the actual email
+    sent = send_email(
+        to,
+        subject,
+        None,
+        {},
+        body,
+        False,
+        {"Message-Id": generated_id}
+    )
+
+    if not sent:
+        logger.error(f"Failed to send email to {to} with subject: {subject}")
+        return jsonify({"error": "Email failed to send."}), 500
+
+    SupportDraft.query.filter_by(
+        responder_id=current_user.id,
+        message_id=message_id
+    ).delete()
+    db.session.commit()
+
+    # Remove the conversation summary so it can be regenerated
+    conversation = SupportConversation.query.get(conversation_id)
+    if conversation.summary:
+        conversation.summary = None
+        db.session.commit()
+
+    return jsonify({"message": "Reply sent and draft deleted!"}), 200
+
+
+@main.route('/api/support_conversation/<int:id>', methods=['GET'])
+def get_full_conversation(id):
+    conversation = SupportConversation.query.get_or_404(id)
+    # logger.info(f"Fetching conversation: {conversation}")
+    
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    messages = SupportMessage.query.filter_by(conversation_id=id).all()
+    # logger.info(f"Messages: {messages}")
+    replies = SupportResponse.query.filter_by(conversation_id=id).all()
+    # logger.info(f"Replies: {replies}")
+    # Merge and sort by timestamp
+    timeline = []
+
+    for m in messages:
+        timeline.append({
+            "type": "message",
+            "from": m.sender,
+            "body": m.body_plain,
+            "timestamp": m.created_at.isoformat(),
+        })
+
+    for r in replies:
+        timeline.append({
+            "type": "reply",
+            "from": r.responder.username,
+            "body": r.body,
+            "timestamp": r.created_at.isoformat(),
+        })
+
+    # Sort chronologically
+    timeline.sort(key=lambda item: item["timestamp"])
+
+    if not conversation.summary:
+        # Generate summary using AI
+        summary = ai_summarise_thread(timeline)
+        conversation.summary = summary
+        db.session.commit()
+
+    return jsonify({
+        "conversation_id": id,
+        "subject": conversation.subject,
+        "status": conversation.status,
+        "messages": timeline,
+        "summary": conversation.summary,
+    })
+
+
+
+@main.route("/api/support_draft/<int:message_id>", methods=["GET"])
+@login_required
+def get_support_draft(message_id):
+    draft = SupportDraft.query.filter_by(
+        responder_id=current_user.id,
+        message_id=message_id
+    ).first()
+
+    if not draft:
+        return jsonify({"draft": None}), 200
+
+    return jsonify({
+        "id": draft.id,
+        "message_id": draft.message_id,
+        "conversation_id": draft.conversation_id,
+        "body": draft.body,
+        "updated_at": draft.updated_at.isoformat()
+    }), 200
+
+@main.route("/api/support_draft/<int:message_id>", methods=["DELETE"])
+@login_required
+def delete_support_draft(message_id):
+    draft = SupportDraft.query.filter_by(
+        responder_id=current_user.id,
+        message_id=message_id
+    ).first()
+
+    if draft:
+        db.session.delete(draft)
+        db.session.commit()
+
+    return jsonify({"message": "Draft deleted"}), 200
+
+@main.route("/api/support_draft", methods=["POST"])
+@login_required
+def save_support_draft():
+    data = request.get_json()
+    message_id = data.get("message_id")
+    conversation_id = data.get("conversation_id")
+    body = data.get("body")
+
+    if not message_id or not conversation_id or not body:
+        return jsonify({"error": "Missing message_id, conversation_id, or body"}), 400
+
+    draft = SupportDraft.query.filter_by(
+        responder_id=current_user.id,
+        message_id=message_id
+    ).first()
+
+    if draft:
+        draft.body = body
+    else:
+        draft = SupportDraft(
+            responder_id=current_user.id,
+            message_id=message_id,
+            conversation_id=conversation_id,
+            body=body
+        )
+        db.session.add(draft)
+
+    db.session.commit()
+    return jsonify({"message": "Draft saved"}), 200
+
+@main.route("/api/support_message/<int:message_id>/resolve", methods=["POST"])
+@login_required
+def resolve_support_conversation(message_id):
+    msg = SupportMessage.query.get_or_404(message_id)
+    conv = SupportConversation.query.get_or_404(msg.conversation_id)
+
+    if current_user.role != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    conv.resolved = True
+    conv.resolved_at = datetime.now().strftime('%d/%m/%y %H:%M:%S')
+    conv.resolved_by = current_user.id
+
+    db.session.commit()
+
+    return jsonify({"message": "Conversation marked as resolved"}), 200
+
+
+
+
+
 
 
 @main.route('/<path:path>')

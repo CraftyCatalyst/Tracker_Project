@@ -49,7 +49,9 @@ const theme = createTheme({
       primary: scheme.text_primary,
       secondary: scheme.text_secondary,
       disabled: scheme.text_disabled,
-      dropdown: scheme.text_dropdown
+      dropdown: scheme.text_dropdown,
+      dark: scheme.text_dark,
+      info: scheme.text_info,
     },
     button: {
       main: scheme.button_main,
@@ -71,7 +73,7 @@ const theme = createTheme({
       background: scheme.tooltip_background,
     },
 
-  },
+},
 
   typography: {
     fontFamily: COMMON_SETTINGS.typography_fontFamily,
@@ -171,6 +173,7 @@ const theme = createTheme({
         outlinedPrimary: scheme.components_MuiButton_outlinedPrimary,
         outlinedSecondary: scheme.components_MuiButton_outlinedSecondary,
       },
+      defaultProps: scheme.components_MuiButton_defaultProps,
     },
     MuiTextField: {
       styleOverrides: {

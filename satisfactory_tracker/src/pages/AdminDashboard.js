@@ -8,11 +8,13 @@ import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 import StatusCard from "../components/StatusCard";
 import EditIcon from '@mui/icons-material/Edit';
+import { useAlert } from "../context/AlertContext";
 
 
 const AdminDashboard = () => {
 
     const theme = useTheme();
+    const { showAlert } = useAlert();
     const logContainerRef = useRef(null);
     const [activeTab, setActiveTab] = useState("1");
     const [systemStatus, setSystemStatus] = useState({});
@@ -34,6 +36,7 @@ const AdminDashboard = () => {
     const resultsRef = useRef({}); // Store test results outside React state
     const [tests, setTests] = useState([]);
     const [newTest, setNewTest] = useState({ category: "system_test_pages", key: "", value: "" });
+    const [selectionModel, setSelectionModel] = useState([]);
 
 
 
@@ -152,7 +155,7 @@ const AdminDashboard = () => {
             setLogModalOpen(true);
         } catch (error) {
             console.error("Failed to fetch logs:", error);
-            alert("Failed to fetch logs for " + serviceName);
+            showAlert("error", "Failed to fetch logs for " + serviceName);
             setLogContent(["Unable to fetch logs. Check the server."]);
         } finally {
             setLogLoading(false);
@@ -164,10 +167,10 @@ const AdminDashboard = () => {
         try {
             const response = await axios.post(`${API_ENDPOINTS.restart_service(serviceName)}`);
             console.log("Service restart response:", response.data);
-            alert(response.data.message);
+            showAlert("success", response.data.message);
         } catch (error) {
             console.error("Failed to restart service:", error);
-            alert(`Failed to restart ${serviceName}`);
+            showAlert("error", `Failed to restart ${serviceName}`);
         }
     };
 
@@ -191,22 +194,22 @@ const AdminDashboard = () => {
                     // ✅ Track completed tests & update state
                     completedTests++;
                     setFunctionalTestResults((prev) => ({
-                        ...prev,
                         [test.name]: {
                             status: testResponse.data[test.name] || "Error",
                             category: test.type,
                             progress: `${completedTests}/${totalTests}`,
                         },
+                        ...prev,
                     }));
                 } catch (error) {
                     completedTests++;
                     setFunctionalTestResults((prev) => ({
-                        ...prev,
                         [test.name]: {
                             status: "Error",
                             category: test.type,
                             progress: `${completedTests}/${totalTests}`,
                         },
+                        ...prev,
                     }));
                 }
             }
@@ -300,41 +303,41 @@ const AdminDashboard = () => {
             headerName: "Setting Value",
             width: 200,
             editable: true,
-            renderEditCell: 
-            (params) => {
-                const isBoolean = ["on", "off"].includes(params.value);
-                return isBoolean ? (
-                    <Select
-                        value={params.value}
-                        onChange={(e) => {
-                            const newValue = e.target.value;
+            renderEditCell:
+                (params) => {
+                    const isBoolean = ["on", "off"].includes(params.value);
+                    return isBoolean ? (
+                        <Select
+                            value={params.value}
+                            onChange={(e) => {
+                                const newValue = e.target.value;
 
-                            // ✅ Update the cell value
-                            params.api.setEditCellValue({ id: params.id, field: "value", value: newValue });
+                                // ✅ Update the cell value
+                                params.api.setEditCellValue({ id: params.id, field: "value", value: newValue });
 
-                            // ✅ Update state and backend
-                            handleEditCellChange({ id: params.id, value: newValue });
+                                // ✅ Update state and backend
+                                handleEditCellChange({ id: params.id, value: newValue });
 
-                            // ✅ Stop edit mode to prevent text selection issues
-                            params.api.stopCellEditMode({ id: params.id, field: "value" });
-                        }}
-                        fullWidth
-                    >
-                        <MenuItem value="on">on</MenuItem>
-                        <MenuItem value="off">off</MenuItem>
-                    </Select>
-                ) : (
-                    <input
-                        type="text"
-                        value={params.value}
-                        onChange={(e) =>
-                            handleEditCellChange({ id: params.id, value: e.target.value })
-                        }
-                        onBlur={() => params.api.stopCellEditMode({ id: params.id, field: "value" })} // ✅ Stop edit mode when clicking away
-                        style={{ width: "100%", border: "none", outline: "none", padding: "8px" }}
-                    />
-                );
-            }
+                                // ✅ Stop edit mode to prevent text selection issues
+                                params.api.stopCellEditMode({ id: params.id, field: "value" });
+                            }}
+                            fullWidth
+                        >
+                            <MenuItem value="on">on</MenuItem>
+                            <MenuItem value="off">off</MenuItem>
+                        </Select>
+                    ) : (
+                        <input
+                            type="text"
+                            value={params.value}
+                            onChange={(e) =>
+                                handleEditCellChange({ id: params.id, value: e.target.value })
+                            }
+                            onBlur={() => params.api.stopCellEditMode({ id: params.id, field: "value" })} // ✅ Stop edit mode when clicking away
+                            style={{ width: "100%", border: "none", outline: "none", padding: "8px" }}
+                        />
+                    );
+                }
         },
     ];
 
@@ -371,6 +374,7 @@ const AdminDashboard = () => {
             const response = await axios.post(API_ENDPOINTS.system_tests, newTest);
             setTests((prev) => [...prev, { id: response.data.id, ...newTest }]);
             setNewTest({ category: "system_test_pages", key: "", value: "" });
+            showAlert("success", "Test case added successfully!");
             fetchTests();
         } catch (error) {
             console.error("Error adding test case:", error);
@@ -385,17 +389,46 @@ const AdminDashboard = () => {
             console.error("Error deleting test case:", error);
         }
     };
+    
+    const handleDeleteSelected = async () => {
+        try {
+          await Promise.all(
+            selectionModel.map((id) =>
+              axios.delete(`${API_ENDPOINTS.system_tests}/${id}`)
+            )
+          );
+          showAlert("success", "Selected tests deleted successfully!");
+          // Refresh the table
+          fetchTests();
+          setSelectionModel([]);
+        } catch (error) {
+          console.error("Error deleting selected tests:", error);
+          showAlert("error", "Failed to delete one or more selected tests.");
+        }
+      };
+      
+    const handleRunTest = async (row) => {
+        try {
+            const response = await axios.get(`${API_ENDPOINTS.run_system_test}?test_id=${row}`);
+            const result = response.data[0];
+            console.log(`✅ Test "${row}" result:`, result);
+            showAlert("success", `Test "${row}" ran successfully: ${result}`);
+        } catch (error) {
+            console.error(`❌ Error running test "${row}"`, error);
+            showAlert("error", `Error running test "${row}"`, error);
+        }
+    };
 
     const system_test_columns = [
-        { field: "category", headerName: "Category", width: 200, editable: true },
+        { field: "category", headerName: "Category", width: 200},
         { field: "key", headerName: "Test Key", width: 250, editable: true, renderCell: renderEditableCell },
         { field: "value", headerName: "Endpoint", width: 300, editable: true, renderCell: renderEditableCell },
         {
             field: "actions",
             headerName: "Actions",
-            width: 100,
-            renderCell: (params) => (
-                <Button variant="contained" size="small" color="error" onClick={() => handleDeleteTest(params.id)}>Delete</Button>
+            width: 200,
+            renderCell: (row) => (
+                <Button sx={{minWidth: 175}} variant="contained" size="small" color="primary" onClick={() => handleRunTest(row.id)}>Run</Button>
             ),
         },
     ];
@@ -574,7 +607,7 @@ const AdminDashboard = () => {
 
                         {/* New Test Form */}
                         <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
-                            <Select
+                            <Select sx={{ minWidth: 175 }}
                                 value={newTest.category}
                                 size="small"
                                 onChange={(e) => setNewTest({ ...newTest, category: e.target.value })}
@@ -584,7 +617,10 @@ const AdminDashboard = () => {
                             </Select>
                             <TextField label="Test Key" value={newTest.key} size="small" onChange={(e) => setNewTest({ ...newTest, key: e.target.value })} />
                             <TextField label="Endpoint" value={newTest.value} size="small" onChange={(e) => setNewTest({ ...newTest, value: e.target.value })} />
-                            <Button variant="contained" color="primary" size="small" onClick={handleAddTest}>Add</Button>
+                            <Button sx={{minWidth: 175}}
+                                variant="contained" color="primary" onClick={handleAddTest}>
+                                Add
+                            </Button>
                         </Box>
 
                         <Box sx={{ display: "flex", alignItems: "center", marginBottom: theme.spacing(1), gap: theme.spacing(2) }}>
@@ -592,17 +628,26 @@ const AdminDashboard = () => {
                                 variant="body3"
                                 sx={{ color: "#4FC3F7", mt: 4 }}
                             >
-                                * <strong>Double-click</strong> on a field to edit. Press <strong>Enter</strong> to save. <strong>Escape</strong> to cancel <br />
+                                * <strong>Editing:</strong> Double-click on the <strong>Test Key</strong> or <strong>Endpoint</strong> fields to edit. Press <strong>Enter</strong> to save. Press <strong>Esc</strong> to cancel. <br />
+                                * <strong>Deleting:</strong> Use the <strong>checkboxes</strong> to select rows for deletion then click on the <strong>Delete Selected</strong> button.
                             </Typography>
                         </Box>
+                        <Button
+                            variant="contained" color="error" disabled={selectionModel.length === 0} onClick={handleDeleteSelected}>
+                            Delete Selected
+                        </Button>
                         {/* Tests Table */}
                         <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
                             <DataGrid
-                                density="compact"
+                                // density="standard"
+                                // rowHeight={40} 
                                 rows={tests}
                                 columns={system_test_columns}
-                                pageSize={25}
+                                pageSize={15}
+                                height={100}
                                 processRowUpdate={st_handleEditCellChange}
+                                checkboxSelection
+                                onRowSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
                                 experimentalFeatures={{ newEditingApi: true }}
                                 disableSelectionOnClick
                             />

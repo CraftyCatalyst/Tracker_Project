@@ -213,6 +213,9 @@ const Header = () => {
                         <MenuItem component={Link} to="/admin/dashboard" onClick={handleMenuClose}>
                             <DashboardIcon sx={{ marginRight: 1 }} /> Admin Dashboard
                         </MenuItem>
+                        <MenuItem component={Link} to="/admin/support_inbox" onClick={handleMenuClose}>
+                            <DashboardIcon sx={{ marginRight: 1 }} /> Support Inbox
+                        </MenuItem>                        
                     </>
 
                 )}

@@ -75,6 +75,17 @@ export const API_ENDPOINTS = {
   system_test_list: `${flask_port}/api/system_test_list`,
   run_system_test: `${flask_port}/api/run_system_test`,
   system_tests: `${flask_port}/api/system_tests`,
+  test_render_template: `${flask_port}/api/test_render_template`,
+  support_messages: `${flask_port}/api/support_messages`,
+  support_reply: `${flask_port}/api/support_reply`,
+  save_support_draft: `${flask_port}/api/support_draft`,
+  resolve_support_message: (message_id) => `${flask_port}/api/support_message/${message_id}/resolve`,
+  get_support_draft: (messageID) => `${flask_port}/api/support_draft/${messageID}`,
+  delete_support_draft: (messageID) => `${flask_port}/api/support_draft/${messageID}`,
+  support_conversation: (conversationId) => `${flask_port}/api/support_conversation/${conversationId}`,
+  support_message: (storageKey) => `${flask_port}/api/support_message/${storageKey}`,
+  send_test_email: (recipient) => `${flask_port}/api/send_test_email/${recipient}`,
+  send_email: (recipient_email) => `${flask_port}/api/send_email/${recipient_email}`,
   update_must_change_password:(userId) => `${flask_port}/api/update_must_change_password/${userId}`,
   reset_password: (userId) => `${flask_port}/api/reset_user_password/${userId}`,
   get_recipe_id: (partId) => `${flask_port}/api/recipe_id/${partId}`,
@@ -85,4 +96,5 @@ export const API_ENDPOINTS = {
   fetch_logs: (service_name) => `${flask_port}/api/fetch_logs/${service_name}`,
   restart_service: (service_name) => `${flask_port}/api/restart_service/${service_name}`,
   table_name: (tableName) => `${flask_port}/api/${tableName}`,
+
 };

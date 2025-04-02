@@ -20,7 +20,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(100), nullable=False, default='user')
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     must_change_password = db.Column(db.Boolean, default=False)
-
+    support_message = db.relationship('SupportMessage', backref='user', lazy=True)
     def __repr__(self):
         return f"User('{self.username}', '{self.email}', '{self.role}')"
     
@@ -358,3 +358,61 @@ class Admin_Settings(db.Model):
     __table_args__ = (
         db.UniqueConstraint('setting_category', 'setting_key', name='unique_admin_setting'),
     )
+
+class SupportMessage(db.Model):
+    __tablename__ = "support_message"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('support_conversations.id'), nullable=True)
+    message_id = db.Column(db.String(255), unique=True, nullable=False)
+    sender = db.Column(db.String(255), nullable=False)
+    recipient = db.Column(db.String(255), nullable=False)
+    subject = db.Column(db.String(500), nullable=True)
+    body_plain = db.Column(db.Text, nullable=True)
+    body_html = db.Column(db.Text, nullable=True)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    tags = db.Column(db.String(255), nullable=True)
+    summary = db.Column(db.Text, nullable=True)  # AI-generated summary of the message
+    suggested_actions = db.Column(db.Text, nullable=True)  # AI-generated suggested actions
+
+class SupportConversation(db.Model):
+    __tablename__ = "support_conversations"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    subject = db.Column(db.String(500), nullable=False)
+    status = db.Column(db.String(50), default="Open")  # e.g. Open, Resolved, Archived
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    last_updated = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())    
+    summary = db.Column(db.Text, nullable=True)  # AI-generated summary of the conversation
+    resolved = db.Column(db.Boolean, default=False)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    resolved_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    messages = db.relationship("SupportMessage", backref="conversation", lazy=True)
+    responses = db.relationship("SupportResponse",  backref="conversation", lazy=True)
+    resolved_by_user = db.relationship("User", foreign_keys=[resolved_by], backref="resolved_conversations", lazy=True)
+    user = db.relationship("User", foreign_keys=[user_id], backref="support_conversations", lazy=True)
+
+class SupportResponse(db.Model):
+    __tablename__ = "support_responses"
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('support_conversations.id'), nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('support_message.id'), nullable=True)  # original message being replied to
+    responder_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    message_id_header = db.Column(db.String(255), unique=True, nullable=False)  # e.g. "support-response-12@mg.satisfactorytracker.com"
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    responder = db.relationship("User", backref="support_responses", lazy=True)
+
+class SupportDraft(db.Model):
+    __tablename__ = "support_drafts"
+    id = db.Column(db.Integer, primary_key=True)
+    responder_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # admin writing the draft
+    conversation_id = db.Column(db.Integer, db.ForeignKey('support_conversations.id'), nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('support_message.id'), nullable=False)
+    body = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    responder = db.relationship("User", backref="support_drafts", lazy=True)
+    conversation = db.relationship("SupportConversation", backref="drafts", lazy=True)
+    message = db.relationship("SupportMessage", backref="drafts", lazy=True)
