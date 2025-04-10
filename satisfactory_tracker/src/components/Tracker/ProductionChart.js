@@ -1,7 +1,7 @@
 import React from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { Box, Typography } from "@mui/material";
-import logToBackend from "../../services/logService";
+import centralLogging from "../../services/logService";
 
 const barSize = 18; // Adjust bar height here
 

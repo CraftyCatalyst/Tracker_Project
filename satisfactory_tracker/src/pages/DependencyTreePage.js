@@ -29,7 +29,7 @@ import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 import { UserContext } from '../context/UserContext';
 import { useAlert } from "../context/AlertContext";
-import logToBackend from '../services/logService';
+import centralLogging from '../services/logService';
 import { formatHeader } from "../utils/formatHeader";
 
 const DependencyTreePage = () => {
@@ -91,14 +91,14 @@ const DependencyTreePage = () => {
         } catch (error) {
             setError("Failed to fetch dependency tree. Check console for details.");
             console.error("Error fetching dependency tree:", error);
-            // logToBackend("❌ Error fetching dependency tree: " + error, "ERROR");           
+            // centralLogging("❌ Error fetching dependency tree: " + error, "ERROR");           
         }
     };
 
 
     // Build the tree data structure
     const buildTreeData = (node, parentId = "root", counter = { id: 1 }) => {
-        // logToBackend("Building Tree Data for Node: " + node + "Parent ID: " + parentId, "INFO");
+        // centralLogging("Building Tree Data for Node: " + node + "Parent ID: " + parentId, "INFO");
         // console.log("Building Tree Data for Node:", node, "Parent ID:", parentId); // Debug log
         const tree = [];
         if (!node || typeof node !== "object") return tree;
@@ -455,8 +455,8 @@ const DependencyTreePage = () => {
 
     const handleCheckboxChange = async (recipeId, partId) => {
         const recipeExists = selectedRecipes.includes(recipeId);
-        // logToBackend("SelectedRecipes: " + selectedRecipes, "INFO");
-        // logToBackend("Checkbox Change: Recipe ID: " + recipeId + " Part ID: " + partId + " Checked: " + recipeExists, "INFO");
+        // centralLogging("SelectedRecipes: " + selectedRecipes, "INFO");
+        // centralLogging("Checkbox Change: Recipe ID: " + recipeId + " Part ID: " + partId + " Checked: " + recipeExists, "INFO");
         // Toggle the checkbox selection
         const updatedRecipes = recipeExists
             ? selectedRecipes.filter((id) => id !== recipeId)

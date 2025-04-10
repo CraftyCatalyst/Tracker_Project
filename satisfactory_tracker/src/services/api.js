@@ -1,5 +1,5 @@
 import axios from 'axios';
-import logToBackend from "../services/logService";
+import centralLogging from "../services/logService";
 
 axios.defaults.withCredentials = true;
 
@@ -25,7 +25,7 @@ switch (runMode) {
     break;
 }
 
-// logToBackend("api.js - Run Mode: " + runMode, "INFO");
+// centralLogging("api.js - Run Mode: " + runMode, "INFO");
 
 // Create an Axios instance with the base URL
 const apiClient = axios.create({

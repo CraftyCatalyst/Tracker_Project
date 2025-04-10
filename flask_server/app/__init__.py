@@ -15,6 +15,7 @@ mail = Mail()
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 def create_app():
     # Construct the absolute path to the config file
     base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
@@ -22,7 +23,7 @@ def create_app():
         
     config_path = os.path.join(base_path, "config.py")
     print(f"Loading config from: {config_path}")
-    logging.debug(f"Loading config from: {config_path}")
+    # logging.debug(f"Loading config from: {config_path}")
     
     
     logger = setup_logger("__init__")
@@ -37,7 +38,7 @@ def create_app():
     *********************************************
     """
     logger.info(init_message)
-    logging.info(init_message)
+    # logging.info(init_message)
     
     db.init_app(app)
     login_manager.init_app(app)
@@ -67,8 +68,8 @@ def create_app():
         # print(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")    
     print(f"Total Routes Registered: {x}")
     logger.info(f"Total Routes Registered: {x}")
-    logging.info(f"Total Routes Registered: {x}")
+    # logging.info(f"Total Routes Registered: {x}")
     
     logger.info("✅ Flask Application successfully created")
-    logging.info("Flask Application successfully created")
+    # logging.info("Flask Application successfully created")
     return app 

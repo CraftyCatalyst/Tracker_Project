@@ -82,6 +82,7 @@ ALLOWED_EXTENSIONS = os.getenv('ALLOWED_EXTENSIONS')  # Define allowed file exte
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # GitHub Personal Access Token
 GITHUB_REPO = os.getenv("GITHUB_REPO") # GitHub Repository
 
+# MAIL variables
 MAIL_SERVER = os.getenv("MAIL_SERVER")
 MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
@@ -90,12 +91,22 @@ MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER")
 MAILGUN_API_KEY=os.getenv("MAILGUN_API_KEY")
 MAILGUN_DOMAIN=os.getenv("MAILGUN_DOMAIN")
+MAIL_SUPPORT_USERNAME = os.getenv("MAIL_SUPPORT_USERNAME")
 
+# OPENAI variables
 OPENAI_API_KEY_SUPPORT_INBOX = os.getenv("OPENAI_API_KEY_SUPPORT_INBOX")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPEN_AI_PROJECT_ID = os.getenv("OPEN_AI_PROJECT_ID")
 OPEN_AI_ORG_ID = os.getenv("OPEN_AI_ORG_ID")
 OPEN_AI_ADMIN_KEY = os.getenv("OPEN_AI_ADMIN_KEY")
+
+# SYSTEM_TEST variables
+SYSTEM_TEST_SECRET_KEY = os.getenv("SYSTEM_TEST_SECRET_KEY")
+SYSTEM_TEST_USER_EMAIL = os.getenv("SYSTEM_TEST_USER_EMAIL")
+SYSTEM_TEST_USER_PASSWORD = os.getenv("SYSTEM_TEST_USER_PASSWORD")
+SYSTEM_TEST_NEW_USER_EMAIL = os.getenv("SYSTEM_TEST_NEW_USER_EMAIL")
+SYSTEM_TEST_NEW_USER_USERNAME = os.getenv("SYSTEM_TEST_NEW_USER_USERNAME")
+SYSTEM_TEST_NEW_USER_PASSWORD = os.getenv("SYSTEM_TEST_NEW_USER_PASSWORD")
 
 # Table and column whitelist
 VALID_TABLES = {'admin_settings', 'alternate_recipe', 'conveyor_level', 'conveyor_supply', 'data_validation', 'icon', 'machine', 

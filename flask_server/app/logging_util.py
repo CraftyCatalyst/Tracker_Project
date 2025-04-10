@@ -24,19 +24,15 @@ def setup_logger(name):
   
     # Create a logger
     logger = logging.getLogger(name)
-    # print(f"Initializing logger: {name}")
+    print(f"Initializing logger: {name}")
 
-    root_logger = logging.getLogger()
-    # print(f"Root logger handlers: {root_logger.handlers}")
-    
 
+    # Set the logger level to DEBUG to capture all levels of logs
     logger.setLevel(logging.DEBUG)
 
     # Clear existing handlers to avoid duplication
-    #print(f"Handlers before clearing: {logger.handlers}")
     logger.handlers.clear()
-    #print(f"Handlers after clearing: {logger.handlers}")
-
+    print(f"Cleared existing handlers for logger: {name}")
     # Ensure no propagation to parent loggers
     logger.propagate = False
 
@@ -45,9 +41,9 @@ def setup_logger(name):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)       
     
+    
     # Log file with dynamic date-based naming and counter
     log_file = os.path.join(log_dir, f"app_{datetime.now().strftime('%Y-%m-%d')}.log")
-
     # File size-based rotating log file handler
     file_handler = RotatingFileHandler(
         log_file, maxBytes=4 * 1024 * 1024, backupCount=0, encoding='utf-8'
@@ -58,26 +54,24 @@ def setup_logger(name):
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(formatter)
 
-    # # Create a console handler
-    # console_handler = logging.StreamHandler()
-    # console_handler.setLevel(logging.DEBUG)
-    # console_handler.setFormatter(formatter)
-
-    # Add handlers to the logger
+    # Add handlers to the logger for the file and console and flask logs
     logger.addHandler(file_handler)
-    # logger.addHandler(console_handler)
-
+    
     # Log the startup
     logger.info("Application started. Logger initialized.")
-    #print(f"Logger handlers: {logger.handlers}")
-    #print(f"Logger {name} propagation: {logger.propagate}")
-
+    logger.info(f"Logger Handlers: {logger}, log_file: {log_file}")
     return logger
 
 def format_log_message(title, content):
-    return f"*********{title}*************\n{content}"
+    return f"\n*********{str.upper(title)}*************\n{content}\n*****************************"
 
 # # Usage Example
 # logger = setup_logger(__name__)
-# log_message = format_log_message("TrackerPage", f"Save Data: {save_data}")
-# logger.debug(log_message)
+# logger.info("This is an info message")
+# logger.error("This is an error message")
+# logger.debug("This is a debug message")
+# logger.warning("This is a warning message")
+# logger.critical("This is a critical message")
+# 
+# log_message = format_log_message("Test Title", "This is a test content")
+# logger.info(log_message)

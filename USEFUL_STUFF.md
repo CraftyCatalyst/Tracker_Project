@@ -414,7 +414,7 @@ Run refresh_data.py in SQLite_stuff directory to delete all data and reload eith
             ${JSON.stringify(limitedTrackerReports, null, 2)}
             `;
 
-        logToBackend(logMessage, "DEBUG");
+        centralLogging(logMessage, "DEBUG");
 
 - ##### Backend
         logger.info("*********TrackerPage*************\n"

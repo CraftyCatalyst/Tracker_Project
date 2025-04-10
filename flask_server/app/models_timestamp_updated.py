@@ -17,14 +17,14 @@ class TimestampMixin:
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
-class User(UserMixin, db.Model):
+class User(UserMixin, db.Model, TimestampMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), nullable=False, unique=True)
     email = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(100), nullable=False, default='user')
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
     is_email_verified = db.Column(db.Boolean, default=False)
     must_change_password = db.Column(db.Boolean, default=False)
     support_message = db.relationship('SupportMessage', backref='user', lazy=True)
@@ -109,7 +109,7 @@ class Data_Validation(db.Model):
     value = db.Column(db.String(100), nullable=True)
     description = db.Column(db.String(200), nullable=True)
 
-class Tracker(db.Model):
+class Tracker(db.Model, TimestampMixin):
     __tablename__ = 'tracker'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -118,25 +118,25 @@ class Tracker(db.Model):
     target_quantity = db.Column(db.Float, nullable=False, default=1)
     target_parts_pm = db.Column(db.Float, nullable=True)
     target_timeframe = db.Column(db.Float, nullable=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    
+    
     __table_args__ = (
         db.UniqueConstraint('user_id', 'part_id', 'recipe_id', name='unique_user_part_recipe'),
     )
 
-class UserSelectedRecipe(db.Model):
+class UserSelectedRecipe(db.Model, TimestampMixin):
     __tablename__ = 'user_selected_recipe'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     part_id = db.Column(db.Integer, db.ForeignKey('part.id'), nullable=False)
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    
+    
     __table_args__ = (
         db.UniqueConstraint('user_id', 'part_id', 'recipe_id', name='unique_user_part_recipe'),
     )
 
-class User_Save(db.Model):
+class User_Save(db.Model, TimestampMixin):
     __tablename__ = 'user_save'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -144,8 +144,8 @@ class User_Save(db.Model):
     resource_node_id = db.Column(db.Integer, db.ForeignKey('resource_node.id'), nullable=True)
     machine_id = db.Column(db.Integer, db.ForeignKey('machine.id'), nullable=False)
     machine_power_modifier = db.Column(db.Float, default=1.0)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    
+    
     sav_file_name = db.Column(db.String(200), nullable=False)
     current_progress = db.Column(db.Float, nullable=True)  # 0.0 to 1.0 progress of production
     input_inventory = db.Column(db.String(300), nullable=True)  # Input inventory reference
@@ -193,7 +193,7 @@ class UserSettings(db.Model):
     category = db.Column(db.String(100), nullable=False)
     key = db.Column(db.String(100), nullable=False)
     value = db.Column(db.String(200), nullable=False)
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    
     __table_args__ = (
         db.UniqueConstraint('user_id', 'category', 'key', name='unique_user_setting'),
     )
@@ -318,7 +318,7 @@ class User_Connection_Data(db.Model):
     produced_item = db.Column(db.String(200), nullable=True)  # Item being transported
     conveyor_speed = db.Column(db.Float, nullable=True)  # Conveyor belt speed if applicable
     direction = db.Column(db.String(50), nullable=True)  # Direction of the connection
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
 
     __table_args__ = (
         db.Index('idx_user_connection', 'user_id', 'source_component', 'target_component'),        
@@ -338,20 +338,20 @@ class User_Pipe_Data(db.Model):
     connection_type = db.Column(db.String(50), nullable=False)  # "Pipe"
     produced_item = db.Column(db.String(200), nullable=True)  # Item being transported
     pipe_flow_rate = db.Column(db.Float, nullable=True)  # pipe flow rate if applicable
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
 
     __table_args__ = (
         db.Index('idx_user_connection', 'user_id', 'source_component', 'target_component'),        
     )
 
-class User_Tester_Registrations(db.Model):
+class User_Tester_Registrations(db.Model, TimestampMixin):
     __tablename__ = 'user_tester_registrations'
     id = db.Column(db.Integer, primary_key=True)
     email_address = db.Column(db.String(200), nullable=False)
     username = db.Column(db.String(150), nullable=False)
     fav_satisfactory_thing = db.Column(db.Text(300), nullable=False)
     reason = db.Column(db.Text(300), nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
     is_approved = db.Column(db.Boolean, default=False)
     reviewed_at = db.Column(db.DateTime, nullable=True)
     db.UniqueConstraint('email_address', 'username', name='unique_tester_registration')
@@ -366,7 +366,7 @@ class Admin_Settings(db.Model):
         db.UniqueConstraint('setting_key', 'setting_value', name='unique_admin_setting'),
     )
 
-class SupportMessage(db.Model):
+class SupportMessage(db.Model, TimestampMixin):
     __tablename__ = "support_message"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -378,19 +378,19 @@ class SupportMessage(db.Model):
     body_plain = db.Column(db.Text, nullable=True)
     body_html = db.Column(db.Text, nullable=True)
     timestamp = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
     tags = db.Column(db.String(255), nullable=True)
     summary = db.Column(db.Text, nullable=True)  # AI-generated summary of the message
     suggested_actions = db.Column(db.Text, nullable=True)  # AI-generated suggested actions
     archived_at = db.Column(db.DateTime, nullable=True)  # When the message was archived
 
-class SupportConversation(db.Model):
+class SupportConversation(db.Model, TimestampMixin):
     __tablename__ = "support_conversations"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     subject = db.Column(db.String(500), nullable=False)
     status = db.Column(db.String(50), default="Open")  # e.g. Open, Resolved, Archived
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
     last_updated = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())    
     summary = db.Column(db.Text, nullable=True)  # AI-generated summary of the conversation
     resolved = db.Column(db.Boolean, default=False)
@@ -401,7 +401,7 @@ class SupportConversation(db.Model):
     resolved_by_user = db.relationship("User", foreign_keys=[resolved_by], backref="resolved_conversations", lazy=True)
     user = db.relationship("User", foreign_keys=[user_id], backref="support_conversations", lazy=True)
 
-class SupportResponse(db.Model):
+class SupportResponse(db.Model, TimestampMixin):
     __tablename__ = "support_responses"
     id = db.Column(db.Integer, primary_key=True)
     conversation_id = db.Column(db.Integer, db.ForeignKey('support_conversations.id'), nullable=False)
@@ -409,29 +409,29 @@ class SupportResponse(db.Model):
     responder_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     body = db.Column(db.Text, nullable=False)
     message_id_header = db.Column(db.String(255), unique=True, nullable=False)  # e.g. "support-response-12@mg.satisfactorytracker.com"
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
     responder = db.relationship("User", backref="support_responses", lazy=True)
 
-class SupportDraft(db.Model):
+class SupportDraft(db.Model, TimestampMixin):
     __tablename__ = "support_drafts"
     id = db.Column(db.Integer, primary_key=True)
     responder_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # admin writing the draft
     conversation_id = db.Column(db.Integer, db.ForeignKey('support_conversations.id'), nullable=False)
     message_id = db.Column(db.Integer, db.ForeignKey('support_message.id'), nullable=False)
     body = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    
+    
     responder = db.relationship("User", backref="support_drafts", lazy=True)
     conversation = db.relationship("SupportConversation", backref="drafts", lazy=True)
     message = db.relationship("SupportMessage", backref="drafts", lazy=True)
 
-class UserActionTokens(db.Model):
+class UserActionTokens(db.Model, TimestampMixin):
     __tablename__ = 'user_action_tokens'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     token_type = db.Column(db.String(50), nullable=False)
     token_hash = db.Column(db.String(120), nullable=False, unique=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
     expires_at = db.Column(db.DateTime, nullable=False)  
     used = db.Column(db.Boolean, default=False)
     used_at = db.Column(db.DateTime, nullable=True)

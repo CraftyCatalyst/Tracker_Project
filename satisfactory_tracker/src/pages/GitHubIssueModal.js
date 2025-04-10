@@ -3,7 +3,7 @@ import { Modal, Box, Typography, TextField, Button, Alert, MenuItem, Select, For
 import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 import { UserContext } from '../context/UserContext';
-import logToBackend from "../services/logService";
+import centralLogging from "../services/logService";
 import { useLocation } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import { useCallback } from "react";
@@ -148,7 +148,7 @@ ${browserInfo}
     } catch (error) {
       setError(error.response?.data?.error || "Failed to create issue.");
       console.error("Failed to create GitHub issue", error);
-      // logToBackend("Failed to create GitHub issue", error);
+      // centralLogging("Failed to create GitHub issue", error);
     } finally {
       setLoading(false);
     }

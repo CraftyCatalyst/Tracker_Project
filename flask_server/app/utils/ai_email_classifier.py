@@ -23,7 +23,7 @@ Email Body:
 
 Classify this email and respond ONLY with a valid JSON object:
 {{
-  "category": "one of [feature_request, improvement, thanks, question, task, bug_report, delete_account, complaint, reset_password, login_issue, general]",
+  "category": "one of [feature_request, improvement, thanks, question, task, bug_report, delete_account, complaint, reset_password, login_issue, system_test_reset_pw, general]",
   "summary": "brief summary of the user's request",
   "suggested_actions": ["list", "of", "admin", "actions"]
 }}

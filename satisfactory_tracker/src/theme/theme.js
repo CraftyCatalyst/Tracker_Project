@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import logToBackend from "../services/logService";
+import centralLogging from "../services/logService";
 import { dark } from '@mui/material/styles/createPalette';
 import { USE_THEME, THEME_LIGHT, THEME_DARK, COMMON_SETTINGS } from './themeConfig';
 import { useTheme } from '@emotion/react';
@@ -9,7 +9,7 @@ let scheme = {};
 
 // get theme from .env file
 // const envUseTheme = process.env.REACT_APP_USE_THEME;
-// logToBackend("theme.js - Theme from .env file: " + envUseTheme, "INFO");
+// centralLogging("theme.js - Theme from .env file: " + envUseTheme, "INFO");
 
 switch (USE_THEME) {
   case 'dark':

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
 import { useDropzone } from "react-dropzone";
-import { Box, Typography, CircularProgress, Tab, Button } from "@mui/material";
+import { Box, Typography, CircularProgress, Tab, Button, Modal, Box as MuiBox, IconButton } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { CheckCircle, ErrorOutline } from "@mui/icons-material";
 import { TabContext, TabList, TabPanel } from "@mui/lab";
@@ -8,18 +8,19 @@ import TrackerTables from "../components/Tracker/TrackerTables";
 import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 import { UserContext, useUserContext } from "../context/UserContext";
-import logToBackend from "../services/logService";
+import centralLogging from "../services/logService";
 import ProductionChart from "../components/Tracker/ProductionChart";
 import MachineChart from "../components/Tracker/MachineChart";
 import ConnectionData from "../components/Tracker/ConnectionData";
 import PipeData from "../components/Tracker/PipeData";
+import BubblePopGame from "../components/BubblePopGame";
 import { useTheme } from "@mui/material/styles";
 import { useAlert } from "../context/AlertContext";
 import { motion } from "framer-motion";
 import Tooltip from "@mui/material/Tooltip";
 import AddToTrackerModal from "./AddToTrackerModal";
 import AlternateRecipesModal from "./AlternateRecipesModal";
-
+import CloseIcon from '@mui/icons-material/Close';
 
 
 const TrackerPage = () => {
@@ -52,11 +53,20 @@ const TrackerPage = () => {
   const [recipeModalOpen, setRecipeModalOpen] = useState(false);
   const [hasTrackerData, setHasTrackerData] = useState(false);
   const [showSaveFile, setShowSaveFile] = useState(false);
+  const [gameModalOpen, setGameModalOpen] = useState(false);
 
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (uploading) {
+      setGameModalOpen(true);
+    } else {
+      setGameModalOpen(false);
+    }
+  }, [uploading]);
 
   // useEffect(() => {
   //   console.log("uploadSuccess changed:", uploadSuccess);
@@ -72,6 +82,10 @@ const TrackerPage = () => {
   // Clean up the timer if component unmounts or uploadSuccess changes
   //   return () => clearTimeout(timer);
   // }, [uploadSuccess]);
+
+  const handleTestGame = () => {
+    setGameModalOpen(true);
+  };
 
   const handleChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -255,7 +269,7 @@ const TrackerPage = () => {
     }
   };
 
-  
+
   const recalculateTotals = (modifiers) => {
     const updatedTotals = {}; // Perform calculations here
     setTotals(updatedTotals);
@@ -264,7 +278,7 @@ const TrackerPage = () => {
 
   // Handle file drop
   const onDrop = useCallback(async (acceptedFiles) => {
-    // logToBackend("TrackerPage: File dropped" + { acceptedFiles }, "INFO");
+    // centralLogging("TrackerPage: File dropped" + { acceptedFiles }, "INFO");
     if (acceptedFiles.length === 0) return;
 
     const file = acceptedFiles[0];
@@ -282,7 +296,7 @@ const TrackerPage = () => {
 
       // Send file to backend
       const logOnDropMessage = "TrackerPage: Uploading save file" + file + formData;
-      // logToBackend(logOnDropMessage, "INFO");
+      // centralLogging(logOnDropMessage, "INFO");
       const response = await axios.post(API_ENDPOINTS.upload_sav, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
@@ -304,7 +318,7 @@ const TrackerPage = () => {
       setUploadSuccess(false);
       setUploading(false);
       const logerrorMessage = "❌ TrackerPage: File upload failed" + error;
-      // logToBackend(logerrorMessage, "ERROR");
+      // centralLogging(logerrorMessage, "ERROR");
       console.error(logerrorMessage);
       showAlert("error", "File upload failed. Please try again.");
     }
@@ -414,6 +428,7 @@ const TrackerPage = () => {
                 <Typography variant="body3">Extracting save file data...This may take some time</Typography>
                 <Typography variant="body4_underline_bold" sx={{ color: "orange" }}>DO NOT REFRESH YOUR BROWSER</Typography>
                 <CircularProgress color="progressIndicator.main" size={20} />
+
                 {/* {showSaveFile ? (
                   <Typography variant="body4" sx={{ fontWeight: "bold", color: "success.main" }}>
                     Current save file <br />
@@ -448,6 +463,9 @@ const TrackerPage = () => {
           )}
           <Button variant="contained" onClick={() => setTrackerModalOpen(true)}>
             Add Parts To Track
+          </Button>
+          <Button variant="contained" onClick={() => handleTestGame()}>
+            Test Game
           </Button>
         </Box>
         {trackerModalOpen && (  // ✅ Only render when open
@@ -485,9 +503,9 @@ const TrackerPage = () => {
               <>
 
                 <Box sx={theme.trackerPageStyles.reportBox}>
-                <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
-                  <DataGrid density="compact" rows={userSaveData} columns={userColumns} />
-                </div>
+                  <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
+                    <DataGrid density="compact" rows={userSaveData} columns={userColumns} />
+                  </div>
                 </Box>
               </>
             )}
@@ -532,7 +550,7 @@ const TrackerPage = () => {
               <CircularProgress />
             ) : (
               <>
-                <Box sx={theme.trackerPageStyles.reportBox}>                  
+                <Box sx={theme.trackerPageStyles.reportBox}>
                   <DataGrid density="compact" rows={flattenedTreeData} columns={columns} />
                 </Box>
 
@@ -594,7 +612,54 @@ const TrackerPage = () => {
           </Box> */}
         </TabPanel>
       </TabContext>
-    </Box>
+      <Modal
+        open={gameModalOpen}
+        onClose={() => setGameModalOpen(false)}
+        // disableEscapeKeyDown
+        sx={{ "& .MuiBackdrop-root": { pointerEvents: "none" } }}>
+        <MuiBox
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 'min-content + 20%',
+            bgcolor: 'background.paper',
+            backgroundColor: theme.palette.background.default,
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}
+        >
+          <Tooltip title="Close game">
+          <IconButton
+            onClick={() => setGameModalOpen(false)}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              color: 'white',
+              zIndex: 10,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+          </Tooltip>
+          <br />
+          <Typography variant="h4" sx={{ mb: 1 }}>Processing your save file...</Typography>
+          <Typography variant="h4" sx={{ mb: 1 }}>Pop some bubbles while you wait</Typography>
+          <BubblePopGame />
+          <Typography variant="caption" sx={{ mt: 2, color: 'gray' }}>
+            This will close automatically when your save is fully processed.
+          </Typography>
+        </MuiBox>
+      </Modal>
+
+
+    </Box >
   );
 };
 

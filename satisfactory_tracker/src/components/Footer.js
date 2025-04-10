@@ -48,13 +48,11 @@ const Footer = () => {
                     View GitHub Logos
                 </Link>
                 <br />
-                {/* <Link href="https://www.flaticon.com/free-icons/question-mark" title="question-mark icons"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    color="inherit"
-                    underline="hover">
-                    Question-mark icons created by Fathema Khanom - Flaticon
-                </Link> */}
+                <Typography variant="body4" sx={{ marginBottom: 1 }}>
+                    Success Sound Effect by <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=6185">freesound_community</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=6185">Pixabay</a>
+                    <br />
+                    Failure Sound Effect by Sound Effect by <a href="https://pixabay.com/users/universfield-28281460/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=144746">Universfield</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=144746">Pixabay</a>
+                </Typography>
             </Typography>
             {/* Quick Links */}
             {/* <Box sx={{ display: "flex", gap: 2, justifyContent: "center", marginBottom: 1 }}>

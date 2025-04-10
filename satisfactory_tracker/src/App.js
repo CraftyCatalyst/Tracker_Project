@@ -26,6 +26,9 @@ import HelpPage from './pages/HelpPage.js';
 import { Box } from "@mui/material";
 import AdminDashboard from './pages/AdminDashboard';
 import SupportInbox from './pages/SupportInbox.js';
+import ResetPasswordPage from './pages/ResetPasswordPage.js';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
+import EmailVerificationPage from './pages/EmailVerificationPage';
 import axios from "axios";
 import { API_ENDPOINTS } from "./apiConfig";
 
@@ -102,6 +105,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<HomePage isMaintenanceMode={isMaintenanceMode} />} />
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/login/reverify" element={<LoginPage />} />
 
                   {(!isMaintenanceMode || (user && user.role === "admin")) ? (
                     <>
@@ -115,6 +119,11 @@ function App() {
                       <Route path="/admin/user_management" element={<UserManagementPage />} />
                       <Route path="/admin/dashboard" element={<AdminDashboard />} />
                       <Route path="/admin/support_inbox" element={<SupportInbox />} />
+                      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
+
+
                     </>
                   ) : (
                     /* ✅ Redirect non-admins back to home */

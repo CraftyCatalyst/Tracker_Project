@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Box, Typography, Select, MenuItem, CircularProgress, Alert, Button, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
+
+import { Box, Typography, Select, MenuItem, CircularProgress, Alert, Snackbar, Button, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { DataGrid } from "@mui/x-data-grid";
 import { TabContext, TabList, TabPanel } from "@mui/lab";
@@ -9,7 +10,11 @@ import { API_ENDPOINTS } from "../apiConfig";
 import StatusCard from "../components/StatusCard";
 import EditIcon from '@mui/icons-material/Edit';
 import { useAlert } from "../context/AlertContext";
+import confetti from 'canvas-confetti';
+import centralLogging from "../services/logService";
 
+// Define the current file name for logging purposes
+const fileName = "AdminDashboard.js";
 
 const AdminDashboard = () => {
 
@@ -37,7 +42,11 @@ const AdminDashboard = () => {
     const [tests, setTests] = useState([]);
     const [newTest, setNewTest] = useState({ category: "system_test_pages", key: "", value: "" });
     const [selectionModel, setSelectionModel] = useState([]);
-
+    const [confettiFired, setConfettiFired] = useState(false);
+    const [badgeVisible, setBadgeVisible] = useState(false);
+    const fanfareaudioRef = useRef(null);       // ✅ full system test run success sound
+    const failAudioRef = useRef(null);   // ❌ fail sound
+    const successAudioRef = useRef(null); // ✅ success sound
 
 
     useEffect(() => {
@@ -80,26 +89,27 @@ const AdminDashboard = () => {
     }, []);
 
 
+
+    const fetchActiveUsers = async () => {
+        try {
+            const response = await axios.get(API_ENDPOINTS.active_users);
+
+            const usersArray = Object.entries(response.data).map(([id, user]) => ({
+                id, // Use user ID as DataGrid row ID
+                username: user.username,
+                page: user.page,
+                last_active: user.last_active
+            }));
+            setActiveUsers(usersArray);
+        } catch (error) {
+            console.error("Error fetching active users:", error);
+        }
+    };
+
     useEffect(() => {
-        const fetchActiveUsers = async () => {
-            try {
-                const response = await axios.get(API_ENDPOINTS.active_users);
-
-                const usersArray = Object.entries(response.data).map(([id, user]) => ({
-                    id, // Use user ID as DataGrid row ID
-                    username: user.username,
-                    page: user.page,
-                    last_active: user.last_active
-                }));
-                setActiveUsers(usersArray);
-            } catch (error) {
-                console.error("Error fetching active users:", error);
-            }
-        };
-
         fetchActiveUsers();
-        const interval = setInterval(fetchActiveUsers, 60000); // Refresh every 60s
-        return () => clearInterval(interval);
+        // const interval = setInterval(fetchActiveUsers, 60000); // Refresh every 60s
+        // return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
@@ -177,6 +187,8 @@ const AdminDashboard = () => {
     const runFunctionalTests = async () => {
         setLoadingFunctionalTests(true);
         setFunctionalTestResults({});
+        setConfettiFired(false);
+        setBadgeVisible(false);
 
         try {
             // ✅ Fetch all test cases
@@ -190,13 +202,16 @@ const AdminDashboard = () => {
 
                 try {
                     const testResponse = await axios.get(`${API_ENDPOINTS.run_system_test}?test_id=${testId}`);
+                    const { id, key, result, category, route } = testResponse.data;
 
-                    // ✅ Track completed tests & update state
                     completedTests++;
                     setFunctionalTestResults((prev) => ({
                         [test.name]: {
-                            status: testResponse.data[test.name] || "Error",
-                            category: test.type,
+                            id: id,
+                            status: result,
+                            key: key,
+                            category: category,
+                            route: route,
                             progress: `${completedTests}/${totalTests}`,
                         },
                         ...prev,
@@ -205,8 +220,11 @@ const AdminDashboard = () => {
                     completedTests++;
                     setFunctionalTestResults((prev) => ({
                         [test.name]: {
+                            id: test.id,
                             status: "Error",
+                            name: test.name,
                             category: test.type,
+                            route: test.endpoint,
                             progress: `${completedTests}/${totalTests}`,
                         },
                         ...prev,
@@ -216,6 +234,26 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error("Failed to fetch test cases:", error);
         }
+        const allPassed = Object.values(functionalTestResults).every(
+            (result) => result.status === "Pass"
+        );
+
+        setTimeout(() => {
+            const allPassed = Object.values(functionalTestResults).every(
+                (result) => result.status === "Pass"
+            );
+
+            if (!confettiFired) {
+                if (allPassed) {
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                    fanfareaudioRef.current?.play();            // ✅ Play success fanfare
+                    setBadgeVisible(true);               // ✅ Show confetti badge
+                } else {
+                    failAudioRef.current?.play();        // ❌ Play failure alert
+                }
+                setConfettiFired(true);                  // Prevent double trigger
+            }
+        }, 500);
 
         setLoadingFunctionalTests(false);
     };
@@ -381,46 +419,40 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleDeleteTest = async (id) => {
-        try {
-            await axios.delete(`${API_ENDPOINTS.system_tests}/${id}`);
-            setTests((prev) => prev.filter((test) => test.id !== id));
-        } catch (error) {
-            console.error("Error deleting test case:", error);
-        }
-    };
-    
     const handleDeleteSelected = async () => {
         try {
-          await Promise.all(
-            selectionModel.map((id) =>
-              axios.delete(`${API_ENDPOINTS.system_tests}/${id}`)
-            )
-          );
-          showAlert("success", "Selected tests deleted successfully!");
-          // Refresh the table
-          fetchTests();
-          setSelectionModel([]);
+            await Promise.all(
+                selectionModel.map((id) =>
+                    axios.delete(`${API_ENDPOINTS.system_tests}/${id}`)
+                )
+            );
+            showAlert("success", "Selected tests deleted successfully!");
+            // Refresh the table
+            fetchTests();
+            setSelectionModel([]);
         } catch (error) {
-          console.error("Error deleting selected tests:", error);
-          showAlert("error", "Failed to delete one or more selected tests.");
+            console.error("Error deleting selected tests:", error);
+            showAlert("error", "Failed to delete one or more selected tests.");
         }
-      };
-      
+    };
+
     const handleRunTest = async (row) => {
         try {
             const response = await axios.get(`${API_ENDPOINTS.run_system_test}?test_id=${row}`);
-            const result = response.data[0];
-            console.log(`✅ Test "${row}" result:`, result);
-            showAlert("success", `Test "${row}" ran successfully: ${result}`);
+            const result = response.data.result;
+            console.log("Test response:", response); // ✅ Debugging
+            console.log(`✅ Test ${row},  result:`, result);
+            showAlert("success", `Test "${row}" Result: ${result}`);
+            successAudioRef.current?.play();
         } catch (error) {
             console.error(`❌ Error running test "${row}"`, error);
             showAlert("error", `Error running test "${row}"`, error);
+            failAudioRef.current?.play();
         }
     };
 
     const system_test_columns = [
-        { field: "category", headerName: "Category", width: 200},
+        { field: "category", headerName: "Category", width: 200 },
         { field: "key", headerName: "Test Key", width: 250, editable: true, renderCell: renderEditableCell },
         { field: "value", headerName: "Endpoint", width: 300, editable: true, renderCell: renderEditableCell },
         {
@@ -428,367 +460,438 @@ const AdminDashboard = () => {
             headerName: "Actions",
             width: 200,
             renderCell: (row) => (
-                <Button sx={{minWidth: 175}} variant="contained" size="small" color="primary" onClick={() => handleRunTest(row.id)}>Run</Button>
+                <Button sx={{ minWidth: 175 }} variant="contained" size="small" color="primary" onClick={() => handleRunTest(row.id)}>Run</Button>
             ),
         },
     ];
 
+    const launchConfetti = () => {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+        });
+    };
+
+    const handleTestLogging = async () => {
+        centralLogging("Test Central Logging", fileName, "INFO");
+        
+    };
 
     return (
-        <TabContext value={activeTab}>
-            <Box sx={{ padding: theme.spacing(2), width: "100%" }}>
-                <Typography variant="h3" gutterBottom>🛠️ Admin Dashboard</Typography>
+        <Box sx={{ padding: theme.spacing(2), width: "100%" }}>
+            <audio ref={fanfareaudioRef} src="/assets/sounds/fanfare.mp3" preload="auto" />
+            <audio ref={failAudioRef} src="/assets/sounds/failure.mp3" preload="auto" />
+            <audio ref={successAudioRef} src="/assets/sounds/success.mp3" preload="auto" />
 
-                <TabList onChange={(e, newValue) => setActiveTab(newValue)}>
-                    <Tab label="System Status" value="1" />
-                    <Tab label="Run System Tests" value="2" />
-                    <Tab label="Manage System Tests" value="5" />
-                    <Tab label="Active Users" value="3" />
-                    <Tab label="Server Logs & Controls" value="4" />
-                    {/* <Tab label="Settings" value="5" /> */}
-                    {/* {systemStatus.run_mode === 'prod' && <Tab label="Logs & Resources" value="4" />} */}
+            <Snackbar
+                open={!badgeVisible && confettiFired}
+                autoHideDuration={6000}
+                onClose={() => setBadgeVisible(false)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert severity="error" variant="filled" sx={{ fontSize: '1.1rem' }}>
+                    ❌ Some tests failed — Check results and deploy reinforcements!
+                </Alert>
+            </Snackbar>
 
-                </TabList>
+            <TabContext value={activeTab}>
+                <Box sx={{ padding: theme.spacing(2), width: "100%" }}>
+                    <Typography variant="h3" gutterBottom>🛠️ Admin Dashboard</Typography>
 
-                {/* System Status Tab */}
-                <TabPanel value="1">
-                    <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
-                        <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>Site Settings - No pressy!</Typography>
-                        <Button sx={{ mr: 2 }}
-                            variant="contained"
-                            color={maintenanceMode ? "error" : "warning"}
-                            onClick={toggleMaintenanceMode}
-                        >
-                            {maintenanceMode ? "Disable Maintenance Mode" : "Enable Maintenance Mode"}
-                        </Button>
-                        <Button sx={{ mr: 2 }}
-                            variant="contained"
-                            color={testerRegistrationMode ? "error" : "warning"}
-                            onClick={toggleTesterRegistrationMode}
-                        >
-                            {testerRegistrationMode ? "Disable Tester Registration" : "Enable Tester Registration"}
-                        </Button>
-                    </Box>
-                    <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
-                        <Typography variant="h6" sx={{ mt: 2 }}>🔧 System Settings & Status</Typography>
-                        {systemStatus ? (
-                            <Box sx={{ display: "grid", alignItems: "left", gap: 2, mt: 2, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-                                <StatusCard title="RUN_MODE" value={systemStatus.run_mode} />
-                                <StatusCard title="Flask Port" value={systemStatus.flask_port} />
-                                <StatusCard title="Database" value={systemStatus.db_status} />
-                                <StatusCard title="Nginx" value={systemStatus.nginx_status} />
-                            </Box>
-                        ) : (
-                            <CircularProgress />
-                        )}
+                    <TabList onChange={(e, newValue) => setActiveTab(newValue)}>
+                        <Tab label="System Status" value="1" />
+                        <Tab label="Run System Tests" value="2" />
+                        <Tab label="Manage System Tests" value="5" />
+                        <Tab label="Active Users" value="3" />
+                        <Tab label="Server Logs & Controls" value="4" />
+                        {/* <Tab label="Settings" value="5" /> */}
+                        {/* {systemStatus.run_mode === 'prod' && <Tab label="Logs & Resources" value="4" />} */}
+
+                    </TabList>
+
+                    {/* System Status Tab */}
+                    <TabPanel value="1">
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>Site Settings - No pressy!</Typography>
+                            <Button sx={{ mr: 2 }}
+                                variant="contained"
+                                color={maintenanceMode ? "error" : "warning"}
+                                onClick={toggleMaintenanceMode}
+                            >
+                                {maintenanceMode ? "Disable Maintenance Mode" : "Enable Maintenance Mode"}
+                            </Button>
+                            <Button sx={{ mr: 2 }}
+                                variant="contained"
+                                color={testerRegistrationMode ? "error" : "warning"}
+                                onClick={toggleTesterRegistrationMode}
+                            >
+                                {testerRegistrationMode ? "Disable Tester Registration" : "Enable Tester Registration"}
+                            </Button>
+                            <Button sx={{ mr: 2 }}
+                                variant="contained"
+                                onClick={handleTestLogging}
+                            >
+                                Test Central Logging
+                            </Button>
+                        </Box>
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Typography variant="h6" sx={{ mt: 2 }}>🔧 System Settings & Status</Typography>
+                            {systemStatus ? (
+                                <Box sx={{ display: "grid", alignItems: "left", gap: 2, mt: 2, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+                                    <StatusCard title="RUN_MODE" value={systemStatus.run_mode} />
+                                    <StatusCard title="Flask Port" value={systemStatus.flask_port} />
+                                    <StatusCard title="Database" value={systemStatus.db_status} />
+                                    <StatusCard title="Nginx" value={systemStatus.nginx_status} />
+                                </Box>
+                            ) : (
+                                <CircularProgress />
+                            )}
 
 
-                        {/* 🖥️ System Resource Monitoring (Displays under System Status) */}
-                        <Typography variant="h6" sx={{ mt: 2 }}>🖥️ System Resource Monitoring</Typography>
+                            {/* 🖥️ System Resource Monitoring (Displays under System Status) */}
+                            <Typography variant="h6" sx={{ mt: 2 }}>🖥️ System Resource Monitoring</Typography>
 
-                        {systemResources ? (
-                            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", mt: 2 }}>
-                                <StatusCard
-                                    title="CPU Usage"
-                                    value={`${systemResources.cpu_usage}%`} // ✅ Display % symbol
-                                    percentage={parseFloat(systemResources.cpu_usage)} // ✅ Extracts % from string
-                                />
-                                <StatusCard
-                                    title="Memory Usage"
-                                    value={`${systemResources.memory.used}MB / ${systemResources.memory.total}MB`}
-                                    percentage={(parseFloat(systemResources.memory.used) / parseFloat(systemResources.memory.total)) * 100}
-                                />
-                                <StatusCard
-                                    title="Disk Usage"
-                                    value={`${systemResources.disk.used} / ${systemResources.disk.total}`}
-                                    percentage={(parseFloat(systemResources.disk.used) / parseFloat(systemResources.disk.total)) * 100}
-                                />
-                            </Box>
-                        ) : (
-                            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", mt: 2 }}>
-                                <StatusCard title="CPU Usage" value="Unable to retrieve system resources" />
-                                <StatusCard title="Memory Usage" value="Unable to retrieve system resources" />
-                                <StatusCard title="Disk Usage" value="Unable to retrieve system resources" />
-                            </Box>
-                        )}
-                    </Box>
-                    <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
-                        <Typography variant="h6" sx={{ mt: 2 }}>System Usage Over Time</Typography>
+                            {systemResources ? (
+                                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", mt: 2 }}>
+                                    <StatusCard
+                                        title="CPU Usage"
+                                        value={`${systemResources.cpu_usage}%`} // ✅ Display % symbol
+                                        percentage={parseFloat(systemResources.cpu_usage)} // ✅ Extracts % from string
+                                    />
+                                    <StatusCard
+                                        title="Memory Usage"
+                                        value={`${systemResources.memory.used}MB / ${systemResources.memory.total}MB`}
+                                        percentage={(parseFloat(systemResources.memory.used) / parseFloat(systemResources.memory.total)) * 100}
+                                    />
+                                    <StatusCard
+                                        title="Disk Usage"
+                                        value={`${systemResources.disk.used} / ${systemResources.disk.total}`}
+                                        percentage={(parseFloat(systemResources.disk.used) / parseFloat(systemResources.disk.total)) * 100}
+                                    />
+                                </Box>
+                            ) : (
+                                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", mt: 2 }}>
+                                    <StatusCard title="CPU Usage" value="Unable to retrieve system resources" />
+                                    <StatusCard title="Memory Usage" value="Unable to retrieve system resources" />
+                                    <StatusCard title="Disk Usage" value="Unable to retrieve system resources" />
+                                </Box>
+                            )}
+                        </Box>
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Typography variant="h6" sx={{ mt: 2 }}>System Usage Over Time</Typography>
 
-                        <Box sx={{ display: "flex", gap: 1, justifyContent: "space-between", flexWrap: "wrap" }}>
-                            {/* CPU Usage Graph */}
-                            <Box sx={{ width: "33%", minWidth: 300 }}>
-                                <Typography variant="subtitle1">CPU Usage (%)</Typography>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <LineChart data={resourceHistory}>
-                                        <XAxis dataKey="timestamp" />
-                                        <YAxis domain={[0, 100]} /> {/* ✅ Scales to 0-100% */}
-                                        <Tooltip />
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <Line type="monotone" dataKey="cpu" stroke="red" name="CPU Usage" />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </Box>
+                            <Box sx={{ display: "flex", gap: 1, justifyContent: "space-between", flexWrap: "wrap" }}>
+                                {/* CPU Usage Graph */}
+                                <Box sx={{ width: "33%", minWidth: 300 }}>
+                                    <Typography variant="subtitle1">CPU Usage (%)</Typography>
+                                    <ResponsiveContainer width="100%" height={200}>
+                                        <LineChart data={resourceHistory}>
+                                            <XAxis dataKey="timestamp" />
+                                            <YAxis domain={[0, 100]} /> {/* ✅ Scales to 0-100% */}
+                                            <Tooltip />
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <Line type="monotone" dataKey="cpu" stroke="red" name="CPU Usage" />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </Box>
 
-                            {/* Memory Usage Graph */}
-                            <Box sx={{ width: "33%", minWidth: 300 }}>
-                                <Typography variant="subtitle1">Memory Usage (%)</Typography>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <LineChart data={resourceHistory}>
-                                        <XAxis dataKey="timestamp" />
-                                        <YAxis domain={[0, 100]} />
-                                        <Tooltip />
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <Line type="monotone" dataKey="memory" stroke="blue" name="Memory Usage" />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </Box>
-                            {/* Disk Usage Graph */}
-                            <Box sx={{ width: "33%", minWidth: 300 }}>
-                                <Typography variant="subtitle1">Disk Usage (%)</Typography>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <LineChart data={resourceHistory}>
-                                        <XAxis dataKey="timestamp" />
-                                        <YAxis domain={[0, 100]} /> {/* ✅ Scales to 0-100% */}
-                                        <Tooltip />
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <Line type="monotone" dataKey="disk" stroke="green" name="Disk Usage" />
-                                    </LineChart>
-                                </ResponsiveContainer>
+                                {/* Memory Usage Graph */}
+                                <Box sx={{ width: "33%", minWidth: 300 }}>
+                                    <Typography variant="subtitle1">Memory Usage (%)</Typography>
+                                    <ResponsiveContainer width="100%" height={200}>
+                                        <LineChart data={resourceHistory}>
+                                            <XAxis dataKey="timestamp" />
+                                            <YAxis domain={[0, 100]} />
+                                            <Tooltip />
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <Line type="monotone" dataKey="memory" stroke="blue" name="Memory Usage" />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </Box>
+                                {/* Disk Usage Graph */}
+                                <Box sx={{ width: "33%", minWidth: 300 }}>
+                                    <Typography variant="subtitle1">Disk Usage (%)</Typography>
+                                    <ResponsiveContainer width="100%" height={200}>
+                                        <LineChart data={resourceHistory}>
+                                            <XAxis dataKey="timestamp" />
+                                            <YAxis domain={[0, 100]} /> {/* ✅ Scales to 0-100% */}
+                                            <Tooltip />
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <Line type="monotone" dataKey="disk" stroke="green" name="Disk Usage" />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </Box>
                             </Box>
                         </Box>
-                    </Box>
-                </TabPanel>
+                    </TabPanel>
 
-                {/* Run Tests Tab */}
-                <TabPanel value="2">
-                    <Typography variant="h6" sx={{ mt: 2 }}>System Tests</Typography>
-                    <Typography variant="body3" sx={{ mt: 1, color: "orange" }}>
-                        This takes a while to run. Please be patient and do not refresh your browser.
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-                        <Button variant="contained" onClick={() => runFunctionalTests()} disabled={loadingFunctionalTests}>
-                            {!loadingFunctionalTests ? "Run Tests" : <CircularProgress size={20} />}
-                        </Button>
-                    </Box>
+                    {/* Run Tests Tab */}
+                    <TabPanel value="2">
+                        <Typography variant="h6" sx={{ mt: 2 }}>System Tests</Typography>
+                        <Typography variant="body3" sx={{ mt: 1, color: "orange" }}>
+                            This takes a while to run. Please be patient and do not refresh your browser.
+                        </Typography>
+                        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+                            <Button variant="contained" onClick={() => runFunctionalTests()} disabled={loadingFunctionalTests}>
+                                {!loadingFunctionalTests ? "Run Tests" : <CircularProgress size={20} />}
+                            </Button>
+                        </Box>
 
-                    {/* Display Functional Test Results */}
-                    {Object.keys(functionalTestResults).length > 0 && (
-                        <Box sx={{ mt: 3, height: 350, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, padding: 2 }}>
+                        {/* Display Functional Test Results */}
+                        {Object.keys(functionalTestResults).length > 0 && (
+                            <Box sx={{ mt: 3, height: 400, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, padding: 2 }}>
+                                <Typography variant="h6">🔍 Test Results</Typography>
+                                {Object.entries(functionalTestResults).map(([key, value]) => (
+                                    <Typography key={key} color={value.status === "Pass" ? "green" : value.status.includes("Fail") ? "red" : "grey"}>
+                                        {value.progress} - {value.category} - {key} - {value.route}: {value.status === "Loading" ? <CircularProgress size={15} /> : value.status}
+                                    </Typography>
+                                ))}
+                            </Box>
+                        )}
+                        {/* {Object.keys(functionalTestResults).length > 0 && (
+                        <Box sx={{ mt: 3, height: 400, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, padding: 2 }}>
                             <Typography variant="h6">🔍 Test Results</Typography>
                             {Object.entries(functionalTestResults).map(([key, value]) => (
-                                <Typography key={key} color={value.status === "Pass" ? "green" : value.status.includes("Fail") ? "red" : "grey"}>
-                                    {value.progress} - {value.category} - {key}: {value.status === "Loading" ? <CircularProgress size={15} /> : value.status}
+                                <Typography
+                                    key={key}
+                                    color={
+                                        value.status === "Pass"
+                                            ? "green"
+                                            : value.status.includes("Fail")
+                                                ? "red"
+                                                : "grey"
+                                    }
+                                >
+                                    {value.progress} - {value.category} - {key} - {value.route}:{" "}
+                                    {value.status === "Loading" ? (
+                                        <CircularProgress size={15} />
+                                    ) : (
+                                        value.status
+                                    )}
                                 </Typography>
                             ))}
                         </Box>
-                    )}
-
-
-                    {functionalTestResults.apis && (
-                        <Box sx={{ mt: 3 }}>
-                            <Typography variant="h6">🔍 API Tests</Typography>
-                            {Object.entries(functionalTestResults.apis).map(([key, value]) => (
-                                <Typography key={key} color={value === "Pass" ? "green" : value.includes("Fail") ? "red" : "grey"}>
-                                    {key}: {value === "Loading" ? <CircularProgress size={15} /> : value}
-                                </Typography>
-                            ))}
-                        </Box>
-                    )}
-
-                </TabPanel>
-
-                {/* Manage System Tests Tab */}
-                <TabPanel value="5">
-                    <Box sx={{ padding: 2 }}>
-                        <Typography variant="h5" sx={{ marginBottom: 4 }}>
-                            🛠 System Tests Management
-                        </Typography>
-
-                        {/* New Test Form */}
-                        <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
-                            <Select sx={{ minWidth: 175 }}
-                                value={newTest.category}
-                                size="small"
-                                onChange={(e) => setNewTest({ ...newTest, category: e.target.value })}
-                            >
-                                <MenuItem value="system_test_pages">Page Test</MenuItem>
-                                <MenuItem value="system_test_APIs">API Test</MenuItem>
-                            </Select>
-                            <TextField label="Test Key" value={newTest.key} size="small" onChange={(e) => setNewTest({ ...newTest, key: e.target.value })} />
-                            <TextField label="Endpoint" value={newTest.value} size="small" onChange={(e) => setNewTest({ ...newTest, value: e.target.value })} />
-                            <Button sx={{minWidth: 175}}
-                                variant="contained" color="primary" onClick={handleAddTest}>
-                                Add
-                            </Button>
-                        </Box>
-
-                        <Box sx={{ display: "flex", alignItems: "center", marginBottom: theme.spacing(1), gap: theme.spacing(2) }}>
-                            <Typography
-                                variant="body3"
-                                sx={{ color: "#4FC3F7", mt: 4 }}
-                            >
-                                * <strong>Editing:</strong> Double-click on the <strong>Test Key</strong> or <strong>Endpoint</strong> fields to edit. Press <strong>Enter</strong> to save. Press <strong>Esc</strong> to cancel. <br />
-                                * <strong>Deleting:</strong> Use the <strong>checkboxes</strong> to select rows for deletion then click on the <strong>Delete Selected</strong> button.
-                            </Typography>
-                        </Box>
-                        <Button
-                            variant="contained" color="error" disabled={selectionModel.length === 0} onClick={handleDeleteSelected}>
-                            Delete Selected
-                        </Button>
-                        {/* Tests Table */}
-                        <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
-                            <DataGrid
-                                // density="standard"
-                                // rowHeight={40} 
-                                rows={tests}
-                                columns={system_test_columns}
-                                pageSize={15}
-                                height={100}
-                                processRowUpdate={st_handleEditCellChange}
-                                checkboxSelection
-                                onRowSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
-                                experimentalFeatures={{ newEditingApi: true }}
-                                disableSelectionOnClick
-                            />
-                        </div>
-                    </Box>
-                </TabPanel>
-
-                {/* Active Users Tab */}
-                <TabPanel value="3">
-                    <Box sx={{ padding: 4 }}>
-                        <Typography variant="h5" sx={{ marginTop: 3 }}>
-                            👥 Active Users
-                        </Typography>
-
-                        {loading ? (
-                            <CircularProgress />
-                        ) : (
-                            <Box sx={{ height: 400, marginTop: 2 }}>
-                                <DataGrid
-                                    rows={activeUsers}
-                                    columns={columns}
-                                    pageSize={10}
-                                    disableSelectionOnClick
-                                />
+                    )} */}
+                        {functionalTestResults.apis && (
+                            <Box sx={{ mt: 3 }}>
+                                <Typography variant="h6">🔍 API Tests</Typography>
+                                {Object.entries(functionalTestResults.apis).map(([key, value]) => (
+                                    <Typography key={key} color={value === "Pass" ? "green" : value.includes("Fail") ? "red" : "grey"}>
+                                        {key}: {value === "Loading" ? <CircularProgress size={15} /> : value}
+                                    </Typography>
+                                ))}
                             </Box>
                         )}
-                    </Box>
-                </TabPanel>
 
-                {/* {systemStatus.run_mode === 'prod' && ( */}
-                {/* Logs & Resources Tab */}
-                <TabPanel value="4">
-                    <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
-                        <Typography variant="h6">Logs</Typography>
+                    </TabPanel>
 
-                        {/* Logs Section */}
-                        <Box sx={{ mt: 2 }}>
-                            <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('nginx')}>
-                                View Nginx Logs
-                            </Button>
-                            <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-app')}>
-                                View Flask-App Logs
-                            </Button>
-                            <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-dev')}>
-                                View Flask-Dev Logs
-                            </Button>
-                            <Button variant="outlined" onClick={() => fetchLogs('mysql')}>
-                                View MySQL Logs
-                            </Button>
-                        </Box>
-                    </Box>
+                    {/* Manage System Tests Tab */}
+                    <TabPanel value="5">
+                        <Box sx={{ padding: 2 }}>
+                            <Typography variant="h5" sx={{ marginBottom: 4 }}>
+                                🛠 System Tests Management
+                            </Typography>
 
-                    {/* Service Controls */}
-                    <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
-                        <Box sx={{ mt: 2 }}>
-
-                            <Typography variant="h6" sx={{ mt: 2 }}>Service Controls - NO PRESSY!</Typography>
-                            <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('nginx')}>
-                                Restart Nginx
-                            </Button>
-                            <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('mysql')}>
-                                Restart MySQL
-                            </Button>
-                            <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-app')}>
-                                Restart Flask App
-                            </Button>
-                            <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-dev')}>
-                                Restart Flask Dev
-                            </Button>
-                        </Box>
-                    </Box>
-                    {/* Modal to display logs (moved outside of button boxes for clarity) */}
-                    <Dialog
-                        open={logModalOpen}
-                        onClose={() => setLogModalOpen(false)}
-                        fullWidth
-                        maxWidth={false} // ✅ Allow custom width
-                        maxheight={false} // ✅ Allow custom height
-                        sx={{
-                            "& .MuiDialog-paper": {
-                                width: "80vw",  // ✅ Increase modal width
-                                maxHeight: "75vh", // ✅ Allow more vertical space
-                                resize: "both", // ✅ Make modal resizable
-                                overflow: "auto",
-                            }
-                        }}
-                    >
-                        <DialogTitle>Service Logs</DialogTitle>
-                        <DialogContent>
-                            <Box
-                                ref={logContainerRef}
-                                sx={{
-                                    maxHeight: "60vh",
-                                    overflow: "auto",
-                                    fontSize: "0.85rem",
-                                    fontFamily: "monospace",
-                                    backgroundColor: "#222",
-                                    color: "#ddd",
-                                    padding: "10px",
-                                    borderRadius: "5px"
-                                }}
-                            >
-                                {logLoading ? (
-                                    <CircularProgress />
-                                ) : (
-                                    <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
-                                        {Array.isArray(logContent) && logContent.length > 0
-                                            ? logContent.join("\n")
-                                            : "No logs available."
-                                        }
-                                    </pre>
-                                )}
+                            {/* New Test Form */}
+                            <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
+                                <Select sx={{ minWidth: 175 }}
+                                    value={newTest.category}
+                                    size="small"
+                                    onChange={(e) => setNewTest({ ...newTest, category: e.target.value })}
+                                >
+                                    <MenuItem value="system_test_pages">Page Test</MenuItem>
+                                    <MenuItem value="system_test_APIs">API Test</MenuItem>
+                                </Select>
+                                <TextField label="Test Key" value={newTest.key} size="small" onChange={(e) => setNewTest({ ...newTest, key: e.target.value })} />
+                                <TextField label="Endpoint" value={newTest.value} size="small" onChange={(e) => setNewTest({ ...newTest, value: e.target.value })} />
+                                <Button sx={{ minWidth: 175 }}
+                                    variant="contained" color="primary" onClick={handleAddTest}>
+                                    Add
+                                </Button>
                             </Box>
-                        </DialogContent>
-                        <DialogActions>
-                            <Button onClick={() => setLogModalOpen(false)}>Close</Button>
-                        </DialogActions>
-                    </Dialog>
-                </TabPanel>
 
-                <TabPanel value="5">
-                    <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
-                        <Typography variant="h6">Admin Settings</Typography>
-                        <Box sx={{ flexGrow: 1 }}>
-                            <div style={{ flexGrow: 1, overflow: "auto", maxHeight: "50vh", width: "100%" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", marginBottom: theme.spacing(1), gap: theme.spacing(2) }}>
+                                <Typography
+                                    variant="body3"
+                                    sx={{ color: "#4FC3F7", mt: 4 }}
+                                >
+                                    * <strong>Editing:</strong> Double-click on the <strong>Test Key</strong> or <strong>Endpoint</strong> fields to edit. Press <strong>Enter</strong> to save. Press <strong>Esc</strong> to cancel. <br />
+                                    * <strong>Deleting:</strong> Use the <strong>checkboxes</strong> to select rows for deletion then click on the <strong>Delete Selected</strong> button.
+                                </Typography>
+                            </Box>
+                            <Button
+                                variant="contained" color="error" disabled={selectionModel.length === 0} onClick={handleDeleteSelected}>
+                                Delete Selected
+                            </Button>
+                            {/* Tests Table */}
+                            <div style={{ flexGrow: 1, overflow: "auto", height: "80vh", width: "100%" }}>
                                 <DataGrid
-                                    rows={settings}
-                                    columns={settings_columns}
-                                    pageSize={25}
-                                    processRowUpdate={handleEditCellChange}
+                                    // density="standard"
+                                    // rowHeight={40} 
+                                    rows={tests}
+                                    columns={system_test_columns}
+                                    pageSize={15}
+                                    height={100}
+                                    processRowUpdate={st_handleEditCellChange}
+                                    checkboxSelection
+                                    onRowSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
                                     experimentalFeatures={{ newEditingApi: true }}
                                     disableSelectionOnClick
-
                                 />
                             </div>
                         </Box>
-                    </Box>
-                </TabPanel>
-                {/* )} */}
-            </Box>
-        </TabContext>
+                    </TabPanel>
+
+                    {/* Active Users Tab */}
+                    <TabPanel value="3">
+                        <Box sx={{ padding: 4 }}>
+                            <Box sx={{ display: "flex", padding: 4, justifyContent: "space-between" }}>
+                                <Typography variant="h5" sx={{ marginTop: 3 }}>
+                                    👥 Active Users
+                                </Typography>
+                                <Button variant="contained" color="primary" onClick={fetchActiveUsers} sx={{ mt: 2 }}>
+                                    Refresh
+                                </Button>
+                            </Box>
+                            <Box sx={{ display: "flex", width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1), padding: 2 }}>
+                                {loading ? (
+                                    <CircularProgress />
+                                ) : (
+                                    <Box sx={{ height: 400, marginTop: 2, width: "100%" }}>
+                                        <DataGrid
+                                            rows={activeUsers}
+                                            columns={columns}
+                                            pageSize={10}
+                                            disableSelectionOnClick
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
+                    </TabPanel>
+
+                    {/* {systemStatus.run_mode === 'prod' && ( */}
+                    {/* Logs & Resources Tab */}
+                    <TabPanel value="4">
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Typography variant="h6">Logs</Typography>
+
+                            {/* Logs Section */}
+                            <Box sx={{ mt: 2 }}>
+                                <Button variant="outlined" onClick={() => fetchLogs('applogs')}>
+                                    View Application Logs
+                                </Button>
+                                <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+                                    <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('nginx')}>
+                                        View Nginx Logs
+                                    </Button>
+                                    <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-app')}>
+                                        View Flask-App Logs
+                                    </Button>
+                                    <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-dev')}>
+                                        View Flask-Dev Logs
+                                    </Button>
+                                    <Button variant="outlined" onClick={() => fetchLogs('mysql')}>
+                                        View MySQL Logs
+                                    </Button>
+                                </Box>
+                            </Box>
+                        </Box>
+
+                        {/* Service Controls */}
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Box sx={{ mt: 2 }}>
+
+                                <Typography variant="h6" sx={{ mt: 2 }}>Service Controls - NO PRESSY!</Typography>
+                                <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('nginx')}>
+                                    Restart Nginx
+                                </Button>
+                                <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('mysql')}>
+                                    Restart MySQL
+                                </Button>
+                                <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-app')}>
+                                    Restart Flask App
+                                </Button>
+                                <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-dev')}>
+                                    Restart Flask Dev
+                                </Button>
+                            </Box>
+                        </Box>
+                        {/* Modal to display logs (moved outside of button boxes for clarity) */}
+                        <Dialog
+                            open={logModalOpen}
+                            onClose={() => setLogModalOpen(false)}
+                            fullWidth
+                            maxWidth={false} // ✅ Allow custom width
+                            maxheight={false} // ✅ Allow custom height
+                            sx={{
+                                "& .MuiDialog-paper": {
+                                    width: "80vw",  // ✅ Increase modal width
+                                    maxHeight: "75vh", // ✅ Allow more vertical space
+                                    resize: "both", // ✅ Make modal resizable
+                                    overflow: "auto",
+                                }
+                            }}
+                        >
+                            <DialogTitle>Service Logs</DialogTitle>
+                            <DialogContent>
+                                <Box
+                                    ref={logContainerRef}
+                                    sx={{
+                                        maxHeight: "60vh",
+                                        overflow: "auto",
+                                        fontSize: "0.85rem",
+                                        fontFamily: "monospace",
+                                        backgroundColor: "#222",
+                                        color: "#ddd",
+                                        padding: "10px",
+                                        borderRadius: "5px"
+                                    }}
+                                >
+                                    {logLoading ? (
+                                        <CircularProgress />
+                                    ) : (
+                                        <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
+                                            {Array.isArray(logContent) && logContent.length > 0
+                                                ? logContent.join("\n")
+                                                : "No logs available."
+                                            }
+                                        </pre>
+                                    )}
+                                </Box>
+                            </DialogContent>
+                            <DialogActions>
+                                <Button onClick={() => setLogModalOpen(false)}>Close</Button>
+                            </DialogActions>
+                        </Dialog>
+                    </TabPanel>
+
+                    <TabPanel value="5">
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Typography variant="h6">Admin Settings</Typography>
+                            <Box sx={{ flexGrow: 1 }}>
+                                <div style={{ flexGrow: 1, overflow: "auto", maxHeight: "50vh", width: "100%" }}>
+                                    <DataGrid
+                                        rows={settings}
+                                        columns={settings_columns}
+                                        pageSize={25}
+                                        processRowUpdate={handleEditCellChange}
+                                        onProcessRowUpdateError={(error) => console.error("Error updating row:", error)}
+                                        experimentalFeatures={{ newEditingApi: true }}
+                                        disableSelectionOnClick
+
+                                    />
+                                </div>
+                            </Box>
+                        </Box>
+                    </TabPanel>
+                    {/* )} */}
+                </Box>
+            </TabContext>
+
+        </Box>
+
     )
 };
 

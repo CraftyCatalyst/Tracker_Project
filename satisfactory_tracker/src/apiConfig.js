@@ -1,4 +1,4 @@
-import logToBackend from "./services/logService";
+import centralLogging from "./services/logService";
 
 let flask_port = "";
 
@@ -12,7 +12,7 @@ if (process.env.REACT_APP_RUN_MODE === 'prod') {
 
 if (process.env.REACT_APP_RUN_MODE === 'prod') {
   flask_port = "https://dev.satisfactorytracker.com";
-  // logToBackend("apiConfig.js - Run Mode:" + process.env.REACT_APP_RUN_MODE, "INFO");
+  centralLogging("apiConfig.js - Run Mode:" + process.env.REACT_APP_RUN_MODE, "INFO");
 } else {
   flask_port = "http://localhost:5000";
 }
@@ -79,6 +79,10 @@ export const API_ENDPOINTS = {
   support_messages: `${flask_port}/api/support_messages`,
   support_reply: `${flask_port}/api/support_reply`,
   save_support_draft: `${flask_port}/api/support_draft`,
+  request_password_reset: `${flask_port}/api/request_password_reset`,
+  reset_password: `${flask_port}/api/reset_password`,
+  verify_email: `${flask_port}/api/verify_email`,
+  resend_verification_email: `${flask_port}/api/resend_verification_email`,
   resolve_support_message: (message_id) => `${flask_port}/api/support_message/${message_id}/resolve`,
   get_support_draft: (messageID) => `${flask_port}/api/support_draft/${messageID}`,
   delete_support_draft: (messageID) => `${flask_port}/api/support_draft/${messageID}`,
@@ -87,7 +91,7 @@ export const API_ENDPOINTS = {
   send_test_email: (recipient) => `${flask_port}/api/send_test_email/${recipient}`,
   send_email: (recipient_email) => `${flask_port}/api/send_email/${recipient_email}`,
   update_must_change_password:(userId) => `${flask_port}/api/update_must_change_password/${userId}`,
-  reset_password: (userId) => `${flask_port}/api/reset_user_password/${userId}`,
+  admin_reset_password: (userId) => `${flask_port}/api/reset_user_password/${userId}`,
   get_recipe_id: (partId) => `${flask_port}/api/recipe_id/${partId}`,
   get_assembly_phase_parts: (phaseId) => `${flask_port}/api/get_assembly_phase_parts/${phaseId}`,
   get_assembly_phase_details: (phaseId) => `${flask_port}/api/get_assembly_phase_details/${phaseId}`,

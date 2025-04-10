@@ -7,7 +7,7 @@ import { useTheme } from "@mui/material/styles";
 import { THEME_LIGHT, THEME_DARK } from "../theme/themeConfig";
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { useAlert } from "../context/AlertContext";
-import logToBackend from '../services/logService';
+import centralLogging from '../services/logService';
 
 const UserSettingsPage = ({ open, onClose }) => {
     const theme = useTheme();

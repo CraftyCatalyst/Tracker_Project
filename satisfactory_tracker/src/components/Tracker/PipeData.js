@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import axios from "axios";
 import { Box, Typography } from "@mui/material";
-import logToBackend from "../../services/logService";
+import centralLogging from "../../services/logService";
 import { useTheme } from "@mui/material/styles";
 
 const PipeData = () => {
@@ -22,9 +22,9 @@ const PipeData = () => {
                 setLoading(false);
             }
         };
-        // logToBackend("********************************FRONTEND PIPE DATA********************************", "DEBUG");
-        // logToBackend("PipeData Response: " + pipeData, "INFO");
-        // logToBackend("********************************END OF FRONTEND PIPE DATA********************************", "DEBUG");
+        // centralLogging("********************************FRONTEND PIPE DATA********************************", "DEBUG");
+        // centralLogging("PipeData Response: " + pipeData, "INFO");
+        // centralLogging("********************************END OF FRONTEND PIPE DATA********************************", "DEBUG");
         fetchPipeData();
     }, []);
 

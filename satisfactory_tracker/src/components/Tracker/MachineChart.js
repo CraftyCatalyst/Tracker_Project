@@ -1,7 +1,7 @@
 import React from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import { Box, Typography } from "@mui/material";
-import logToBackend from "../../services/logService";
+import centralLogging from "../../services/logService";
 
 const barSize = 18; // Adjust bar height here
 
@@ -15,11 +15,11 @@ const MachineChart = ({ data }) => {
     Actual: Number(data[key].actual) || 0,  // Ensure it's a number
     Target: Number(data[key].target) || 0,  // Ensure it's a number
   }));
-// logToBackend(`*****************Machine Chart********************
+// centralLogging(`*****************Machine Chart********************
   
 //   chartData: ${JSON.stringify(chartData, null, 2)}`, "INFO");
 
-// logToBackend(`*****************Machine Chart********************
+// centralLogging(`*****************Machine Chart********************
 //   Nomalizing chart data`, "INFO");
   
 // Normalize the data for the chart
@@ -27,10 +27,10 @@ const MachineChart = ({ data }) => {
   .map(machine => {
     const realActualMachines = machine.Actual;
     const realTargetMachines = machine.Target;
-    // logToBackend(`************************Real Actual Machines: ${realActualMachines}, Real Target Machines: ${realTargetMachines}`, "INFO");
+    // centralLogging(`************************Real Actual Machines: ${realActualMachines}, Real Target Machines: ${realTargetMachines}`, "INFO");
     
     const actualPercent = realTargetMachines === 0 ? 0 : (realActualMachines / realTargetMachines) * 100;
-    // logToBackend(`************************Actual Percent: ${actualPercent}`, "INFO");
+    // centralLogging(`************************Actual Percent: ${actualPercent}`, "INFO");
     
     const displayActual = Math.min(actualPercent, 100); // Cap at 100%
     const displayTarget = actualPercent > 100 ? 0 : 100 - displayActual; // Remaining portion
@@ -38,7 +38,7 @@ const MachineChart = ({ data }) => {
     // capitalize the name of the machine
     const machineName = machine.name.toUpperCase()
 
-    // logToBackend(`************************Display Actual: ${displayActual}, Display Target: ${displayTarget}, Actual Color: ${actualColor}`, "INFO");
+    // centralLogging(`************************Display Actual: ${displayActual}, Display Target: ${displayTarget}, Actual Color: ${actualColor}`, "INFO");
     return {
       name: machineName,
       Target: displayTarget, // Display value (0-100%)
@@ -49,7 +49,7 @@ const MachineChart = ({ data }) => {
     };
   });
 
-  // logToBackend(`*****************Machine Chart********************
+  // centralLogging(`*****************Machine Chart********************
   // Normalized chart data: ${JSON.stringify(normalizedChartData, null, 2)}`, "INFO");
 
   return (

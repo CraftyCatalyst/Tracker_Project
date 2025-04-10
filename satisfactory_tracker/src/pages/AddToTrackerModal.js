@@ -18,7 +18,7 @@ import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 import { UserContext } from '../context/UserContext';
 import { useAlert } from "../context/AlertContext";
-import logToBackend from '../services/logService';
+import centralLogging from '../services/logService';
 import EditIcon from '@mui/icons-material/Edit';
 
 const AddToTrackerModal = ({ open, onClose }) => {

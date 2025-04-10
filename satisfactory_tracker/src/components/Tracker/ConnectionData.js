@@ -3,7 +3,7 @@ import { ForceGraph2D } from "react-force-graph";
 import axios from "axios";
 import { API_ENDPOINTS } from "../../apiConfig";
 import { Box, Typography, LinearProgress, CircularProgress } from "@mui/material";
-import logToBackend from "../../services/logService";
+import centralLogging from "../../services/logService";
 import { useAlert } from "../../context/AlertContext";
 import { useTheme } from "@mui/material/styles";
 import { useUserContext } from "../../context/UserContext";
@@ -80,7 +80,7 @@ const ConnectionData = () => {
     };
 
     const getMachineType = (nodeId) => {
-        // logToBackend("Node ID: " + nodeId, "INFO");
+        // centralLogging("Node ID: " + nodeId, "INFO");
         if (nodeId.includes("Miner")) return "Miner";
         if (nodeId.includes("Smelter")) return "Smelter";
         if (nodeId.includes("Constructor")) return "Constructor";
@@ -152,13 +152,13 @@ const ConnectionData = () => {
                     setGraphData({ nodes, links });
                 }
 
-                // logToBackend("🔍 Fetched stored connection data:", "DEBUG", response.data);
-                // logToBackend("🔍 *********************graphData:*****************", "DEBUG");
-                // logToBackend(graphData, "DEBUG");
-                // logToBackend("🔍 *********************graphData.links:*****************", "DEBUG");
-                // logToBackend(graphData.links, "DEBUG");
-                // logToBackend("🔍 *********************graphData.nodes:*****************", "DEBUG");
-                // logToBackend(graphData.nodes, "DEBUG");
+                // centralLogging("🔍 Fetched stored connection data:", "DEBUG", response.data);
+                // centralLogging("🔍 *********************graphData:*****************", "DEBUG");
+                // centralLogging(graphData, "DEBUG");
+                // centralLogging("🔍 *********************graphData.links:*****************", "DEBUG");
+                // centralLogging(graphData.links, "DEBUG");
+                // centralLogging("🔍 *********************graphData.nodes:*****************", "DEBUG");
+                // centralLogging(graphData.nodes, "DEBUG");
                 setLoading(false);
             } catch (error) {
                 console.error("❌ Error fetching stored connection data:", error);

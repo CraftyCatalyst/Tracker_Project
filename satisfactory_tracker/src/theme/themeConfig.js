@@ -1,6 +1,6 @@
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { dark } from '@mui/material/styles/createPalette';
-import logToBackend from "../services/logService";
+import centralLogging from "../services/logService";
 import { DensitySmall, WrapText } from '@mui/icons-material';
 import { borderLeft, borderRight, fontSize, minHeight, typography, width } from '@mui/system';
 
@@ -375,7 +375,7 @@ export const THEME_DARK = {
     components_MuiTableRow_root: {
         height: "15px", //  Sets row height
         "&:nth-of-type(even)": {
-            backgroundColor: "#2C2C3C", //  Alternating row color #3e596c
+            backgroundColor: "#2C2C3C", //  Alternating row color #3e596c #2C2C3C
         },
         "&:hover": {
             backgroundColor: "#393939", //  Hover effect color #393939

@@ -4,7 +4,7 @@ import { Modal, Box, Typography, Button, TextField, MenuItem, Tooltip } from "@m
 import axios from "axios";
 import { API_ENDPOINTS } from "../apiConfig";
 import { useTheme } from '@mui/material/styles';
-import logToBackend from '../services/logService';
+import centralLogging from '../services/logService';
 
 
 
@@ -32,7 +32,7 @@ const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen, tableName
   const getValidValues = (tableName, columnName) => {
     console.log("Getting validation rules for:", tableName, columnName); // Debug
     console.log("Validation Rules:", validationRules); // Debug
-    // logToBackend(`Getting validation rules for ${tableName}.${columnName}`);
+    // centralLogging(`Getting validation rules for ${tableName}.${columnName}`);
     return (
       validationRules
         .filter(rule => rule["table_name"] === tableName && rule["column_name"] === columnName)
@@ -45,11 +45,11 @@ const EditModal = ({ row, columns, onSave, onClose, isCreateModalOpen, tableName
       try {
         const foreignKeys = columns.filter(col => col.endsWith("_id"));
         const data = {};
-        // logToBackend(`Fetching foreign key data for ${foreignKeys} columns`);
+        // centralLogging(`Fetching foreign key data for ${foreignKeys} columns`);
         for (const fk of foreignKeys) {
           const endpoint = API_ENDPOINTS.table_name(fk.replace("_id", ""));
           const response = await axios.get(endpoint);
-          // logToBackend(`Fetched foreign key data for ${fk}: ${response.data.length} rows`);
+          // centralLogging(`Fetched foreign key data for ${fk}: ${response.data.length} rows`);
           data[fk] = response.data.map(row => ({
             id: row.id,
             name: row.name || row.node_purity ||

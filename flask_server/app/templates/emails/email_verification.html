@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Your Satisfactory Tracker Account</title>
+    <style>
+        /* ... (styles remain the same) ... */
+        .signature {
+            margin-top: 20px; /* Add some space before signature */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome to Satisfactory Tracker, {{ username }}!</h2>
+
+        <p>Thanks for signing up! Please click the button below to verify your email address and activate your account:</p>
+
+        <p>
+            <a href="{{ verification_link }}" class="button">Verify Email Address</a>
+        </p>
+
+        <p>If the button above doesn't work, you can copy and paste the following link into your browser:</p>
+        <p><a href="{{ verification_link }}">{{ verification_link }}</a></p>
+
+        <p>This verification link will expire in 48 hours. If it expires, you can request a new one from the login page.</p>
+
+        <!-- Added Signature Section -->
+        <p class="signature">
+            Thanks,<br>
+            Catalyst<br>
+            Creator of Satisfactory Tracker
+        </p>
+        <!-- End Signature Section -->
+
+        <hr>
+
+        <p class="footer">
+            If you did not sign up for an account on Satisfactory Tracker, please disregard this email.
+            <br>
+            © {{ current_year }} Satisfactory Tracker. All rights reserved. <!-- Optional: Add year dynamically -->
+        </p>
+    </div>
+</body>
+</html>

@@ -1,9 +1,9 @@
 import axios from 'axios';
-import logToBackend from "../services/logService";
+import centralLogging from "../services/logService";
 
 axios.defaults.withCredentials = true;
 
-// logToBackend("api.js - Run Mode: " + process.env.REACT_APP_API_BASE_URL, "INFO");
+// centralLogging("api.js - Run Mode: " + process.env.REACT_APP_API_BASE_URL, "INFO");
 const apiClient = axios.create({
   baseURL: process.env.REACT_APP_API_BASE_URL,  
 });

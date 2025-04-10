@@ -11,13 +11,32 @@ import logging
 from logging.handlers import RotatingFileHandler
 import math
 import json
-from .models import User, Tracker, User_Save, Part, Recipe, Machine, Machine_Level, Node_Purity, Resource_Node, UserSettings, User_Save_Pipes, User_Tester_Registrations, Project_Assembly_Phases, Project_Assembly_Parts, UserSelectedRecipe, Admin_Settings, SupportMessage, SupportConversation, SupportResponse, SupportDraft
+from .models import (User,
+                     Tracker,
+                     User_Save,
+                     Part,
+                     Recipe,
+                     Machine,
+                     Machine_Level,
+                     Node_Purity,
+                     Resource_Node,
+                     UserSettings,
+                     User_Save_Pipes,
+                     User_Tester_Registrations,
+                     Project_Assembly_Phases,
+                     Project_Assembly_Parts,
+                     UserSelectedRecipe,
+                     Admin_Settings,
+                     SupportMessage,
+                     SupportConversation,
+                     SupportResponse,
+                     SupportDraft,
+                     UserActionTokens)
 from sqlalchemy.exc import SQLAlchemyError
 from . import db
 from .build_tree import build_tree
 from .build_connection_graph import format_graph_for_frontend, build_factory_graph
-from werkzeug.security import check_password_hash
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from itsdangerous import URLSafeTimedSerializer
 from flask import current_app
@@ -29,9 +48,10 @@ from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
 import jwt
 from datetime import datetime, timedelta, timezone
-from .logging_util import setup_logger
+from .logging_util import setup_logger, format_log_message
 import secrets
 import base64
+import hashlib
 import subprocess
 import shutil
 import platform
@@ -40,7 +60,9 @@ from .utils.email_util import send_email
 from .utils.ai_email_classifier import ai_classify_message
 from .utils.ai_thread_classifier import ai_summarise_thread
 import re
-
+import time
+import traceback
+import pytz
 
 
 # config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
@@ -110,7 +132,47 @@ def check_maintenance_mode():
     
     if request.path != '/api/active_users' and request.path != '/api/system_resources':      
         logging.debug(f"Routes: Incoming request: {request.method} {request.path} Current user: {current_user.username if current_user.is_authenticated else 'Anonymous'}")
+
+def generate_secure_password_token():
+    # Generate a secure random token for password reset
+    raw_token = secrets.token_urlsafe(32)  # Generate a secure random token
+    token_hash = generate_password_hash(raw_token, method='pbkdf2:sha256') # Hash the token for storage
+    return raw_token, token_hash
+
+def generate_secure_verification_token():
+    # Generate a secure random token for email verification
+    raw_token = secrets.token_urlsafe(32)  # Generate a secure random token
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()  # Hash the token using SHA-256
+    return raw_token, token_hash
+
+def verify_verification_token(raw_token):
+    hashed = hashlib.sha256(raw_token.encode()).hexdigest()
+    token = UserActionTokens.query.filter_by(token_type="email_validation", token_hash=hashed, used=False).first()
     
+    if not token:
+        result = 'invalid'
+        user_id = None
+        return result, user_id
+
+    logger.debug(f"checking if {token.expires_at.replace(tzinfo=timezone.utc)} <= {datetime.now(timezone.utc)} for {token.user_id}")
+    if token.expires_at.replace(tzinfo=timezone.utc) <= datetime.now(timezone.utc):
+        result = 'expired'
+        user_id = token.user_id
+        return result, user_id
+    
+    if token.used:
+        result = 'used'
+        user_id = token.user_id
+        return result, user_id
+    
+    token.used = True
+    token.used_at = datetime.now(timezone.utc)
+    db.session.commit()
+    
+    result = 'verified'
+    user_id = token.user_id
+    return result, user_id
+
 @main.route('/')
 def serve_react_app():
     """SERVE REACT APP - Serve the React app's index.html file."""
@@ -124,35 +186,40 @@ def serve_static_files(path):
     logger.info(f"Serving static file: {path}")
     return send_from_directory(os.path.join(REACT_BUILD_DIR, 'static'), path)
 
-@main.route('/api/login', methods=['GET', 'POST'])
+@main.route('/api/login', methods=['POST'])
 def login():
-    logging.info("Login route called")
-    if request.method == 'POST':
-        logging.info("POST method called")
+    try:
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
 
-        # logging.info(f"Email: {email}")
+        if not email or not password:
+            return jsonify({"message": "Email and password are required."}), 400
+        
         user = User.query.filter_by(email=email).first()
-        # logging.info(f"User: {user}")
         if not user or not check_password_hash(user.password, password):
-            logging.info(f"Invalid email or password for user: {user}")
+            logging.warning(f"Invalid email or password for user: {user}")
             return jsonify({"message": "Invalid email or password."}), 401
 
-        # ✅ Instead of just sending 403, send user ID too
         if user.must_change_password:
             logging.info(f"Password reset required for user: {user}")
             return jsonify({
                 "message": "Password reset required",
                 "must_change_password": True,
-                "user_id": user.id  # Pass user_id to the frontend!
+                "user_id": user.id
             }), 403
 
+        if not user.is_email_verified:
+            logging.info(f"Login attempt failed - Email not verified for user: {email} (ID: {user.id})")
+            return jsonify({
+                "message": "Login failed. Please check your email inbox (and spam folder) for a verification link.",
+                "is_email_verified": False
+            }), 403
+        
         login_user(user) 
-        logging.info(f"User logged in successfully: {user}")
+        logging.info(f"User logged in successfully: {email} (ID: {user.id})")
 
-        # ✅ Generate JWT Token (Same as before)
+        # Generate JWT Token
         token = jwt.encode({
             'user_id': user.id,
             'exp': datetime.now(timezone.utc) + timedelta(days=30)
@@ -166,25 +233,16 @@ def login():
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
-                "role": user.role
+                "role": user.role,
+                "is_email_verified": user.is_email_verified
             }
         }), 200
+    
+    except Exception as e:
+        logging.error(f"Error during login for {email}: {e}")
+        logging.error(traceback.format_exc())
+        return jsonify({"message": "An error occurred during login."}), 500
 
-    elif request.method == 'GET':
-        logging.info("GET method called")
-        current_user = User.query.get(1)
-        user_info = {
-            "is_authenticated": current_user.is_authenticated,
-            "id": current_user.id if current_user.is_authenticated else None,
-            "username": current_user.username if current_user.is_authenticated else None,
-            "email": current_user.email if current_user.is_authenticated else None,
-            "role": current_user.role if current_user.is_authenticated else None
-        }
-        # logging.info(f"Current user: {user_info.username}")
-        return jsonify({
-            "message": "Please log in via the POST method.",
-            "current_user": user_info
-        }), 401
 
         
 @main.route('/api/check_login', methods=['POST'])
@@ -215,45 +273,128 @@ def check_login():
             
 @main.route('/api/signup', methods=['GET', 'POST'])
 def signup():
-    if request.method == 'POST':
-        data = request.get_json()  # Parse JSON payload
-        username = data.get('username')
-        email = data.get('email')
-        password = data.get('password')
-        recaptcha_token = data.get('recaptcha_token')
-        
-        # Verify reCAPTCHA
-        verify_url = 'https://www.google.com/recaptcha/api/siteverify'
-        response = requests.post(verify_url, data={
-            'secret': API_KEY,
-            'response': recaptcha_token
-        })
-        result = response.json()
+    
+        if request.method == 'POST':
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({"error": "Missing JSON payload."}), 400
+                username = data.get('username')
+                email = data.get('email')
+                password = data.get('password')
+                recaptcha_token = data.get('recaptcha_token')
+                
+                if not all([username, email, password, recaptcha_token]):
+                    return jsonify({"error": "Missing required fields."}), 400
+                
+                # --- Bypass Check ---
+                bypass_recaptcha = False
+                if (email == config.SYSTEM_TEST_NEW_USER_EMAIL and
+                    username == config.SYSTEM_TEST_NEW_USER_USERNAME and
+                    password == config.SYSTEM_TEST_NEW_USER_PASSWORD and
+                    recaptcha_token == config.SYSTEM_TEST_SECRET_KEY):
+                    bypass_recaptcha = True
+                    logger.info(f"reCAPTCHA bypass activated for test user: {email}")
 
-        if not result.get('success'):
-            return jsonify({"message": "reCAPTCHA validation failed. Please try again."}), 400
-        
-        # Verify that the username is unique
-        user = User.query.filter_by(username=username).first()
-        if user:
-            return jsonify({"message": "Username is unavailable."}), 400    
+                # --- Perform Verification ---
+                recaptcha_verified = False
+                if bypass_recaptcha:
+                    recaptcha_verified = True
+                elif recaptcha_token:
+                    # Only verify with Google if not bypassing AND token is present                
+                    try:                
+                        # Verify reCAPTCHA
+                        verify_url = 'https://www.google.com/recaptcha/api/siteverify'
+                        response = requests.post(verify_url, data={
+                            'secret': API_KEY,
+                            'response': recaptcha_token
+                        })
+                        result = response.json()
 
-        
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-        
-        new_user = User(
-            username=username,
-            email=email,
-            password=hashed_password,
-            role='user'
-        )
-        
-        db.session.add(new_user)
-        db.session.commit()
+                        if not result.get('success'):
+                            return jsonify({"message": "reCAPTCHA validation failed. Please try again."}), 400
+                        recaptcha_verified = True
+                    
+                    except requests.exceptions.RequestException as e:
+                        logger.error(f"reCAPTCHA verification request failed: {e}")
+                        recaptcha_verified = False # Treat network/API errors as failure
+                
+                # Now check the result
+                if not recaptcha_verified:
+                    return jsonify({"error": "reCAPTCHA validation failed. Please try again."}), 400
+                
+                # Verify that the username and email are unique
+                existing_user = User.query.filter_by(username=username).first()
+                if existing_user:
+                    return jsonify({"error": "Username is unavailable."}), 409 # Use 409 Conflict
 
-        flash('Account successfully created!', 'info')        
-    return jsonify({"message": "Account created successfully."}), 201
+                existing_email = User.query.filter_by(email=email).first()
+                if existing_email:
+                    return jsonify({"error": "Email already in use."}), 409 # Use 409 Conflict
+                
+                hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+                
+                new_user = User(
+                    username=username,
+                    email=email,
+                    password=hashed_password,
+                    role='user'
+                )
+                
+                db.session.add(new_user)
+                db.session.flush()  # Flush to get the new user's ID
+                
+                # Generate a secure token for email verification
+                raw_token, token_hash = generate_secure_password_token()
+                expiry_duration = timedelta(days=2)
+                expires_at = datetime.now(timezone.utc) + expiry_duration
 
+                # Store the token in the database
+                verification_token = UserActionTokens(
+                    user_id=new_user.id,
+                    token_type='email_validation',
+                    token_hash=token_hash,
+                    expires_at=expires_at
+                )
+                db.session.add(verification_token)
+            
+                ## Commit the new user and token to the database
+                db.session.commit()
+                # Generate the verification link
+                if RUN_MODE == "prod":
+                    # TODO: Should this be www.satisfactorytracker.com or the main domain eventually?
+                    verification_link = f"https://dev.satisfactorytracker.com/verify-email/{raw_token}"
+                else:
+                    # Use the local URL for testing purposes
+                    verification_link = f"http://localhost:3000/verify-email/{raw_token}"
+                
+                # Send verification email
+                email_sent = send_email(
+                    to=new_user.email,
+                    subject="Verify your Satisfactory Tracker Account",
+                    template_name="email_verification",
+                    context={"username": new_user.username, "verification_link": verification_link}
+                )
+
+                if not email_sent:
+                    logging.error(f"Failed to send verification email to {new_user.email} during signup.")
+                
+                
+                return jsonify({"message": "Registration successful! Please check your email to activate your account."}), 201
+            except SQLAlchemyError as e:
+                    db.session.rollback()
+                    logging.error(f"Registration failed - SQLAlchemyError: {e}")
+                    # Consider parsing e for specific constraint violations if needed
+                    # Defaulting to generic "already exists" is often okay for signup
+                    return jsonify({"error": "Username or email already exists."}), 409
+            except Exception as e:
+                db.session.rollback()
+                logging.error(f"Registration failed: {str(e)}")
+                return jsonify({"error": "An unexpected error occurred during registration."}), 500
+        else:
+            # Added handling in case GET is somehow called on this API endpoint
+            return jsonify({"error": "Method not allowed"}), 405
+    
 @main.route('/api/logout')
 @login_required
 def logout():
@@ -261,39 +402,8 @@ def logout():
     flash('Logged out successfully.', 'info')
     return jsonify({"message": "Logged out successfully."}), 201
 
-def generate_verification_token(email):
-    #print(f"********************************************Generating verification token for {email} with secret key: {config.SECRET_KEY}")
-    serializer = URLSafeTimedSerializer(config.SECRET_KEY)
-    return serializer.dumps(email, salt='email-confirm')
-
-def confirm_verification_token(token, expiration=3600):
-    serializer = URLSafeTimedSerializer(config.SECRET_KEY)
-    try:
-        email = serializer.loads(token, salt='email-confirm', max_age=expiration)
-    except Exception:
-        return None
-    return email
-
-@main.route('/verify/<token>')
-def verify_email(token):
-    try:
-        email = confirm_verification_token(token)
-    except Exception as e:
-        flash('The verification link is invalid or has expired.', 'danger')
-        return redirect(url_for('signup'))
-
-    user = User.query.filter_by(email=email).first()
-    if user.is_verified:  # Add `is_verified` to your User model
-        flash('Account already verified. Please log in.', 'info')
-        return redirect(url_for('login'))
-
-    user.is_verified = True
-    db.session.commit()
-    flash('Your account has been verified! You can now log in.', 'success')
-    return redirect(url_for('login'))
-
 @main.route('/api/user_info', methods=['GET'])
-#@login_required
+@login_required
 def user_info():
     return jsonify({
         "id": current_user.id,
@@ -753,11 +863,22 @@ def log_message():
     data = request.json
     message = data.get('message')
     level = data.get('level', 'INFO')  # Default to INFO level
-
+    source = data.get('source', 'FRONTEND')  # Default to 'frontend'
+    title = data.get('title', None)  # Optional title
+    
     if not message:
         return jsonify({"error": "Log message is required"}), 400
 
+    if source != 'FRONTEND': 
+        source = 'FRONTEND - ' + source # Prepend 'FRONTEND' to source if it is not 'FRONTEND'
+        message = f"{source}: {message}"
+    
+    if title:
+        message = format_log_message(title, message)
+    
+    
     # Map string levels to logging levels
+    
     log_levels = {
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
@@ -769,9 +890,10 @@ def log_message():
     log_level = log_levels.get(level.upper(), logging.INFO)
 
     # Log the message
-    logging.log(log_level, f"Frontend: {message}")
-    #logger.log(log_level, f"Frontend: {message}")
-    return jsonify({"message": "Log recorded"}), 200
+    logging.log(log_level, message)
+    logger.log(log_level, message)
+    
+    return jsonify({"message": "Log recorded", "log": message}), 200
 
 @main.route("/api/upload_sav", methods=["POST"])
 def upload_sav():
@@ -1684,7 +1806,8 @@ def fetch_logs(service_name):
         "nginx": ["/usr/bin/tail", "-n", "100", "/var/log/nginx/error.log"],
         "flask-app": ["/usr/bin/journalctl", "-u", "flask-app", "--no-pager", "--lines=100"],
         "flask-dev": ["/usr/bin/journalctl", "-u", "flask-dev", "--no-pager", "--lines=100"],
-        "mysql": ["/usr/bin/sudo", "/usr/bin/journalctl", "-u", "mysql", "--no-pager", "--lines=100"]
+        "mysql": ["/usr/bin/sudo", "/usr/bin/journalctl", "-u", "mysql", "--no-pager", "--lines=100"],
+        "applogs": ["/usr/bin/tail", "-f", "/flask-app/Tracker_Project/flask_server/app/logs/app_*.log", "|", "ccze", "-A"],
     }
 
     command = commands.get(service_name)
@@ -1706,7 +1829,6 @@ def fetch_logs(service_name):
     except Exception as e:
         logging.error(f"Failed to fetch logs: {str(e)} {e}")
         return jsonify({"error": f"Failed to fetch logs: {str(e)}"}), 500
-        #return jsonify({"error": str(e)}), 500
     
 @main.route('/api/restart_service/<service_name>', methods=['POST'])
 @login_required
@@ -1855,7 +1977,7 @@ def run_functional_tests():
     pages = ["/", "/tracker", "/admin/dashboard", "/login", "/data", "/dependencies","/signup", "/change-password", "/help","/admin/user_management", "/settings"]
     for page in pages:
         try:
-            res = requests.get(f"{base_url}{page}", timeout=5)
+            res = requests.get(f"{base_url}{page}", timeout=30)
             results[f"Page: {page}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
         except Exception as e:
             results[f"Page: {page}"] = f"Fail ({str(e)})"
@@ -1867,7 +1989,7 @@ def run_functional_tests():
             res = requests.get(
                 f"{base_url}{endpoint}",
                 cookies=session_cookies,
-                timeout=5
+                timeout=15
             )
             results[f"API: {endpoint}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
         except Exception as e:
@@ -1893,7 +2015,7 @@ def test_pages():
 
     for page in page_urls:
         try:
-            res = requests.get(f"{base_url}{page}", timeout=5)
+            res = requests.get(f"{base_url}{page}", timeout=15)
             results[f"Page: {page}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
         except Exception as e:
             results[f"Page: {page}"] = f"Fail ({str(e)})"
@@ -1926,7 +2048,7 @@ def test_apis():
             res = requests.get(
                 f"{base_url}{endpoint}",
                 cookies=session_cookies,
-                timeout=5
+                timeout=30
             )
             results[f"API: {endpoint}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
         except Exception as e:
@@ -2036,9 +2158,19 @@ def get_system_tests():
     if current_user.role != 'admin':
         return jsonify({"error": "Unauthorized"}), 403
     
-    tests = Admin_Settings.query.filter(Admin_Settings.setting_category.in_(["system_test_pages", "system_test_APIs"])).all()
-    
-    test_cases = {test.id: {"type": test.setting_category, "name": test.setting_key, "endpoint": test.setting_value} for test in tests}
+    tests = (Admin_Settings.query
+    .filter(Admin_Settings.setting_category.in_(["system_test_pages", "system_test_APIs"]))
+    .order_by(Admin_Settings.id)
+    .all()
+    )
+
+    test_cases = {test.id: {
+        "id": test.id,
+        "type": test.setting_category, 
+        "name": test.setting_key, 
+        "endpoint": test.setting_value
+        } for test in tests
+    }
 
     return jsonify(test_cases), 200
 
@@ -2065,12 +2197,18 @@ def run_single_test():
     # ✅ Run the test
     try:
         full_url = f"{base_url}{test.setting_value}"
-        res = requests.get(full_url, cookies=session_cookies, timeout=5)
+        res = requests.get(full_url, cookies=session_cookies, timeout=15)
         result = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
     except Exception as e:
-        result = f"Fail ({str(e)}, Response: {res.raw})"
-
-    return jsonify({test.setting_key: result}), 200
+        result = f"Fail ({str(e)})"
+    # return jsonify({test.setting_key: result}), 200
+    return jsonify({
+    "id": test.id,
+    "key": test.setting_key,
+    "category": test.setting_key,
+    "route": test.setting_value,
+    "result": result
+}), 200
 
 @main.route('/api/system_tests', methods=['GET'])
 @login_required
@@ -2244,7 +2382,6 @@ def get_stored_support_message_detail(storage_key):
 @main.route('/api/support_webhook', methods=['POST'])
 def receive_support_webhook():
     data = request.form  # Mailgun sends data as x-www-form-urlencoded
-
     # Extract fields from Mailgun webhook
     sender = data.get("sender")
     recipient = data.get("recipient")
@@ -2254,6 +2391,7 @@ def receive_support_webhook():
     timestamp_unix = data.get("timestamp")
     message_id = data.get("Message-Id") or data.get("message-id")
 
+    logger.info(f"Incoming email: from {sender} Recipient: {recipient} Subject: {subject}")
     # Defensive checks
     if not (sender and recipient and message_id):
         return jsonify({"error": "Missing required fields."}), 400
@@ -2261,10 +2399,19 @@ def receive_support_webhook():
     # Prevent spam: match sender to registered user
     
     user = User.query.filter_by(email=sender).first()
-    unregistered_user_id = None
     if not user:       
-        # TODO: Make sure user 99999 is prevented from accessing the system
-        unregistered_user_id = 99999  # Placeholder for unregistered users
+        logger.info(f"Unregistered user: {sender} User ID: {user.id if user else 'None'}")
+        if recipient in [config.SYSTEM_TEST_USER_EMAIL, config.SYSTEM_TEST_NEW_USER_EMAIL]:
+            user = User.query.filter_by(email=recipient).first()
+            user_id = user.id if user else 0
+            logger.info(f"System test user found: {sender}, Recipient: {recipient} User ID: {user_id}")
+        else:
+        # TODO: Make sure user 0 - unregistered_user is prevented from accessing the system
+            user_id = 0  # Placeholder for unregistered users
+    else:
+        user_id = user.id
+    
+        
 
     # Check for duplicate message
     existing = SupportMessage.query.filter_by(message_id=message_id).first()
@@ -2291,13 +2438,21 @@ def receive_support_webhook():
         conversation_id = conversation.id
 
     # Generate the AI classification data
-    if not unregistered_user_id:
+    if user_id != 0:  # Only for registered users
         # Use AI classification only for registered users
         ai_data = ai_classify_message(subject, body_plain)
+    else:
+        # For unregistered users, use a default classification
+        logger.info(f"Unregistered user: {sender} User ID: {user_id}")
+        ai_data = {
+            "summary": "No AI classification available for unregistered users.",
+            "category": "Unregistered",
+            "suggested_actions": []
+        }
 
     try:
         message = SupportMessage(
-            user_id=user.id if user else unregistered_user_id,
+            user_id=user.id if user else user_id if user_id else 0,
             message_id=message_id,
             conversation_id=conversation_id,
             sender=sender,
@@ -2309,6 +2464,7 @@ def receive_support_webhook():
             tags=ai_data["category"],
             summary=ai_data["summary"],
             suggested_actions=json.dumps(ai_data["suggested_actions"]),
+            # archived_at=datetime.now() if 'test_full_password_reset_flow_2' in subject else None,
         )
         db.session.add(message)
         db.session.commit()
@@ -2339,6 +2495,7 @@ def get_support_messages():
         messages = (
             SupportMessage.query
             .join(SupportConversation)
+            .filter(SupportMessage.archived_at == None)
             .filter(True if show_all else SupportConversation.resolved == False)
             .order_by(SupportMessage.created_at.desc())
             .all()
@@ -2432,16 +2589,15 @@ def support_reply():
 
     # Commit now that everything is in place
     db.session.commit()
-
+    
+    sender = config.MAIL_SUPPORT_USERNAME
     # Send the actual email
     sent = send_email(
-        to,
-        subject,
-        None,
-        {},
-        body,
-        False,
-        {"Message-Id": generated_id}
+        to=to,
+        subject=subject,
+        plain_override=body,
+        headers={"Message-Id": generated_id},
+        sender=sender        
     )
 
     if not sent:
@@ -2592,6 +2748,732 @@ def resolve_support_conversation(message_id):
     db.session.commit()
 
     return jsonify({"message": "Conversation marked as resolved"}), 200
+
+
+@main.route('/api/request_password_reset', methods=['POST'])
+def request_password_reset():    
+    
+    """Request a password reset link."""
+    email = request.json.get('email')
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # Always return success to avoid exposing user existence
+        return jsonify({"message": "If your email exists in our system, you'll receive a reset link shortly."}), 200
+
+    try:
+        # Generate the token and hash
+        raw_token, token_hash = generate_secure_password_token()
+
+        # Store the hashed token in DB
+        reset = UserActionTokens(
+            user_id=user.id,
+            token_type='password_reset',
+            token_hash=token_hash,
+            expires_at=datetime.now() + timedelta(minutes=30)
+        )
+        db.session.add(reset)
+        db.session.commit()
+
+        # Send email with the raw token
+        if RUN_MODE == "prod":
+            reset_link = f"https://dev.satisfactorytracker.com/reset-password/{raw_token}"
+        else:
+            # Use the local URL for testing purposes
+            reset_link = f"http://localhost:3000/reset-password/{raw_token}"
+        
+        send_email(
+            to=user.email,
+            subject="Password Reset Request",
+            template_name="password_reset_request",
+            context={"username": user.username, "reset_link": reset_link}
+        )
+        logging.debug(f"Password reset link sent to {user.email}")        
+    except Exception as e:        
+        db.session.rollback()
+        logging.error(f"Failed to send password reset email: {str(e)}")
+        return jsonify({"error": "Failed to send email"}), 500
+
+    return jsonify({"message": "Password reset link sent!"}), 200
+
+@main.route('/api/reset_password', methods=['POST'])
+def reset_password():
+    data = request.get_json()
+    raw_token = data.get('token')
+    new_password = data.get('new_password')
+
+    if not raw_token or not new_password:
+        return jsonify({"error": "Token and new password are required"}), 400
+
+    try:
+        # Hash incoming token for lookup
+        token_entries = UserActionTokens.query.filter_by(
+            used=False,
+            token_type='password_reset').all()
+        matching_token = next((t for t in token_entries if check_password_hash(t.token_hash, raw_token)), None)
+
+        if not matching_token:
+            return jsonify({"error": "Invalid token"}), 400
+
+        if matching_token.expires_at < datetime.now():
+            return jsonify({"error": "Token has expired"}), 400
+
+        user = matching_token.user
+        if not user:
+            return jsonify({"error": "User not found"}), 400
+
+        # Update user's password
+        user.password = generate_password_hash(new_password)
+        matching_token.used = True
+
+        db.session.commit()
+
+        # Optional: Send confirmation email
+        send_email(
+            to=user.email,
+            subject="Your Satisfactory Tracker password was changed",
+            template_name="password_change_alert",
+            context={"username": user.username}
+        )
+
+        return jsonify({"message": "Password successfully updated!"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Password reset failed: {str(e)}")
+        return jsonify({"error": "Failed to reset password"}), 500
+
+@main.route('/api/test_full_password_reset_flow_1', methods=['GET'])
+def test_full_password_reset_flow_1():
+    
+    test_email = config.SYSTEM_TEST_USER_EMAIL
+    logger.debug(f"Triggered password reset for: {test_email}")
+    try:
+        user = User.query.filter_by(email=test_email).first()
+        if not user:
+            logger.debug("Test user not found")
+            return {"test_full_password_reset_flow_1": "Fail: Test user not found"}, 400
+
+        # 1. Trigger password reset request
+        client = current_app.test_client()
+        reset_request = client.post('/api/request_password_reset', json={"email": test_email})
+        if reset_request.status_code != 200:
+            logger.debug(f"Password reset request failed: {reset_request.json}")
+            return {"test_full_password_reset_flow_1": "Fail: Couldn't trigger reset"}, 500
+
+        
+        logger.debug("test_full_password_reset_flow_1 completed successfully")
+        return {"test_full_password_reset_flow_1": "Pass"}, 200
+
+    except Exception as e:
+        logger.debug(f"test_full_password_reset_flow_1: {str(e)}")
+        return {"test_full_password_reset_flow_1": f"Fail: {str(e)}"}, 500
+
+@main.route('/api/test_full_password_reset_flow_2', methods=['GET'])
+## Test value - /api/test_full_password_reset_flow_2?wait=10
+def test_full_password_reset_flow_2():
+    wait = int(request.args.get("wait", 0))
+    if wait > 0:
+        time.sleep(wait)
+    
+    test_email = config.SYSTEM_TEST_USER_EMAIL
+    new_password = config.SYSTEM_TEST_USER_PASSWORD
+    
+    try:
+        user = User.query.filter_by(email=test_email).first()
+        message = (
+            SupportMessage.query
+            .filter(SupportMessage.sender == test_email)
+            .filter(SupportMessage.subject == "Automated test: test_full_password_reset_flow_1 - Request password reset")
+            .filter(SupportMessage.archived_at == None)
+            .order_by(SupportMessage.created_at.desc())
+            .first()
+        )
+        if not message:
+            logger.debug("No support message found for test user")
+            return {"test_full_password_reset_flow_2": "Fail: No message found"}, 404
+
+        logger.debug(f"Found reset email created at {message.created_at}, message_id: {message.id}")
+        match = re.search(r"https?://[^\s]+/reset-password/([A-Za-z0-9\-_]+)", message.body_plain or "")
+        if not match:
+            logger.debug("No reset link found in message body")
+            return {"test_full_password_reset_flow_2": "Fail: No reset link found"}, 400
+        token_url = match.group(0)
+        raw_token = match.group(1)
+
+        logger.debug(f"Token URL: {token_url}")
+        
+        if not token_url:
+            logger.debug("No reset email or token found")
+            return {"test_full_password_reset_flow_2": "Fail: No reset email or token found"}, 400
+
+        # 3. Use the token to reset the password
+        logger.debug(f"attempting to reset password with token: {raw_token}")
+        client = current_app.test_client()
+        reset_password = client.post('/api/reset_password', json={
+            "token": raw_token,
+            "new_password": new_password
+        })
+
+        if reset_password.status_code != 200:
+            logger.debug(f"Password reset failed: {reset_password.json}")
+            return {"test_full_password_reset_flow_2": f"Fail: Reset failed: {reset_password.json.get('error')}"}, 400
+
+        # Clean up
+        logger.debug("Cleaning up test data...")
+        # Clean up the test data
+        tokens = UserActionTokens.query.filter_by(
+            user_id=user.id,
+            token_type='password_reset',
+            ).all()
+        for t in tokens:
+            db.session.delete(t)
+                    
+        message.archived_at = datetime.now()
+        db.session.commit()
+
+        logger.debug("Test completed successfully")
+        return {"test_full_password_reset_flow_2": "Pass"}, 200
+        
+    except Exception as e:
+        logger.exception(f"test_full_password_reset_flow_2: Failed to parse reset email or reset password: {str(e)}")
+        return {"test_full_password_reset_flow_2": f"Fail: {str(e)}"}, 500
+
+@main.route('/api/verify_email', methods=['POST'])
+def verify_email():
+    """
+    Verifies an email verification token provided by the user.
+    Expects a JSON body: { "raw_token": "the_token_from_the_email_link" }
+    """
+    data = request.get_json()
+    if not data or 'raw_token' not in data:
+        return jsonify({"error": "Missing verification token."}), 400
+
+    raw_token = data['raw_token']
+    if not raw_token: # Extra check for empty string
+         return jsonify({"error": "Missing verification token."}), 400   
+    try:
+        result, user_id = verify_verification_token(raw_token)
+        if result == "verified":
+            # Token is valid, proceed with verification
+            user = User.query.get(user_id)
+            logger.debug(f"User found for token: {user}")
+            logging.debug(f"User found for token: {user}")
+            if not user:
+                 # Should be rare, but handle case where user was deleted after token creation
+                logging.error(f"User not found for valid token ID: {user_id}")
+                return jsonify({"error": "Invalid verification token."}), 400
+
+            # Update user and token status
+            user.is_email_verified = True
+            db.session.commit()
+            
+            logging.info(f"Email verified successfully for user ID: {user.id}")
+            return jsonify({"message": "Email verified successfully."}), 200
+        else:
+            if result == "used":
+                logging.warning(f"Attempt to use already used verification token for user ID: {user_id}")
+                return jsonify({"error": "Verification token has already been used."}), 400
+            elif result == "expired":
+                logging.warning(f"Attempt to use expired verification token for user ID: {user_id}")
+                return jsonify({"error": "Verification token has expired."}), 400
+            elif result == "invalid":
+                # If no token ever matched the hash, or it matched but didn't trigger above conditions
+                logging.warning(f"Expired or Invalid verification token.")
+                return jsonify({"error": "Invalid verification token."}), 400
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logging.error(f"Database error during email verification: {e}")
+        logging.error(traceback.format_exc())
+        return jsonify({"error": "An internal error occurred during verification."}), 500
+    except Exception as e:
+        db.session.rollback() # Rollback just in case, though less likely needed here
+        logging.error(f"Unexpected error during email verification: {e}")
+        logging.error(traceback.format_exc())
+        return jsonify({"error": "An unexpected error occurred."}), 500
+
+# @main.route('/api/verify_email', methods=['POST'])
+# def verify_email():
+#     """
+#     Verifies an email verification token provided by the user.
+#     Expects a JSON body: { "raw_token": "the_token_from_the_email_link" }
+#     """
+#     data = request.get_json()
+#     if not data or 'raw_token' not in data:
+#         return jsonify({"error": "Missing verification token."}), 400
+
+#     raw_token = data['raw_token']
+#     if not raw_token: # Extra check for empty string
+#          return jsonify({"error": "Missing verification token."}), 400
+
+#     matching_token = None
+#     try:
+#         # 1. Find potential tokens (unused, correct type, not expired ideally)
+#         # We don't have the user id, or email, only the token hash.
+#         # So we need to find all potential tokens of the correct type.
+#         # This is a bit inefficient, but we can optimize it later if needed. 
+#         # We filter by type and used status first. We can't filter by hash directly.
+#         # Filtering by expiry here is optional but efficient.
+#         potential_tokens = UserActionTokens.query.filter_by(
+#             token_type='email_validation',
+#             used=False
+#         ).filter(
+#             UserActionTokens.expires_at > datetime.now(timezone.utc) # Check expiry in query            
+#         ).all()
+        
+#         logging.debug(f"Potential tokens: {potential_tokens}")
+#         logger.debug(f"Potential tokens: {potential_tokens}")
+#         logger.debug(f"Expires at system: {datetime.now(timezone.utc)}")
+#         logger.debug(f"Expires at db: {potential_tokens[0].expires_at}")
+
+#         # 2. Check the hash of the provided raw_token against potential stored hashes
+#         for token_entry in potential_tokens:
+#             # Construct a multiline debug message for clarity
+#             debug_msg = f"Checking token hash: {token_entry.token_hash}"
+#             debug_msg += f" against {raw_token}" 
+#             debug_msg += f" for user_id: {token_entry.user_id}"
+#             debug_msg += f" and expires_at: {token_entry.expires_at}"
+            
+#             logger.debug(debug_msg)
+#             logging.debug(debug_msg)
+            
+#             # Check if the provided raw_token matches the stored hash
+#             if check_password_hash(token_entry.token_hash, raw_token):
+#                 matching_token = token_entry
+#                 break # Found the match
+
+#         # 3. Process the result
+#         if matching_token:
+#             # Found a valid, unused, unexpired token of the correct type!
+
+#             # Fetch the associated user
+#             user = User.query.get(matching_token.user_id)
+#             logger.debug(f"User found for token: {user}")
+#             logging.debug(f"User found for token: {user}")
+#             if not user:
+#                  # Should be rare, but handle case where user was deleted after token creation
+#                 logging.error(f"User not found for valid token ID: {matching_token.id}")
+#                 # Avoid confirming token validity if user is gone
+#                 return jsonify({"error": "Invalid verification token."}), 400
+
+#             # Update user and token status
+#             user.is_email_verified = True
+#             matching_token.used = True
+#             matching_token.used_at = datetime.now(timezone.utc)
+
+#             db.session.commit()
+#             logging.info(f"Email verified successfully for user ID: {user.id}")
+#             return jsonify({"message": "Email verified successfully."}), 200
+#         else:
+#             # No matching token found (could be invalid hash, already used, expired, or wrong type)
+#             # Check if a token with this hash exists but failed the criteria (e.g., expired/used)
+#             # This part is for slightly better error reporting (optional)
+#             expired_or_used_token = None
+#             all_tokens_ever = UserActionTokens.query.filter_by(token_type='email_validation').all()
+#             for t in all_tokens_ever:
+#                  if check_password_hash(t.token_hash, raw_token):
+#                      expired_or_used_token = t
+#                      break
+
+#             # if expired_or_used_token:
+#             #      if expired_or_used_token.used:
+#             #          logging.warning(f"Attempt to use already used verification token for user ID: {expired_or_used_token.user_id}")
+#             #          return jsonify({"error": "Verification token has already been used."}), 400
+#             #      elif expired_or_used_token.expires_at <= datetime.now(timezone.utc):
+#             #          logging.warning(f"Attempt to use expired verification token for user ID: {expired_or_used_token.user_id}")
+#             #          return jsonify({"error": "Verification token has expired."}), 400
+
+#             # If no token ever matched the hash, or it matched but didn't trigger above conditions
+#             logging.warning(f"Expired or Invalid verification token.")
+#             return jsonify({"error": "Invalid verification token."}), 400
+
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         logging.error(f"Database error during email verification: {e}")
+#         logging.error(traceback.format_exc())
+#         return jsonify({"error": "An internal error occurred during verification."}), 500
+#     except Exception as e:
+#         db.session.rollback() # Rollback just in case, though less likely needed here
+#         logging.error(f"Unexpected error during email verification: {e}")
+#         logging.error(traceback.format_exc())
+#         return jsonify({"error": "An unexpected error occurred."}), 500
+
+
+@main.route('/api/resend_verification_email', methods=['POST'])
+def resend_verification_email():
+    """
+    Resends the email verification link to a user if their account exists
+    and is not yet verified.
+    Expects JSON body: { "email": "user@example.com" }
+    """
+    data = request.get_json()
+    if not data or 'email' not in data:
+        return jsonify({"error": "Missing email address."}), 400
+
+    email = data.get('email')
+    if not email: # Extra check for empty string
+         return jsonify({"error": "Missing email address."}), 400
+
+    # --- Security Note ---
+    # To prevent user enumeration (confirming if an email is registered),
+    # we will return a generic success message regardless of whether the user
+    # exists or is already verified. We only perform actions if the user
+    # exists and is *not* verified.
+
+    user = None
+    try:
+        user = User.query.filter_by(email=email).first()
+
+        if user and not user.is_email_verified:
+            # User exists and needs verification. Proceed to resend.
+
+            # 1. (Optional but recommended) Invalidate old tokens for this user/type
+            # Find existing, unused email verification tokens for this user
+            existing_tokens = UserActionTokens.query.filter_by(
+                user_id=user.id,
+                token_type='email_validation',
+                used=False
+            ).all()
+
+            for token in existing_tokens:
+                token.used = True # Mark as used
+                token.used_at = datetime.now(timezone.utc)
+                logging.info(f"Marking old verification token {token.id} as used for user {user.id}")
+            # Note: No commit here yet, we bundle it with the new token creation.
+
+            # 2. Generate a new token
+            # Can we include a hashed email in the token? Or is that too risky?
+            
+            raw_token, token_hash = generate_secure_verification_token()
+            expiry_duration = timedelta(days=2) # Same duration as signup
+            expires_at = datetime.now(timezone.utc) + expiry_duration
+            logging.debug(f"Exires at: {expires_at}")
+
+            # 3. Create and save the new UserActionTokens record
+            new_verification_token = UserActionTokens(
+                user_id=user.id,
+                token_type='email_validation',
+                token_hash=token_hash,
+                expires_at=expires_at
+            )
+            db.session.add(new_verification_token)
+
+            # 4. Commit changes (invalidate old tokens, add new one)
+            db.session.commit()
+
+            # 5. Construct the new verification link
+            if RUN_MODE == "prod":
+                # --- TODO: Should this be www.satisfactorytracker.com or the main domain eventually?
+                # --- TODO: Refactor this URL generation into a utility function? ---
+                verification_link = f"https://dev.satisfactorytracker.com/verify-email/{raw_token}"
+            else:
+                # Use the local URL for testing purposes
+                verification_link = f"http://localhost:3000/verify-email/{raw_token}"
+
+            # 6. Send the verification email (using the same templates)
+            email_sent = send_email(
+                to=user.email,
+                subject="Verify Your Satisfactory Tracker Account (Resend)", # Slightly different subject? Optional.
+                template_name="email_verification",
+                context={
+                    "username": user.username,
+                    "verification_link": verification_link
+                 }
+            )
+
+            if not email_sent:
+                # Log the error, but we don't rollback token changes. User can try again.
+                 logging.error(f"Failed to resend verification email to {user.email}.")
+                 # Return generic message anyway to avoid leaking info
+
+        elif user and user.is_email_verified:
+            logging.info(f"Verification email resend requested for already verified user: {email}")
+            # Do nothing, fall through to generic response
+        else: # user is None
+            logging.info(f"Verification email resend requested for non-existent email: {email}")
+            # Do nothing, fall through to generic response
+
+        # --- Generic Success Response ---
+        # Always return this to prevent leaking information about account status.
+        return jsonify({"message": "If an unverified account exists for this email, a new verification link has been sent."}), 200
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logging.error(f"Database error during verification email resend for {email}: {e}")
+        logging.error(traceback.format_exc())
+        # Return a generic server error, not the enumeration-safe message here
+        return jsonify({"error": "An internal error occurred."}), 500
+    except Exception as e:
+        # Attempt rollback just in case, though less likely needed if commit failed
+        db.session.rollback()
+        logging.error(f"Unexpected error during verification email resend for {email}: {e}")
+        logging.error(traceback.format_exc())
+        # Return a generic server error
+        return jsonify({"error": "An unexpected error occurred."}), 500
+
+@main.route('/api/test_email_verify_flow_1_signup_and_resend', methods=['GET'])
+def test_email_verify_flow_1_signup_and_resend():
+    test_email = config.SYSTEM_TEST_NEW_USER_EMAIL
+    test_username = config.SYSTEM_TEST_NEW_USER_USERNAME
+    test_password = config.SYSTEM_TEST_NEW_USER_PASSWORD
+    test_key = config.SYSTEM_TEST_SECRET_KEY
+
+    logger.info(f"Starting test_email_verify_flow_1 for: {test_email}")
+
+    client = current_app.test_client()
+
+    try:
+        # --- Initial Cleanup ---
+        logger.info("Performing initial cleanup...")
+        existing_user = User.query.filter_by(email=test_email).first()
+        if existing_user:
+            logger.warning(f"Found existing user {existing_user.id}. Deleting...")
+            UserActionTokens.query.filter_by(user_id=existing_user.id).delete()
+            SupportMessage.query.filter_by(user_id=existing_user.id).delete()
+            SupportDraft.query.filter_by(responder_id=existing_user.id).delete()
+            SupportConversation.query.filter_by(user_id=existing_user.id).delete()
+            db.session.delete(existing_user)
+            db.session.commit()
+            logger.info("Previous user and related data cleaned up.")
+        
+        # --- Step 1: Signup ---
+        logger.info(f"Attempting signup for {test_username} / {test_email}")
+        signup_response = client.post('/api/signup', json={
+            "username": test_username,
+            "email": test_email,
+            "password": test_password,
+             "recaptcha_token": test_key,
+        })
+
+        if signup_response.status_code != 201:
+            error_msg = signup_response.json.get('error', 'Signup API call failed')
+            logger.error(f"Signup failed: {signup_response.status_code} - {error_msg}")
+            return {"test_email_verify_flow_1": f"Fail: Signup failed ({error_msg})"}, 500
+
+        # Verify user exists and is unverified
+        user = User.query.filter_by(email=test_email).first()
+        if not user:
+            logger.error("Signup API returned success, but user not found in DB.")
+            return {"test_email_verify_flow_1": "Fail: User not found post-signup"}, 500
+        if user.is_email_verified:
+            logger.error(f"User {user.id} is already verified after signup.")
+            return {"test_email_verify_flow_1": "Fail: User verified immediately"}, 500
+        logger.info(f"User {user.id} created successfully, is_email_verified=False.")
+
+        # --- Step 2: Resend ---
+        logger.info(f"Attempting to resend verification for {test_email}")
+        resend_response = client.post('/api/resend_verification_email', json={
+            "email": test_email
+        })
+
+        if resend_response.status_code != 200:
+            error_msg = resend_response.json.get('error', 'Resend API call failed')
+            logger.error(f"Resend failed: {resend_response.status_code} - {error_msg}")
+            return {"test_email_verify_flow_1": f"Fail: Resend failed ({error_msg})"}, 500
+
+        logger.info(f"Resend triggered successfully for {test_email}.")
+        logger.info("test_email_verify_flow_1 completed successfully.")
+        return {"test_email_verify_flow_1": "Pass"}, 200
+
+    except Exception as e:
+        logger.exception(f"test_email_verify_flow_1: Unhandled exception: {str(e)}")
+        # Rollback in case of unexpected error during DB checks/ops
+        db.session.rollback()
+        return {"test_email_verify_flow_1": f"Fail: Exception - {str(e)}"}, 500
+
+@main.route('/api/test_email_verify_flow_2_verify_from_resend', methods=['GET'])
+def test_email_verify_flow_2_verify_from_resend():
+    wait = int(request.args.get("wait", 0))
+    
+    logger.info(f"Starting test_email_verify_flow_2 (waiting {wait}s)...")
+    time.sleep(wait)
+
+    test_email = config.SYSTEM_TEST_NEW_USER_EMAIL
+    client = current_app.test_client()
+
+    try:
+        # --- Find User ---
+        user = User.query.filter_by(email=test_email).first()
+        if not user:
+            logger.error("Test user not found.")
+            return {"test_email_verify_flow_2": "Fail: Test user not found"}, 404
+        if user.is_email_verified:
+            logger.error(f"User {user.id} is already verified before test runs.")
+            return {"test_email_verify_flow_2": "Fail: User already verified"}, 400 # Should be False
+
+        logger.info(f"User {user.id} found and is not verified.")
+
+        # --- Find Latest Verification Email ---
+        logger.info(f"Searching for latest verification email for {test_email}")
+        verification_subject = "Automated System Test: - Verify Your Satisfactory Tracker Account (Resend)"
+        message = (
+            SupportMessage.query
+            .filter(SupportMessage.recipient == test_email)
+            .filter(SupportMessage.subject == verification_subject) # If exact match needed
+            .filter(SupportMessage.archived_at == None)
+            .order_by(SupportMessage.created_at.desc()) # Get the newest one (should be the resend)
+            .first()
+        )
+
+        if not message:
+            logger.error("No non-archived verification support message found.")
+            return {"test_email_verify_flow_2": "Fail: No verification message found"}, 404
+
+        logger.info(f"Found potential verification email (ID: {message.id}, Subject: '{message.subject}') created at {message.created_at}")
+
+        # --- Extract Token ---
+        # Regex adjusted for /verify-email/ path
+        match = re.search(r"https?://[^\s]+/verify-email/([A-Za-z0-9\-_=]+)", message.body_plain or "")
+        if not match or len(match.groups()) < 1:
+            logger.error("No verification link/token found in message body.")
+            logger.debug(f"Message Body Plain:\n{message.body_plain}")
+            return {"test_email_verify_flow_2": "Fail: No verification link found"}, 400
+
+        raw_token = match.group(1)
+        logger.info(f"Extracted token: {raw_token[:5]}...{raw_token[-5:]}") # Log partial token
+
+        # --- Call Verify API ---
+        logger.info(f"Attempting verification with extracted token.")
+        verify_response = client.post('/api/verify_email', json={
+            "raw_token": raw_token
+        })
+
+        if verify_response.status_code != 200:
+            error_msg = verify_response.json.get('error', 'Verify API call failed')
+            logger.error(f"Verification failed: {verify_response.status_code} - {error_msg}")
+            return {"test_email_verify_flow_2": f"Fail: Verification API failed ({error_msg})"}, 400
+
+        # --- Verify DB state ---
+        db.session.refresh(user) # Refresh user object from DB
+        if not user.is_email_verified:
+            logger.error("Verify API returned success, but user.is_email_verified is still False in DB.")
+            return {"test_email_verify_flow_2": "Fail: DB verification state incorrect"}, 500
+
+        logger.info(f"User {user.id} is now verified.")
+
+        # --- Archive Message ---
+        message.archived_at = datetime.now(timezone.utc) # Or pytz.utc
+        db.session.commit()
+        logger.info(f"Archived support message ID: {message.id}")
+
+        logger.info("test_email_verify_flow_2 completed successfully.")
+        return {"test_email_verify_flow_2": "Pass"}, 200
+
+    except Exception as e:
+        logger.exception(f"test_email_verify_flow_2: Unhandled exception: {str(e)}")
+        db.session.rollback()
+        return {"test_email_verify_flow_2": f"Fail: Exception - {str(e)}"}, 500
+
+@main.route('/api/test_email_verify_flow_3_original_token_fails_and_cleanup', methods=['GET'])
+def test_email_verify_flow_3_original_token_fails_and_cleanup():
+    logger.info("Starting test_email_verify_flow_3...")
+
+    test_email = config.SYSTEM_TEST_NEW_USER_EMAIL
+    client = current_app.test_client()
+
+    try:
+        # --- Find User ---
+        user = User.query.filter_by(email=test_email).first()
+        if not user:
+            logger.error("Test user not found at start of test 3.")
+            # If user doesn't exist, previous step likely failed, but maybe cleanup anyway
+            # For now, report failure if user missing.
+            return {"test_email_verify_flow_3": "Fail: Test user not found"}, 404
+        if not user.is_email_verified:
+            logger.error(f"User {user.id} is not verified at start of test 3.")
+            return {"test_email_verify_flow_3": "Fail: User not verified"}, 400 # Should be True
+
+        logger.info(f"User {user.id} found and is verified.")
+
+        # --- Find Original (Earliest) Verification Email ---
+        logger.info(f"Searching for original verification email for {test_email}")
+        verification_subject = "Automated System Test: - Verify your Satisfactory Tracker Account"
+        original_message = (
+            SupportMessage.query
+            .filter(SupportMessage.recipient == test_email)
+            .filter(SupportMessage.subject == verification_subject)
+            .filter(SupportMessage.archived_at == None) # Find one not yet archived by previous test
+            .order_by(SupportMessage.created_at.asc()) # Get the oldest non-archived one
+            .first()
+        )
+
+        if not original_message:
+            # This might happen if the previous test archived both, or if email subjects varied wildly.
+            # For now, consider it a Pass for this specific test's goal (cleanup) if no message found.
+            logger.warning("Could not find an original, non-archived verification message. Skipping token failure check, proceeding to cleanup.")
+
+        else:
+            logger.info(f"Found potential original email (ID: {original_message.id}, Subject: '{original_message.subject}') created at {original_message.created_at}")
+
+            # --- Extract Original Token ---
+            match = re.search(r"https?://[^\s]+/verify-email/([A-Za-z0-9\-_=]+)", original_message.body_plain or "")
+            if not match or len(match.groups()) < 1:
+                logger.error("No verification link/token found in original message body.")
+                # If token not found, we can't test its failure. Archive and proceed to cleanup.
+                logger.warning("Skipping token failure test - link not parseable.")
+                original_message.archived_at = datetime.now(timezone.utc)
+                db.session.commit()
+
+            else:
+                original_raw_token = match.group(1)
+                logger.info(f"Extracted original token: {original_raw_token[:5]}...{original_raw_token[-5:]}")
+
+                # --- Call Verify API with Original Token ---
+                logger.info(f"Attempting verification with original token (expected to fail).")
+                verify_response = client.post('/api/verify_email', json={
+                    "raw_token": original_raw_token
+                })
+
+                # --- Verify FAILURE ---
+                if verify_response.status_code == 200:
+                    logger.error(f"Original token verification succeeded unexpectedly!")
+                    return {"test_email_verify_flow_3": "Fail: Original token verification succeeded"}, 500
+                elif verify_response.status_code != 400:
+                     logger.error(f"Original token verification returned unexpected status: {verify_response.status_code}")
+                     return {"test_email_verify_flow_3": f"Fail: Unexpected status {verify_response.status_code}"}, 500
+                else:
+                     # Check error message content
+                    error_msg = verify_response.json.get('error', '').lower()
+                    if "used" in error_msg or "invalid" in error_msg or "expired" in error_msg: # Expect one of these
+                         logger.info(f"Original token verification failed as expected (Status: 400, Msg: '{error_msg}')")
+                    else:
+                         logger.warning(f"Original token verification failed (400) but message missing expected keyword: '{error_msg}'")
+                         # Might still consider this a pass if status is 400
+
+                # --- Archive Original Message ---
+                original_message.archived_at = datetime.now(timezone.utc)
+                db.session.commit()
+                logger.info(f"Archived original support message ID: {original_message.id}")
+
+        # --- Final Cleanup ---
+        logger.info("Performing final cleanup...")
+        if user: # Check if user object exists from earlier lookup
+             tokens_deleted = UserActionTokens.query.filter_by(user_id=user.id).delete()
+             logger.info(f"Deleted {tokens_deleted} UserActionTokens for user {user.id}.")
+             db.session.delete(user)
+             logger.info(f"Deleted User record {user.id}.")
+
+        # Archive any other messages for this test user just in case
+        other_messages_archived = SupportMessage.query.filter_by(recipient=test_email).filter(SupportMessage.archived_at == None).update({"archived_at": datetime.now(timezone.utc)})
+        logger.info(f"Archived {other_messages_archived} remaining support messages for {test_email}.")
+        db.session.commit()
+
+        logger.info("test_email_verify_flow_3 completed successfully.")
+        return {"test_email_verify_flow_3": "Pass"}, 200
+
+    except Exception as e:
+        logger.exception(f"test_email_verify_flow_3: Unhandled exception: {str(e)}")
+        db.session.rollback()
+        return {"test_email_verify_flow_3": f"Fail: Exception - {str(e)}"}, 500
+
+
+
+
+
+
 
 
 

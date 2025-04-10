@@ -1,0 +1,17 @@
+Hi {{ username }},
+
+Welcome to Satisfactory Tracker!
+
+To complete your registration and activate your account, please verify your email address by clicking the link below:
+
+{{ verification_link }}
+
+If the link above doesn't work, please copy and paste it into your web browser's address bar.
+
+This verification link will expire in 48 hours. If it expires, you can request a new one.
+
+If you did not sign up for an account on Satisfactory Tracker, please disregard this email.
+
+Thanks,
+Catalyst
+Creator of Satisfactory Tracker
