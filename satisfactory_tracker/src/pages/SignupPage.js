@@ -3,13 +3,8 @@ import { TextField, Button, Box, Typography, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_ENDPOINTS } from "../apiConfig";
-import centralLogging from "../services/logService";
-import { useAlert } from "../context/AlertContext";
-
-axios.defaults.withCredentials = true;
 
 const SignupPage = () => {
-  const { showAlert } = useAlert();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,11 +12,13 @@ const SignupPage = () => {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const [recaptchaRendered, setRecaptchaRendered] = useState(false);
-  const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
 
+  const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
+  const [recaptchaRendered, setRecaptchaRendered] = useState(false); // Add state to track rendering
   
+  console.log("Using reCAPTCHA site key:", RECAPTCHA_SITE_KEY);
   useEffect(() => {
+    console.log("reCAPTCHA container state:", document.getElementById('recaptcha-container'));
     if (window.grecaptcha && !recaptchaRendered) {
       console.log('reCAPTCHA script loaded.');
       window.grecaptcha.ready(() => {
@@ -33,9 +30,6 @@ const SignupPage = () => {
           const hasRenderedCaptcha = !!container.querySelector('iframe');
           if (hasRenderedCaptcha) {
             console.log("reCAPTCHA already rendered. Skipping...");
-            // If we want to ensure it's always fresh, we could reset here too
-            // window.grecaptcha.reset(); // Optional: reset even if technically rendered
-            setRecaptchaRendered(true); // Still mark as rendered
             return;
           }
           console.log("Clearing reCAPTCHA container...");
@@ -43,18 +37,13 @@ const SignupPage = () => {
         }
   
         console.log('Rendering reCAPTCHA...');
-        try { // Add try/catch for potential rendering errors
         window.grecaptcha.render('recaptcha-container', {
           sitekey: RECAPTCHA_SITE_KEY,
         });
         setRecaptchaRendered(true); // Mark as rendered
-        } catch (renderError) {
-            console.error("Failed to render reCAPTCHA:", renderError);
-            showAlert('error', 'Failed to load reCAPTCHA. Please refresh the page.');
-        }
       });
     }
-  }, [RECAPTCHA_SITE_KEY, recaptchaRendered, showAlert]); // Added showAlert to dependency array
+  }, [RECAPTCHA_SITE_KEY, recaptchaRendered]);
 
 
   const handleSubmit = async (e) => {
@@ -63,10 +52,9 @@ const SignupPage = () => {
     setError('');
     setSuccess('');
   
-    const recaptchaToken = window.grecaptcha?.getResponse(); // Use optional chaining
+    const recaptchaToken = window.grecaptcha.getResponse();
     if (!recaptchaToken) {
-      // Use showAlert for reCAPTCHA error
-      showAlert("error", "Please complete the reCAPTCHA.");
+      setError("Please complete the reCAPTCHA.");
       setIsLoading(false);
       return;
     }
@@ -78,26 +66,10 @@ const SignupPage = () => {
         password,
         recaptcha_token: recaptchaToken,
       });
-
-      // Use showAlert for success, using the message from the backend
-      showAlert("success", response.data.message);
-
-      // Clear the form on success
-      setUsername('');
-      setEmail('');
-      setPassword('');
-      window.grecaptcha?.reset(); // Reset reCAPTCHA widget
-
-      // --- Removed redirect to login ---
-      // setSuccess(response.data.message || 'Account created successfully! Redirecting to login page...');
-      // setTimeout(() => navigate('/login'), 2000);
-
+      setSuccess(response.data.message || 'Account created successfully! Redirecting to login page...');
+      setTimeout(() => navigate('/login'), 2000); // React handles the navigation
     } catch (error) {
-      // Use showAlert for API errors
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Signup failed. Please try again.';
-      showAlert("error", errorMessage);
-      window.grecaptcha?.reset(); // Also reset reCAPTCHA on error so user can retry
-
+      setError(error.response?.data?.message || 'Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -106,9 +78,8 @@ const SignupPage = () => {
   return (
     <Box
       sx={{
-        //background: 'linear-gradient(to right, #0A4B3E, #000000)',
-        //minHeight: '100vh',
-        minHeight: 'calc(100vh - 64px - 56px)', // Adjust based on Header/Footer height if needed
+        background: 'linear-gradient(to right, #0A4B3E, #000000)',
+        minHeight: '100vh',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -117,7 +88,6 @@ const SignupPage = () => {
     >
       <Box
         sx={{
-          // ... card styles remain the same ...
           background: 'background.paper',
           padding: 4,
           borderRadius: 2,
@@ -129,11 +99,8 @@ const SignupPage = () => {
         <Typography variant="h1" color="primary" align="center" gutterBottom>
           Sign Up
         </Typography>
-
-        {/* Removed local Alert components - relying on Snackbar from AlertProvider */}
-        {/* {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>} */}
-        {/* {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>} */}
-
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
         <form onSubmit={handleSubmit}>
           <TextField
             label="Username"
@@ -142,7 +109,6 @@ const SignupPage = () => {
             fullWidth
             required
             margin="normal"
-            disabled={isLoading} // Disable fields when loading
           />
           <TextField
             label="Email"
@@ -152,7 +118,6 @@ const SignupPage = () => {
             fullWidth
             required
             margin="normal"
-            disabled={isLoading} // Disable fields when loading
           />
           <TextField
             label="Password"
@@ -162,19 +127,15 @@ const SignupPage = () => {
             fullWidth
             required
             margin="normal"
-            disabled={isLoading} // Disable fields when loading
           />
-
-          {/* Added some margin for spacing */}
-          <Box id="recaptcha-container" sx={{ my: 2, display: 'flex', justifyContent: 'center' }}></Box>
-
+          <div id="recaptcha-container"></div>
           <Button
             type="submit"
             variant="contained"
             color="secondary"
             fullWidth
-            sx={{ mt: 1 }} // Adjusted margin slightly
-            disabled={isLoading || !recaptchaRendered} // Also disable if recaptcha hasn't rendered
+            sx={{ mt: 2 }}
+            disabled={isLoading}
           >
             {isLoading ? 'Signing up...' : 'Sign Up'}
           </Button>
