@@ -1,3 +1,50 @@
 /satisfactory_tracker/build
 /satisfactory_tracker/node_modules
 satisfactory_tracker/.env
+node_modules/
+uploads/
+data/
+flask_server/__pycache__/
+flask_server/app/logs/
+flask_server/app/scripts/
+flask_server/migrations/
+flask_server_prod/
+flask_server/database_population/
+output/
+flask_server/app/__pycache__/
+satisfactory_tracker/src/components/Tracker/ArchivedCodeSnippets.js
+saves_files/
+Backup API commit/
+satisfactory_tracker/deploy_frontend.ps1
+satisfactory_tracker/deploy_frontend.sh
+satisfactory_tracker/__pycache__/
+satisfactory_tracker/public/Archive/
+satisfactory_tracker/src/theme/theme_green.js
+/backup
+/Under_Construction
+changes.diff
+changes.txt
+Check-in notes.txt
+clean_name.py
+Compare copy.py
+Compare.js
+Compare.json
+Compare.py
+deploy_backend.sh
+deploy_build.sh
+diff.txt
+file_list.txt
+flask-app
+flask-appcopy
+index copy.html
+index.html
+test.py
+flask_server/.env
+satisfactory_tracker/src/components/Tracker/ExportShareButtons.js
+.env
+satisfactory_tracker/public/images/
+satisfactory_tracker/run.py
+screenshots/
+
+.gitignore
+
