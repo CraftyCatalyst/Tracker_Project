@@ -475,9 +475,18 @@ const AdminDashboard = () => {
 
     const handleTestLogging = async () => {
         centralLogging("Test Central Logging", fileName, "INFO");
-        
-    };
 
+    };
+    const handleSendTestEmail = async () => {
+        try {
+            const response = await axios.post(API_ENDPOINTS.send_test_email("support@satisfactorytracker.com")); // debug@satisfactorytracker.com //system_test@satisfactorytracker.com / satisfactorytracker@gmail.com / support@satisfactorytracker.com
+            centralLogging("Test Email Sent" + response.data, "DEBUG"); // ✅ Log the response
+            showAlert("success", "Test email sent successfully!");
+        } catch (error) {
+            centralLogging("Test Email Failed" + error, "ERROR"); // ❌ Log the error
+            showAlert("error", "Failed to send test email.");
+        }
+    }
     return (
         <Box sx={{ padding: theme.spacing(2), width: "100%" }}>
             <audio ref={fanfareaudioRef} src="/assets/sounds/fanfare.mp3" preload="auto" />
@@ -505,6 +514,7 @@ const AdminDashboard = () => {
                         <Tab label="Manage System Tests" value="5" />
                         <Tab label="Active Users" value="3" />
                         <Tab label="Server Logs & Controls" value="4" />
+                        <Tab label="Tools & Services" value="6" />
                         {/* <Tab label="Settings" value="5" /> */}
                         {/* {systemStatus.run_mode === 'prod' && <Tab label="Logs & Resources" value="4" />} */}
 
@@ -628,62 +638,54 @@ const AdminDashboard = () => {
 
                     {/* Run Tests Tab */}
                     <TabPanel value="2">
-                        <Typography variant="h6" sx={{ mt: 2 }}>System Tests</Typography>
-                        <Typography variant="body3" sx={{ mt: 1, color: "orange" }}>
-                            This takes a while to run. Please be patient and do not refresh your browser.
-                        </Typography>
-                        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-                            <Button variant="contained" onClick={() => runFunctionalTests()} disabled={loadingFunctionalTests}>
-                                {!loadingFunctionalTests ? "Run Tests" : <CircularProgress size={20} />}
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>Quick Tests</Typography>
+                            <Button sx={{ mr: 2 }}
+                                variant="contained"
+                                onClick={handleTestLogging}
+                            >
+                                Test Central Logging
+                            </Button>
+                            <Button sx={{ mr: 2 }}
+                                variant="contained"
+                                onClick={handleSendTestEmail}
+                            >
+                                Test Email
                             </Button>
                         </Box>
-
-                        {/* Display Functional Test Results */}
-                        {Object.keys(functionalTestResults).length > 0 && (
-                            <Box sx={{ mt: 3, height: 400, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, padding: 2 }}>
-                                <Typography variant="h6">🔍 Test Results</Typography>
-                                {Object.entries(functionalTestResults).map(([key, value]) => (
-                                    <Typography key={key} color={value.status === "Pass" ? "green" : value.status.includes("Fail") ? "red" : "grey"}>
-                                        {value.progress} - {value.category} - {key} - {value.route}: {value.status === "Loading" ? <CircularProgress size={15} /> : value.status}
-                                    </Typography>
-                                ))}
+                        <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
+                            <Typography variant="h6" sx={{ mt: 2 }}>System Tests</Typography>
+                            <Typography variant="body3" sx={{ mt: 1, color: "orange" }}>
+                                This takes a while to run. Please be patient and do not refresh your browser.
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+                                <Button variant="contained" onClick={() => runFunctionalTests()} disabled={loadingFunctionalTests}>
+                                    {!loadingFunctionalTests ? "Run Tests" : <CircularProgress size={20} />}
+                                </Button>
                             </Box>
-                        )}
-                        {/* {Object.keys(functionalTestResults).length > 0 && (
-                        <Box sx={{ mt: 3, height: 400, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, padding: 2 }}>
-                            <Typography variant="h6">🔍 Test Results</Typography>
-                            {Object.entries(functionalTestResults).map(([key, value]) => (
-                                <Typography
-                                    key={key}
-                                    color={
-                                        value.status === "Pass"
-                                            ? "green"
-                                            : value.status.includes("Fail")
-                                                ? "red"
-                                                : "grey"
-                                    }
-                                >
-                                    {value.progress} - {value.category} - {key} - {value.route}:{" "}
-                                    {value.status === "Loading" ? (
-                                        <CircularProgress size={15} />
-                                    ) : (
-                                        value.status
-                                    )}
-                                </Typography>
-                            ))}
+
+                            {/* Display Functional Test Results */}
+                            {Object.keys(functionalTestResults).length > 0 && (
+                                <Box sx={{ mt: 3, height: 400, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2, padding: 2 }}>
+                                    <Typography variant="h6">🔍 Test Results</Typography>
+                                    {Object.entries(functionalTestResults).map(([key, value]) => (
+                                        <Typography key={key} color={value.status === "Pass" ? "green" : value.status.includes("Fail") ? "red" : "grey"}>
+                                            {value.progress} - {value.category} - {key} - {value.route}: {value.status === "Loading" ? <CircularProgress size={15} /> : value.status}
+                                        </Typography>
+                                    ))}
+                                </Box>
+                            )}
+                            {functionalTestResults.apis && (
+                                <Box sx={{ mt: 3 }}>
+                                    <Typography variant="h6">🔍 API Tests</Typography>
+                                    {Object.entries(functionalTestResults.apis).map(([key, value]) => (
+                                        <Typography key={key} color={value === "Pass" ? "green" : value.includes("Fail") ? "red" : "grey"}>
+                                            {key}: {value === "Loading" ? <CircularProgress size={15} /> : value}
+                                        </Typography>
+                                    ))}
+                                </Box>
+                            )}
                         </Box>
-                    )} */}
-                        {functionalTestResults.apis && (
-                            <Box sx={{ mt: 3 }}>
-                                <Typography variant="h6">🔍 API Tests</Typography>
-                                {Object.entries(functionalTestResults.apis).map(([key, value]) => (
-                                    <Typography key={key} color={value === "Pass" ? "green" : value.includes("Fail") ? "red" : "grey"}>
-                                        {key}: {value === "Loading" ? <CircularProgress size={15} /> : value}
-                                    </Typography>
-                                ))}
-                            </Box>
-                        )}
-
                     </TabPanel>
 
                     {/* Manage System Tests Tab */}
@@ -886,11 +888,52 @@ const AdminDashboard = () => {
                             </Box>
                         </Box>
                     </TabPanel>
+                    <TabPanel value="6">
+                        <Box sx={{ padding: 2 }}>
+                            <Typography variant="h5" gutterBottom>🛠️ External Tools & Services</Typography>
+
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="h6">💌 Email Services</Typography>
+                                <ul>
+                                    <li><a href="https://console.aws.amazon.com/ses/home" target="_blank" rel="noreferrer">AWS SES Console</a></li>
+                                    <li><a href="https://console.aws.amazon.com/sns/v3/home" target="_blank" rel="noreferrer">AWS SNS Console</a></li>
+                                    <li><a href="https://console.aws.amazon.com/lambda/home" target="_blank" rel="noreferrer">AWS Lambda Console</a></li>
+                                    <li><a href="https://app.mailgun.com/app/dashboard" target="_blank" rel="noreferrer">Mailgun Dashboard</a></li>
+                                    <li><a href="https://www.mail-tester.com/" target="_blank" rel="noreferrer">Mail Tester (Check deliverability)</a></li>
+                                </ul>
+
+                                <Typography variant="h6" sx={{ mt: 3 }}>☁️ Hosting & Deployment</Typography>
+                                <ul>
+                                    <li><a href="https://cloud.digitalocean.com/" target="_blank" rel="noreferrer">DigitalOcean Control Panel</a></li>
+                                    <li><a href="https://app.ngrok.com/" target="_blank" rel="noreferrer">Ngrok Dashboard</a></li>
+                                    <li><a href="https://cockpit-project.org/" target="_blank" rel="noreferrer">Cockpit (if installed)</a></li>
+                                </ul>
+
+                                <Typography variant="h6" sx={{ mt: 3 }}>🤖 APIs & AI</Typography>
+                                <ul>
+                                    <li><a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noreferrer">OpenAI API Keys</a></li>
+                                    <li><a href="https://platform.openai.com/usage" target="_blank" rel="noreferrer">OpenAI Usage Dashboard</a></li>
+                                </ul>
+
+                                <Typography variant="h6" sx={{ mt: 3 }}>🔐 Security & Identity</Typography>
+                                <ul>
+                                    <li><a href="https://www.google.com/recaptcha/admin" target="_blank" rel="noreferrer">Google reCAPTCHA Admin</a></li>
+                                </ul>
+
+                                <Typography variant="h6" sx={{ mt: 3 }}>📦 Source Control</Typography>
+                                <ul>
+                                    <li><a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a></li>
+                                    <li><a href="https://github.com/YOUR_REPO_NAME" target="_blank" rel="noreferrer">Your Repository</a></li>
+                                </ul>
+                            </Box>
+                        </Box>
+                    </TabPanel>
+
                     {/* )} */}
                 </Box>
-            </TabContext>
+            </TabContext >
 
-        </Box>
+        </Box >
 
     )
 };

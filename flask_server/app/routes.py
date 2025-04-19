@@ -63,6 +63,7 @@ import re
 import time
 import traceback
 import pytz
+import email
 
 
 # config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
@@ -2289,21 +2290,29 @@ def delete_system_test(test_id):
     db.session.commit()
     return jsonify({"message": "Test case deleted successfully"}), 200
 
-@main.route('/api/send_test_email/<recipient>', methods=['POST'])
+@main.route("/api/send_test_email/<recipient>", methods=["POST"])
 def send_test_email(recipient):
-    """Sends a test email to the specified recipient."""
-    msg = Message(
-        subject="Test Email from Satisfactory Tracker",
-        recipients=[recipient],
-        body="🎉 Testing, Testing, 1..2..3.. Testing!"
-    )
-
     try:
-        mail.send(msg)
-        return jsonify({"message": f"Email sent successfully to {recipient}"}), 200
+        test_context = {
+            "admin_user": current_user.username,
+        }
+
+        sent = send_email(
+            to=recipient,
+            subject="SES Test Email - Satisfactory Tracker",
+            template_name="admin_test",
+            context=test_context
+        )
+
+        if sent:
+            logger.info(f"Test email sent to {recipient}")
+            return jsonify({"message": f"✅ Test email sent to {recipient}!"}), 200
+        else:
+            logger.error(f"Failed to send test email to {recipient}")
+            return jsonify({"error": "Failed to send test email."}), 500
+
     except Exception as e:
-        logging.error(f"Failed to send test email: {str(e)}")
-        logger.error(f"Failed to send test email: {str(e)}")
+        logger.error(f"Error sending test email: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @main.route('/api/test_render_template', methods=['GET'])
@@ -2311,25 +2320,7 @@ def test_template():
     from flask import render_template
     return render_template("emails/tester_approved.txt", username="Tester", email="test@example.com", temporary_password="abc123")
 
-# @main.route('/api/send_email/<recipient_email>', methods=['POST'])
-# def send_email(recipient_email):
-#     """Sends a test email to the specified recipient."""
-#     try:
-#         logging.info(f"routes - Sending test email to: {recipient_email}")
-#         logger.info(f"routes - Sending test email to: {recipient_email}")
-#         send_email(
-#             to=recipient_email,
-#             subject="Test Email from Satisfactory Tracker",
-#             template_name="tester_approved",
-#             context={"recipient": recipient_email}
-#         )
-#         logging.info(f"routes - Email sent successfully to: {recipient_email}")
-#         logger.info(f"routes - Email sent successfully to: {recipient_email}")
-#         return jsonify({"message": f"Email sent successfully to {recipient_email}"}), 200
-#     except Exception as e:
-#         logging.error(f"Failed to send test email: {str(e)}")
-#         logger.error(f"Failed to send test email: {str(e)}")
-#         return jsonify({"error": str(e)}), 500
+
     
 @main.route('/api/get_stored_support_messages', methods=['GET'])
 def get_stored_support_messages():
@@ -2430,7 +2421,7 @@ def receive_support_webhook():
     # 🧱 Create conversation if not found
     if not conversation:
         conversation = SupportConversation(
-            user_id=user.id,
+            user_id=user_id if user_id else 0,
             subject=subject or "(No Subject)"
         )
         db.session.add(conversation)
@@ -2584,7 +2575,7 @@ def support_reply():
     db.session.flush()  # allows access to response.id before commit
 
     # Generate a unique header
-    generated_id = f"support-response-{response.id}@mg.satisfactorytracker.com"
+    generated_id = f"support-response-{response.id}@satisfactorytracker.com"
     response.message_id_header = generated_id
 
     # Commit now that everything is in place
@@ -3469,6 +3460,170 @@ def test_email_verify_flow_3_original_token_fails_and_cleanup():
         db.session.rollback()
         return {"test_email_verify_flow_3": f"Fail: Exception - {str(e)}"}, 500
 
+def handle_ses_handshake(raw_body):
+    try:
+        payload = json.loads(raw_body)
+    except Exception as e:
+        logger.error(f"❌ Failed to parse SNS payload: {e}")
+        return "Invalid JSON", 400
+
+    if payload.get("Type") == "SubscriptionConfirmation":
+        token_url = payload.get("SubscribeURL")
+        logger.info(f"🔐 Confirming SNS subscription: {token_url}")
+        requests.get(token_url)
+        return "Subscription confirmed", 200
+
+   
+def normalise_email_address(raw_address):
+    match = re.match(r"([^@]+)@(?:dev|qas\.)?(satisfactorytracker\.com)", raw_address)
+    if match:
+        local_part, domain = match.groups()
+        return f"{local_part}@{domain}"
+    return raw_address
+
+from email import message_from_string
+from email.policy import default as default_policy
+
+def extract_plain_text_from_raw_email(raw_email):
+    try:
+        msg = message_from_string(raw_email, policy=default_policy)
+
+        if msg.is_multipart():
+            for part in msg.walk():
+                content_type = part.get_content_type()
+                if content_type == "text/plain":
+                    return part.get_content().strip()
+        else:
+            return msg.get_content().strip()
+
+    except Exception as e:
+        logger.error(f"❌ Error parsing email content: {e}")
+        return raw_email[:500]  # fallback, first 500 chars of raw email
+
+@main.route("/api/ses_inbound_webhook", methods=["POST"])
+def handle_ses_inbound_webhook():
+    try:
+        logger.info("✅ SES Webhook received")
+        raw_body = request.data.decode("utf-8")
+        sns_data = json.loads(raw_body)
+
+        if sns_data.get("Type") == "SubscriptionConfirmation":
+            token_url = sns_data.get("SubscribeURL")
+            logger.info(f"Confirming SNS subscription: {token_url}")
+            requests.get(token_url)
+            return "Subscription confirmed", 200
+
+        if sns_data.get("Type") != "Notification":
+            ses_message = json.loads(sns_data.get("Message", "{}"))
+            notification_type = ses_message.get("notificationType")
+            logger.warning(f"Unhandled SNS message type: {sns_data.get('Type')}")
+            logger.warning(f"SES message: {ses_message}")
+            logger.warning(f"SES message type: {notification_type}")
+            return "Unhandled message type", 400
+
+        # Decode the actual SES notification
+        ses_message = json.loads(sns_data.get("Message", "{}"))
+        notification_type = ses_message.get("notificationType")
+
+        # Handle test/setup messages
+        if notification_type == "Received" and ses_message.get("mail", {}).get("messageId") == "AMAZON_SES_SETUP_NOTIFICATION":
+            logger.info("📥 SES setup test received successfully.")
+            return "Received setup test acknowledged", 200
+
+        # Decode the email body (base64 encoded)
+        content_b64 = ses_message.get("content", "")
+        if not content_b64:
+            logger.warning("No email content found in SES message.")
+            return jsonify({"error": "Missing content"}), 400
+
+        raw_email = base64.b64decode(content_b64).decode("utf-8", errors="replace")
+        decoded_content = extract_plain_text_from_raw_email(raw_email)
+
+        mail_data = ses_message.get("mail", {})
+        
+        sender = None
+        headers = mail_data.get("headers", [])
+        for header in headers:
+            if header.get("name", "").lower() == "from":
+                sender = header.get("value")
+                break
+
+        # Fallback to the source (may be the SES ugly version)
+        if not sender:
+            sender = normalise_email_address(mail_data.get("source", ""))
+        
+        recipients = mail_data.get("destination", [])
+        recipient = normalise_email_address(recipients[0]) if recipients else "unknown"
+        subject = next((h.get("value") for h in mail_data.get("headers", []) if h.get("name", "").lower() == "subject"), "(No Subject)")
+        message_id = mail_data.get("messageId")
+        timestamp = mail_data.get("timestamp")
+
+        logger.info(f"Incoming email: from {sender} → {recipient}, Subject: {subject}")
+
+        if not (sender and recipient and message_id):
+            return jsonify({"error": "Missing required fields."}), 400
+
+        # Identify user
+        user = User.query.filter_by(email=sender).first()
+        user_id = user.id if user else 0
+
+        # Special override for test accounts
+        if not user and recipient in [config.SYSTEM_TEST_USER_EMAIL, config.SYSTEM_TEST_NEW_USER_EMAIL]:
+            user = User.query.filter_by(email=recipient).first()
+            user_id = user.id if user else 0
+
+        # Skip duplicates
+        existing = SupportMessage.query.filter_by(message_id=message_id).first()
+        if existing:
+            return jsonify({"message": "Message already received."}), 200
+
+        # Check or create conversation thread
+        match = re.search(r"support-id-(\d+)", subject or "", re.IGNORECASE)
+        conversation = SupportConversation.query.get(int(match.group(1))) if match else None
+
+        if not conversation:
+            conversation = SupportConversation(user_id=user_id, subject=subject)
+            db.session.add(conversation)
+            db.session.flush()
+
+        if user_id != 0:
+            ai_data = ai_classify_message(subject, decoded_content)
+        else:
+            ai_data = {
+                "summary": "No AI classification available for unregistered users.",
+                "category": "Unregistered",
+                "suggested_actions": []
+            }
+
+        # Save the message
+        message = SupportMessage(
+            user_id=user_id,
+            message_id=message_id,
+            conversation_id=conversation.id,
+            sender=sender,
+            recipient=recipient,
+            subject=subject,
+            body_plain=decoded_content,
+            body_html=None,
+            timestamp=datetime.fromisoformat(timestamp.replace("Z", "+00:00")),
+            tags=ai_data["category"],
+            summary=ai_data["summary"],
+            suggested_actions=json.dumps(ai_data["suggested_actions"]),
+        )
+        db.session.add(message)
+        db.session.commit()
+
+        if conversation.summary:
+            conversation.summary = None
+            db.session.commit()
+
+        logger.info(f"✅ Support message saved: {subject}")
+        return jsonify({"message": "Support message received successfully."}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"❌ Error handling SES webhook: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 

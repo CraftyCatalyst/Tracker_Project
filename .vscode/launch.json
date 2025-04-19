@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug React",
+        "type": "chrome",
+        "request": "launch",
+        "url": "http://localhost:3000",
+        "webRoot": "${workspaceFolder}/satisfactory_tracker/src",
+        "sourceMaps": true,
+        "trace": true,
+        "sourceMapPathOverrides": {
+          "webpack:///src/*": "${webRoot}/*"
+        }
+      },
+      {
+        "name": "Debug Flask",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/flask_server/run.py",
+        "console": "integratedTerminal",
+        "env": {
+          "FLASK_ENV": "development"
+        }
+      }
+    ]
+  }

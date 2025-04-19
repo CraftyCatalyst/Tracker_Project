@@ -1,0 +1,8 @@
+Hi
+
+This a test email initiated by {{ admin_user }} from the Admin Dashboard. No action required
+
+Test Successful - Yay!
+
+Thanks
+Satisfactory Tracker - Automated System Tests

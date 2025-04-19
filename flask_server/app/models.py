@@ -408,7 +408,7 @@ class SupportResponse(db.Model):
     message_id = db.Column(db.Integer, db.ForeignKey('support_message.id'), nullable=True)  # original message being replied to
     responder_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    message_id_header = db.Column(db.String(255), unique=True, nullable=False)  # e.g. "support-response-12@mg.satisfactorytracker.com"
+    message_id_header = db.Column(db.String(255), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     responder = db.relationship("User", backref="support_responses", lazy=True)
 

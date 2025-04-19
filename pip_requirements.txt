@@ -35,3 +35,4 @@ pymysql
 cryptography
 satisfactory-save
 openai
+boto3

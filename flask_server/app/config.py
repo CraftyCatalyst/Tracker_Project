@@ -83,16 +83,25 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # GitHub Personal Access Token
 GITHUB_REPO = os.getenv("GITHUB_REPO") # GitHub Repository
 
 # MAIL variables
-MAIL_SERVER = os.getenv("MAIL_SERVER")
-MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
-MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
-MAIL_USERNAME = os.getenv("MAIL_USERNAME")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
-MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER")
-MAILGUN_API_KEY=os.getenv("MAILGUN_API_KEY")
-MAILGUN_DOMAIN=os.getenv("MAILGUN_DOMAIN")
-MAIL_SUPPORT_USERNAME = os.getenv("MAIL_SUPPORT_USERNAME")
-
+# MAIL_SERVER = os.getenv("MAIL_SERVER")
+# MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
+# MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
+# MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+# MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+# MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER")
+# MAILGUN_API_KEY=os.getenv("MAILGUN_API_KEY")
+# MAILGUN_DOMAIN=os.getenv("MAILGUN_DOMAIN")
+# MAIL_SUPPORT_USERNAME = os.getenv("MAIL_SUPPORT_USERNAME")
+AWS_ACCESS_KEY_ID=os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY=os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_BUCKET_NAME=os.getenv("AWS_BUCKET_NAME")
+AWS_REGION=os.getenv("AWS_REGION")
+AWS_S3_URL=os.getenv("AWS_S3_URL")
+AWS_S3_URI=os.getenv("AWS_S3_URI")
+MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER")
+MAIL_SERVER=os.getenv("MAIL_SERVER")
+MAIL_PORT=int(os.getenv("MAIL_PORT", 587))
+MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() == "true"
 # OPENAI variables
 OPENAI_API_KEY_SUPPORT_INBOX = os.getenv("OPENAI_API_KEY_SUPPORT_INBOX")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
