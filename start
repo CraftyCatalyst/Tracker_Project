@@ -1,0 +1,12 @@
+# Universal start launcher that detects OS and runs the appropriate script
+
+if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
+    echo "🧪 Detected Linux/macOS. Running start.sh..."
+    bash ./start.sh
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    echo "🪟 Detected Windows. Running start.ps1..."
+    pwsh ./start.ps1
+else
+    echo "❌ Unsupported OS: $OSTYPE"
+    exit 1
+fi

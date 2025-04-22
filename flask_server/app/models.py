@@ -362,6 +362,7 @@ class Admin_Settings(db.Model):
     setting_category = db.Column(db.String(100), nullable=False)
     setting_key = db.Column(db.String(100), nullable=False)
     setting_value = db.Column(db.String(150), nullable=False)
+    run_order = db.Column(db.Integer, nullable=True)
     __table_args__ = (
         db.UniqueConstraint('setting_key', 'setting_value', name='unique_admin_setting'),
     )

@@ -3551,9 +3551,12 @@ def handle_ses_inbound_webhook():
         # Fallback to the source (may be the SES ugly version)
         if not sender:
             sender = normalise_email_address(mail_data.get("source", ""))
+            logger.info(f"Fallback normalised sender: {sender} from source: {mail_data.get('source', '')}")
         
         recipients = mail_data.get("destination", [])
         recipient = normalise_email_address(recipients[0]) if recipients else "unknown"
+        logger.info(f"Normalized recipient: {recipient} from raw: {recipients[0]}")
+
         subject = next((h.get("value") for h in mail_data.get("headers", []) if h.get("name", "").lower() == "subject"), "(No Subject)")
         message_id = mail_data.get("messageId")
         timestamp = mail_data.get("timestamp")
@@ -3626,6 +3629,99 @@ def handle_ses_inbound_webhook():
         return jsonify({"error": str(e)}), 500
 
 
+@main.route("/api/test_email_inbound_1_send", methods=["POST"])
+@login_required
+def test_send_email_inbound():
+    """
+    Phase 1 - Send a system test email to the inbound support address.
+    Used to test end-to-end email delivery and webhook handling.
+    """
+    try:
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        subject = f"System Test Inbound Email - support-id-99999 - {timestamp}"
+        body = f"This is a system test inbound email. Timestamp: {timestamp}"
+
+        recipient = config.SYSTEM_TEST_USER_EMAIL or "support@satisfactorytracker.com"
+
+        sent = send_email(
+            to=recipient,
+            subject=subject,
+            plain_override=body,
+            html_only=False,
+        )
+
+        if sent:
+            return jsonify({
+                "result": "Pass",
+                "message": f"Test email sent to {recipient}",
+                "timestamp": timestamp,
+                "subject": subject
+            }), 200
+        else:
+            return jsonify({
+                "result": "Fail",
+                "message": f"Failed to send test email to {recipient}"
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            "result": "Fail",
+            "error": str(e)
+        }), 500
+
+@main.route("/api/test_email_inbound_2_verify", methods=["GET"])
+@login_required
+def test_verify_email_inbound():
+    """
+    Phase 2 - Verify that the system test email was received and normalized.
+    Looks for a recent inbound test email with known pattern.
+    """
+    try:
+        cutoff_time = datetime.now() - timedelta(minutes=5)
+        recent_message = (
+            SupportMessage.query
+            .filter(SupportMessage.subject.like("System Test Inbound Email -%"))
+            .filter(SupportMessage.timestamp >= cutoff_time)
+            .order_by(SupportMessage.timestamp.desc())
+            .first()
+        )
+
+        if not recent_message:
+            return jsonify({
+                "result": "Fail",
+                "message": "No recent system test email found in SupportMessage."
+            }), 404
+
+        # Validation checks
+        issues = []
+        if "dev." in recent_message.recipient or "qas." in recent_message.recipient:
+            issues.append(f"Recipient normalization failed: {recent_message.recipient}")
+        if not recent_message.conversation_id:
+            issues.append("Missing conversation/threading info.")
+        if not recent_message.summary or recent_message.tags == "Unregistered":
+            issues.append("AI classification incomplete or skipped.")
+
+        if issues:
+            return jsonify({
+                "result": "Fail",
+                "message": "Email received, but validation failed.",
+                "issues": issues,
+                "subject": recent_message.subject,
+                "recipient": recent_message.recipient
+            }), 400
+
+        return jsonify({
+            "result": "Pass",
+            "subject": recent_message.subject,
+            "normalized_recipient": recent_message.recipient,
+            "conversation_id": recent_message.conversation_id
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "result": "Fail",
+            "error": str(e)
+        }), 500
 
 
 

@@ -29,10 +29,6 @@ ses = boto3.client(
 )
 
 def send_email(to, subject, template_name=None, context={}, plain_override=None, html_only=False, headers=None, sender=None):
-    # MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER")
-    # SYSTEM_TEST_USER_EMAIL = os.getenv("SYSTEM_TEST_USER_EMAIL")
-    # SYSTEM_TEST_NEW_USER_EMAIL = os.getenv("SYSTEM_TEST_NEW_USER_EMAIL")
-
     if not sender:
         sender = MAIL_DEFAULT_SENDER
     try:
