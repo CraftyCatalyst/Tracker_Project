@@ -773,7 +773,6 @@ const AdminDashboard = () => {
                         </Box>
                     </TabPanel>
 
-                    {/* {systemStatus.run_mode === 'prod' && ( */}
                     {/* Logs & Resources Tab */}
                     <TabPanel value="4">
                         <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>

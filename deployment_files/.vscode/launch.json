@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PowerShell: Launch Current Script with Args (QAS)",
+            "type": "PowerShell",
+            "request": "launch",
+            // Points to your specific script file
+            "script": "${file}", // Or use "${workspaceFolder}/deploy_to_droplet.ps1" 
+            "args": [
+                "-Environment", "QAS", // Set your test environment
+                "-RunDBMigration", "y",   // Set 'y' or 'n' for the test run
+                // "-Version", "v1.0.1"     // Set a valid test version tag
+            ],
+            "cwd": "${fileDirname}" // Sets the working directory to where the script is
+        }
+        // You can add more configurations here for QAS, PROD, etc.
+        // Just copy the block above and change the "name" and "args" values.
+    ]
+}

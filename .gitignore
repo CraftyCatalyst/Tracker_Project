@@ -55,6 +55,8 @@ deploy_rollback_all.ps1
 PowerShellChangelogGenerator.ps1
 Compare 2.py
 Compare 1.py
+Compare2.ps1
+Compare1.ps1
 CLEANED_CHANGELOG.md
 Admin_Tools.md
 flask_server/app/utils/email_util_mailgun.py
@@ -67,3 +69,6 @@ start
 /zzz_Droplet_Files
 /USEFUL_STUFF
 CHANGELOGS/CHANGELOG.md
+.deployment_env
+/my_rsync_test
+/deployment_files/build_logs

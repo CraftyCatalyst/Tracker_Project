@@ -84,6 +84,8 @@ logger = setup_logger("routes")
 
 # Use the imported config variables
 RUN_MODE = config.RUN_MODE
+BASE_API_URL = config.BASE_API_URL
+BASE_CLIENT_URL = config.BASE_CLIENT_URL
 REACT_BUILD_DIR = config.REACT_BUILD_DIR
 REACT_STATIC_DIR = config.REACT_STATIC_DIR
 SECRET_KEY = config.SECRET_KEY
@@ -361,13 +363,9 @@ def signup():
             
                 ## Commit the new user and token to the database
                 db.session.commit()
+                
                 # Generate the verification link
-                if RUN_MODE == "prod":
-                    # TODO: Should this be www.satisfactorytracker.com or the main domain eventually?
-                    verification_link = f"https://dev.satisfactorytracker.com/verify-email/{raw_token}"
-                else:
-                    # Use the local URL for testing purposes
-                    verification_link = f"http://localhost:3000/verify-email/{raw_token}"
+                verification_link = f"{BASE_API_URL}/verify-email/{raw_token}"                    
                 
                 # Send verification email
                 email_sent = send_email(
@@ -454,8 +452,8 @@ def system_status():
     except Exception as e:
         db_status = f"Error: {str(e)}"
     
-    # Check Nginx Status (only if running in production mode)
-    if RUN_MODE in ["prod", "prod_local"]:
+    # Check Nginx Status (only if running on server)
+    if RUN_MODE in ["prod, dev, qas"]:
         try:
             #nginx_status = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
             nginx_status = subprocess.run(["/bin/sudo", "/usr/bin/systemctl", "is-active", "nginx"], capture_output=True, text=True)
@@ -1963,10 +1961,9 @@ def run_functional_tests():
     if current_user.role != 'admin':
         return jsonify({"error": "Unauthorized"}), 403
 
-    if RUN_MODE == "prod":
-        base_url = "https://dev.satisfactorytracker.com"
-    elif RUN_MODE == "local":
-        base_url = "http://localhost:5000"
+    
+        
+    
     results = {}
 
      # ✅ Step 1: Grab the User's Session Cookie
@@ -1978,7 +1975,7 @@ def run_functional_tests():
     pages = ["/", "/tracker", "/admin/dashboard", "/login", "/data", "/dependencies","/signup", "/change-password", "/help","/admin/user_management", "/settings"]
     for page in pages:
         try:
-            res = requests.get(f"{base_url}{page}", timeout=30)
+            res = requests.get(f"{BASE_API_URL}{page}", timeout=30)
             results[f"Page: {page}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
         except Exception as e:
             results[f"Page: {page}"] = f"Fail ({str(e)})"
@@ -1988,7 +1985,7 @@ def run_functional_tests():
     for endpoint in api_endpoints:
         try:
             res = requests.get(
-                f"{base_url}{endpoint}",
+                f"{BASE_API_URL}{endpoint}",
                 cookies=session_cookies,
                 timeout=15
             )
@@ -2005,8 +2002,7 @@ def test_pages():
     if current_user.role != 'admin':
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Get base URL based on environment
-    base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
+    #base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
 
     # Fetch pages dynamically from the admin_settings table
     test_pages = Admin_Settings.query.filter_by(setting_category="system_test_pages").all()
@@ -2016,7 +2012,7 @@ def test_pages():
 
     for page in page_urls:
         try:
-            res = requests.get(f"{base_url}{page}", timeout=15)
+            res = requests.get(f"{BASE_API_URL}{page}", timeout=15)
             results[f"Page: {page}"] = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
         except Exception as e:
             results[f"Page: {page}"] = f"Fail ({str(e)})"
@@ -2029,9 +2025,6 @@ def test_apis():
     """Run tests on API functionality by reading from admin_settings."""
     if current_user.role != 'admin':
         return jsonify({"error": "Unauthorized"}), 403
-
-    # Get base URL based on environment
-    base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
 
     # Fetch API endpoints dynamically from the admin_settings table
     test_apis = Admin_Settings.query.filter_by(setting_category="system_test_APIs").all()
@@ -2047,7 +2040,7 @@ def test_apis():
     for endpoint in api_urls:
         try:
             res = requests.get(
-                f"{base_url}{endpoint}",
+                f"{BASE_API_URL}{endpoint}",
                 cookies=session_cookies,
                 timeout=30
             )
@@ -2188,8 +2181,6 @@ def run_single_test():
     if not test:
         return jsonify({"error": "Test not found"}), 404
 
-    base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
-
     # ✅ Get user's session cookies
     session_cookies = request.cookies
     if not session_cookies:
@@ -2197,7 +2188,7 @@ def run_single_test():
     
     # ✅ Run the test
     try:
-        full_url = f"{base_url}{test.setting_value}"
+        full_url = f"{BASE_API_URL}{test.setting_value}"
         res = requests.get(full_url, cookies=session_cookies, timeout=15)
         result = "Pass" if res.status_code == 200 else f"Fail ({res.status_code})"
     except Exception as e:
@@ -2769,11 +2760,7 @@ def request_password_reset():
         db.session.commit()
 
         # Send email with the raw token
-        if RUN_MODE == "prod":
-            reset_link = f"https://dev.satisfactorytracker.com/reset-password/{raw_token}"
-        else:
-            # Use the local URL for testing purposes
-            reset_link = f"http://localhost:3000/reset-password/{raw_token}"
+        reset_link = f"{BASE_CLIENT_URL}/reset-password/{raw_token}"
         
         send_email(
             to=user.email,
@@ -3156,14 +3143,8 @@ def resend_verification_email():
             db.session.commit()
 
             # 5. Construct the new verification link
-            if RUN_MODE == "prod":
-                # --- TODO: Should this be www.satisfactorytracker.com or the main domain eventually?
-                # --- TODO: Refactor this URL generation into a utility function? ---
-                verification_link = f"https://dev.satisfactorytracker.com/verify-email/{raw_token}"
-            else:
-                # Use the local URL for testing purposes
-                verification_link = f"http://localhost:3000/verify-email/{raw_token}"
-
+            verification_link = f"{BASE_CLIENT_URL}/verify-email/{raw_token}"
+            
             # 6. Send the verification email (using the same templates)
             email_sent = send_email(
                 to=user.email,

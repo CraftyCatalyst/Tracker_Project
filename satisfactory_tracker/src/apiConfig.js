@@ -3,21 +3,21 @@ import centralLogging from "./services/logService";
 let flask_port = "";
 
 console.log("API_CONFIG: process.env.REACT_APP_RUN_MODE is " + process.env.REACT_APP_RUN_MODE);
-if (process.env.REACT_APP_RUN_MODE === 'prod') {
-  console.log("API_CONFIG: Running in production mode " + process.env.REACT_APP_RUN_MODE);
-} else {
-  console.log("API_CONFIG: Running in development mode " + process.env.REACT_APP_RUN_MODE);
-}
-
 
 if (process.env.REACT_APP_RUN_MODE === 'prod') {
-  flask_port = "https://dev.satisfactorytracker.com";
-  centralLogging("apiConfig.js - Run Mode:" + process.env.REACT_APP_RUN_MODE, "INFO");
-} else {
-  flask_port = "http://localhost:5000";
+  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_PROD;
+} else if (process.env.REACT_APP_RUN_MODE === 'dev') {
+  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_DEV;
+} else if (process.env.REACT_APP_RUN_MODE === 'qas') {
+  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_QAS;
+} else if (process.env.REACT_APP_RUN_MODE === 'local') {
+  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_LOCAL;
+} else if (process.env.REACT_APP_RUN_MODE === 'docker') {
+  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_DOCKER;
 }
 
-console.log("API_CONFIG: Flask port is " + flask_port);
+centralLogging("apiConfig.js - Run Mode: " + process.env.REACT_APP_RUN_MODE, "INFO");
+centralLogging("apiConfig.js - Flask Port: " + flask_port, "INFO");
 
 export const API_ENDPOINTS = {
   system_status: `${flask_port}/api/get_system_status`,

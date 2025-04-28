@@ -10,61 +10,54 @@ print(f"CONFIG BASE DIRECTORY: {basedir}")
 
 # Load environment variables from .env file
 dotenv_path = os.path.join(basedir, "satisfactory_tracker", ".env")
-print(f"CONFIG Loading .env from: {dotenv_path}")
 logging.debug(f"CONFIG Loading .env from: {dotenv_path}")
 load_dotenv(dotenv_path, override=True)
-
-# for key in os.environ:
-#     print(f"{key}: {os.getenv(key)}")
-# print(f"Loaded .env from: {dotenv_path}")
-# logging.debug(f"Loaded .env from: {dotenv_path}")
-
-# Print a test variable to verify loading (Remove after testing)
-# print(f"Loaded GITHUB_REPO: {os.getenv('GITHUB_REPO')}")
 
 class Config:
     RUN_MODE = os.getenv('REACT_APP_RUN_MODE', '')
 
 RUN_MODE = Config.RUN_MODE
-print(f"Config.RUN_MODE: {Config.RUN_MODE}")    
 logging.debug(f"Config.RUN_MODE: {Config.RUN_MODE}")
-
-# print(f"os.getenv REACT_APP_RUN_MODE: {os.getenv('REACT_APP_RUN_MODE')}")
-#logging.debug(f"os.getenv REACT_APP_RUN_MODE: {os.getenv('REACT_APP_RUN_MODE')}")
 
 # Set DB config values based on REACT_APP_RUN_MODE
 if Config.RUN_MODE == 'local':
-    # print("Entering local condition")
-    # logging.debug("Entering local condition")
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_LOCAL')
-    REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
-    REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
+    BASE_API_URL = os.getenv('REACT_APP_API_BASE_URL_LOCAL')
+    BASE_CLIENT_URL = os.getenv('REACT_CLIENT_BASE_URL_LOCAL')
 elif Config.RUN_MODE == 'docker':
-    # print("Entering docker condition")
-    # logging.debug("Entering docker condition")
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_DOCKER')
+    BASE_API_URL = os.getenv('REACT_APP_API_BASE_URL_DOCKER')
+    BASE_CLIENT_URL = os.getenv('REACT_CLIENT_BASE_URL_DOCKER')
+elif Config.RUN_MODE == 'prod':
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_PROD')
+    BASE_API_URL = os.getenv('REACT_APP_API_BASE_URL_PROD')
+    BASE_CLIENT_URL = os.getenv('REACT_CLIENT_BASE_URL_PROD')
+elif Config.RUN_MODE == 'dev':
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_DEV')
+    BASE_API_URL = os.getenv('REACT_APP_API_BASE_URL_DEV')
+    BASE_CLIENT_URL = os.getenv('REACT_CLIENT_BASE_URL_DEV')
+elif Config.RUN_MODE == 'qas':
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_QAS')
+    BASE_API_URL = os.getenv('REACT_APP_API_BASE_URL_QAS')
+    BASE_CLIENT_URL = os.getenv('REACT_CLIENT_BASE_URL_QAS')
+else:
+    logging.error(f"ERROR: REACT_APP_RUN_MODE is not set: {Config.RUN_MODE} (type: {type(Config.RUN_MODE)})")
+    raise ValueError('REACT_APP_RUN_MODE environment variable not set. Please set REACT_APP_RUN_MODE to "local", "docker", "prod", "dev", or "qas".')
+
+logging.debug(f"SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}")
+logging.debug(f"BASE_API_URL: {BASE_API_URL}")
+logging.debug(f"BASE_CLIENT_URL: {BASE_CLIENT_URL}")
+
+if RUN_MODE == 'docker':
     REACT_BUILD_DIR = f'{os.path.join(basedir, "app", "build")}'
     REACT_STATIC_DIR = f'{os.path.join(basedir, "app", "build", "static")}'
-elif Config.RUN_MODE == 'prod':
-    # print("Entering prod condition")
-    # logging.debug("Entering prod condition")
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_PROD')
-    REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
-    REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
-elif Config.RUN_MODE == 'prod_local':
-    # print("Entering prod_local condition")
-    # logging.debug("Entering prod_local condition")
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_PROD_LOCAL')
-    REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
-    REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
 else:
-    # Throw an error if the REACT_APP_RUN_MODE is not set
-    # print(f"ERROR: REACT_APP_RUN_MODE is not set: {Config.RUN_MODE} (type: {type(Config.RUN_MODE)})")
-    logging.error(f"ERROR: REACT_APP_RUN_MODE is not set: {Config.RUN_MODE} (type: {type(Config.RUN_MODE)})")
-    raise ValueError('REACT_APP_RUN_MODE environment variable not set. Please set REACT_APP_RUN_MODE to "local", "docker", "prod", or "prod_local"')
+    REACT_BUILD_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build")}'
+    REACT_STATIC_DIR = f'{os.path.join(basedir, "satisfactory_tracker", "build", "static")}'
 
-#print(f'SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}')
-# logging.debug(f'SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}')
+logging.debug(f"REACT_BUILD_DIR: {REACT_BUILD_DIR}")
+logging.debug(f"REACT_STATIC_DIR: {REACT_STATIC_DIR}")
+
 # Flask-login variables
 SECRET_KEY = os.getenv('SECRET_KEY') or 'dev_default_secret_key'
 SESSION_TYPE = 'filesystem'
@@ -82,26 +75,15 @@ ALLOWED_EXTENSIONS = os.getenv('ALLOWED_EXTENSIONS')  # Define allowed file exte
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # GitHub Personal Access Token
 GITHUB_REPO = os.getenv("GITHUB_REPO") # GitHub Repository
 
-# MAIL variables
-# MAIL_SERVER = os.getenv("MAIL_SERVER")
-# MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
-# MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
-# MAIL_USERNAME = os.getenv("MAIL_USERNAME")
-# MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
-# MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER")
-# MAILGUN_API_KEY=os.getenv("MAILGUN_API_KEY")
-# MAILGUN_DOMAIN=os.getenv("MAILGUN_DOMAIN")
-# MAIL_SUPPORT_USERNAME = os.getenv("MAIL_SUPPORT_USERNAME")
+# AWS variables
 AWS_ACCESS_KEY_ID=os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY=os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_BUCKET_NAME=os.getenv("AWS_BUCKET_NAME")
 AWS_REGION=os.getenv("AWS_REGION")
-AWS_S3_URL=os.getenv("AWS_S3_URL")
-AWS_S3_URI=os.getenv("AWS_S3_URI")
 MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER")
 MAIL_SERVER=os.getenv("MAIL_SERVER")
 MAIL_PORT=int(os.getenv("MAIL_PORT", 587))
 MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() == "true"
+
 # OPENAI variables
 OPENAI_API_KEY_SUPPORT_INBOX = os.getenv("OPENAI_API_KEY_SUPPORT_INBOX")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

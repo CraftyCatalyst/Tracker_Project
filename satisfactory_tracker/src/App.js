@@ -58,18 +58,20 @@ const ActivityTracker = () => {
 function App() {
   const [isMaintenanceMode, setMaintenanceMode] = useState(false);
   const { user } = useContext(UserContext) || {};
-
+  
 
   useEffect(() => {
     // Determine the title based on the domain
     const hostname = window.location.hostname;
     let title = 'Satisfactory Tracker';
 
-    if (hostname === 'localhost') {
+    if (hostname === process.env.REACT_HOSTNAME_LOCAL) {
       title = 'Satisfactory Tracker - LOCAL';
-    } else if (hostname === 'www.satisfactorytracker.com') {
+    } else if (hostname === process.env.REACT_HOSTNAME_PROD) {
       title = 'Satisfactory Tracker';
-    } else if (hostname === 'dev.satisfactorytracker.com') {
+    } else if (hostname === process.env.REACT_HOSTNAME_DEV) {
+      title = 'Satisfactory Tracker - Development';
+    } else if (hostname === process.env.REACT_HOSTNAME_QAS) {
       title = 'Satisfactory Tracker - Closed Beta Test';
     }
 
