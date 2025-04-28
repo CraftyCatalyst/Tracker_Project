@@ -1,5 +1,5 @@
 {
-    "version": "0.2.0",
+    "version": "1.1.0",
     "configurations": [
         {
             "name": "PowerShell: Launch Current Script with Args (QAS)",
@@ -14,7 +14,6 @@
             ],
             "cwd": "${fileDirname}" // Sets the working directory to where the script is
         }
-        // You can add more configurations here for QAS, PROD, etc.
-        // Just copy the block above and change the "name" and "args" values.
+        // TODO: add more configurations here for PROD, and DEV environments        
     ]
 }
