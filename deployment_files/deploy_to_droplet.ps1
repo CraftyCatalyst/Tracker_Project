@@ -597,7 +597,7 @@ Function Backup-ServerState {
         -FailureCleanupCommand $dbCleanupCmd ` # Pass the cleanup command
     -IsFatal $true # Keep original fatal behavior
     # --- Call Cleanup for Database Backups ---
-    Remove-OldBackups  -ParentDir $DeploymentBackupDir
+    Remove-OldBackups  -ParentDir $DeploymentBackupDir ` # Parent directory
     -Prefix "db_backup_" `         # Prefix for DB backups
     -Suffix ".sql" `               # Suffix for DB backups
     -BuildLog $BuildLog
