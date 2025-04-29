@@ -95,7 +95,11 @@ param(
 
     [Parameter(Mandatory = $true, HelpMessage = "Specify the Git tag/version to deploy (e.g., v1.3.0)")]
     [ValidatePattern('^v\d+\.\d+\.\d+$', Options = 'IgnoreCase')]
-    [string]$Version    
+    [string]$Version,
+
+    [Parameter(Mandatory = $true, HelpMessage = "Set to 'n' for new environment creation. Valid values are: y, n")]
+    [ValidateSet('y', 'n')]
+    [string]$runBackup
 )
 
 #------------------------------ Start of Functions ------------------------------ 
@@ -506,6 +510,8 @@ Function Invoke-ReactBuild {
 Function Backup-ServerState {
     param(
         [Parameter(Mandatory = $true)]
+        [string]$RunBackup,
+        [Parameter(Mandatory = $true)]
         [string]$BackupDirFlask,
         [Parameter(Mandatory = $true)]
         [string]$ServerFlaskDir,
@@ -523,6 +529,12 @@ Function Backup-ServerState {
         [string]$BuildLog
     )
 
+    # Check if backup is requested
+    if ($RunBackup -ne 'y') {
+        # Write-Host "Skipping backup as per user request." -ForegroundColor Yellow | Tee-Object -FilePath $BuildLog -Append
+        Write-Log -Message "Skipping backup as per user request." -Level "WARNING" -LogFilePath $BuildLog
+        return
+    }
     # Write-Host "`n--- Step 3: Backup Existing Project Files ---" -ForegroundColor Cyan | Tee-Object -FilePath $BuildLog -Append
     Write-Log -Message "`n--- Step 3: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $BuildLog
     # 3.1: Copy Existing Flask Files to Backup Directory
@@ -1326,7 +1338,8 @@ Invoke-ReactBuild -LocalFrontendDir $localFrontendDir `
     -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
 
 # Step 3: Backup Existing Project Files
-Backup-ServerState -BackupDirFlask $backupDirFlask `
+Backup-ServerState -RunBackup $runBackup `
+    -BackupDirFlask $backupDirFlask `
     -ServerFlaskDir $serverFlaskBaseDir `
     -BackupDirFrontend $backupDirFrontend `
     -ServerFrontendBuildDir $serverFrontendBuildDir `
