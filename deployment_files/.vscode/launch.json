@@ -2,7 +2,7 @@
     "version": "1.1.0",
     "configurations": [
         {
-            "name": "PowerShell: Launch Current Script with Args (QAS)",
+            "name": "PowerShell: Deployment Debugging Script",
             "type": "PowerShell",
             "request": "launch",
             // Points to your specific script file
