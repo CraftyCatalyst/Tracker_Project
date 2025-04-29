@@ -1,24 +1,36 @@
 import centralLogging from "./services/logService";
 
-let flask_port = "";
+let flask_port;
 
-console.log("API_CONFIG: process.env.REACT_APP_RUN_MODE is " + process.env.REACT_APP_RUN_MODE);
+const runMode = process.env.REACT_APP_RUN_MODE;
+console.log("API_CONFIG: process.env.REACT_APP_RUN_MODE is " + runMode);
 
-if (process.env.REACT_APP_RUN_MODE === 'prod') {
-  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_PROD;
-} else if (process.env.REACT_APP_RUN_MODE === 'dev') {
-  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_DEV;
-} else if (process.env.REACT_APP_RUN_MODE === 'qas') {
-  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_QAS;
-} else if (process.env.REACT_APP_RUN_MODE === 'local') {
-  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_LOCAL;
-} else if (process.env.REACT_APP_RUN_MODE === 'docker') {
-  flask_port = process.env.REACT_APP_CLIENT_BASE_URL_DOCKER;
+// Use a mapping for clarity and easier management
+const baseUrlMap = {
+  prod: process.env.REACT_APP_API_BASE_URL_PROD,
+  dev: process.env.REACT_APP_API_BASE_URL_DEV,
+  qas: process.env.REACT_APP_API_BASE_URL_QAS,
+  local: process.env.REACT_APP_API_BASE_URL_LOCAL,
+  docker: process.env.REACT_APP_API_BASE_URL_DOCKER
+};
+
+// Assign flask_port based on the runMode
+flask_port = baseUrlMap[runMode];
+
+// Handle cases where the runMode is not recognized
+if (!flask_port) {
+  centralLogging(`API_CONFIG: Unrecognized or missing REACT_APP_RUN_MODE: "${runMode}".`);
+  centralLogging(`API_CONFIG: ERROR: Invalid run mode "${runMode}"`, "ERROR");
+  // Option A: Assign a default fallback (e.g., local)
+  // flask_port = process.env.REACT_APP_CLIENT_BASE_URL_LOCAL || 'http://localhost:5000'; // Provide a hardcoded default if needed
+  // Option B: Throw an error to stop execution if a valid mode is required
+  throw new Error(`Invalid or missing REACT_APP_RUN_MODE: "${runMode}"`);
+} else {
+  // Log only if a valid port was assigned
+  centralLogging("API_CONFIG: Run Mode: " + runMode, "INFO");
+  centralLogging("API_CONFIG: Flask Port: " + flask_port, "INFO");
+
 }
-
-centralLogging("apiConfig.js - Run Mode: " + process.env.REACT_APP_RUN_MODE, "INFO");
-centralLogging("apiConfig.js - Flask Port: " + flask_port, "INFO");
-
 export const API_ENDPOINTS = {
   system_status: `${flask_port}/api/get_system_status`,
   tables: `${flask_port}/api/tables`,  

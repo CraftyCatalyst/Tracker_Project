@@ -522,6 +522,7 @@ Function Invoke-ReactBuild {
 Function Backup-ServerState {
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateSet('y', 'n')]
         [string]$RunBackup,
         [Parameter(Mandatory = $true)]
         [string]$BackupDirFlask,
@@ -1348,7 +1349,7 @@ Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
     -BuildLog $buildLog
 
 # Step 2: Run React build locally
-Invoke-ReactBuild -$RunBuild $runBuild `
+Invoke-ReactBuild -RunBuild $runBuild `
     -LocalFrontendDir $localFrontendDir `
     -BuildLog $buildLog `
     -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
