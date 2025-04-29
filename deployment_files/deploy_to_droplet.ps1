@@ -99,7 +99,11 @@ param(
 
     [Parameter(Mandatory = $true, HelpMessage = "Set to 'n' for new environment creation. Valid values are: y, n")]
     [ValidateSet('y', 'n')]
-    [string]$runBackup
+    [string]$runBackup = 'y', # Default to 'y' for backup unless specified otherwise
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set to 'n' if you've already run npm build.")]
+    [ValidateSet('y', 'n')]
+    [string]$runBuild = 'y' # Default to 'y' for build unless specified otherwise
 )
 
 #------------------------------ Start of Functions ------------------------------ 
@@ -415,6 +419,8 @@ Function Remove-OldBackups {
 Function Invoke-ReactBuild {
     param(
         [Parameter(Mandatory = $true)]
+        [string]$RunBuild,
+        [Parameter(Mandatory = $true)]
         [string]$LocalFrontendDir,
         [Parameter(Mandatory = $true)]
         [string]$BuildLog,
@@ -422,6 +428,12 @@ Function Invoke-ReactBuild {
         [string]$GitRepoPath = $null
     )
 
+    
+    if ($RunBuild -ne 'y') {
+        # Write-Host "Skipping React build as per user request." -ForegroundColor Yellow | Tee-Object -FilePath $BuildLog -Append
+        Write-Log -Message "Skipping React build as per user request." -Level "WARNING" -LogFilePath $BuildLog
+        return
+    }
     #Checkout Specified Version ---
     # Write-Host "`n--- Checking out version $Version ---" -ForegroundColor Cyan | Tee-Object -FilePath $BuildLog -Append
     Write-Log -Message "`n--- Checking out version $Version ---" -Level "INFO" -LogFilePath $BuildLog
@@ -1334,7 +1346,8 @@ Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
     -BuildLog $buildLog
 
 # Step 2: Run React build locally
-Invoke-ReactBuild -LocalFrontendDir $localFrontendDir `
+Invoke-ReactBuild -$RunBuild $runBuild `
+    -LocalFrontendDir $localFrontendDir `
     -BuildLog $buildLog `
     -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
 
