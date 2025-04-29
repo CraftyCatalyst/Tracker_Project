@@ -7,7 +7,7 @@ Droplet_Files/
 venv/
 
 # Important for Development but not needed for deployment
-uploads/
+satisfactory_tracker/uploads
 output/
 backup/
 data/
@@ -26,7 +26,7 @@ Compare_ps1_2.ps1
 Compare_py_1.py
 Compare_py_2.py
 CHANGELOGS/
-/USEFUL_STUFF
-/my_rsync_test
-/deployment_files/build_logs
+USEFUL_STUFF/
+my_rsync_test/
+deployment_files/build_logs
 deployment_files/LaunchNPP_Monitor.ahk
