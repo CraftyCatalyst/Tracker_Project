@@ -14,9 +14,12 @@
 #    - git push origin main                                               #
 #    - git push origin vX.X.X                                             #
 # 2. Version standards:                                                   #
-#    - Version should be in the format vX.X.X (e.g., v1.3.0)              #
+#    - Version in SemVer format (e.g., v1.3.0)                            #
+#    - See USEFUL_STUFF\Versioning_Control_Standards.md for details.      #
 # 2. Please ensure that:                                                  #
-#    - .deployment_env is in the same directory as this script.           #
+#    - The following files are in the same directory as this script:      #
+#       - .deployment_env                                                 #                 
+#       - LaunchNPP_Monitor.exe                                           #
 #      (TODO: Make these paths configurable in the .env file)             #
 #    - .env file is in satisfactory_tracker directory so it gets          #
 #      picked up by the build process.                                    #
@@ -64,7 +67,7 @@ PREREQUISITES
 .PARAMETER Environment
 Environment - The target environment (PROD, QAS, DEV). Mandatory. 
     - This is used to specify the target environment for deployment.
-runDBMigration - The run migration parameter (y/n) is also mandatory. 
+runDBMigration - The run migration parameter (y/n). Mandatory. 
     - This is used to determine if the database migration should be run as part of the deployment.
 Version - The Git tag/version to deploy (e.g., v1.3.0). Mandatory.
     - This is used to specify the version of the code to be deployed.
@@ -415,7 +418,7 @@ Function Invoke-ReactBuild {
         [string]$GitRepoPath = $null
     )
 
-    Checkout Specified Version ---
+    #Checkout Specified Version ---
     # Write-Host "`n--- Checking out version $Version ---" -ForegroundColor Cyan | Tee-Object -FilePath $BuildLog -Append
     Write-Log -Message "`n--- Checking out version $Version ---" -Level "INFO" -LogFilePath $BuildLog
 
@@ -1152,6 +1155,8 @@ Function Write-Log {
 Function Test_and_Open_Logfile {
     param(
         [Parameter(Mandatory = $true)]
+        [string]$ScriptRoot, # Path to the script root directory
+        [Parameter(Mandatory = $true)]
         [string]$BuildLog
     )
 
@@ -1201,29 +1206,24 @@ Function Test_and_Open_Logfile {
             Write-Host "`nAttempting to open log file '$BuildLog' in Notepad++..." -ForegroundColor Gray
             try {
                 # Try assuming notepad++.exe is in the system PATH first
-                Start-Process -FilePath "notepad++.exe" -ArgumentList $BuildLog -ErrorAction Stop 
-            
+                # Start-Process -FilePath "notepad++.exe" -ArgumentList $BuildLog -ErrorAction Stop 
+                
+                # Using custom ahk script to launch Notepad++ with monitoring mode on
+                $launcherPath = Join-Path $ScriptRoot "LaunchNPP_Monitor.exe"
+                if (-not (Test-Path $launcherPath)) {
+                    Write-Warning "Launcher script not found at '$launcherPath'. Not launching Notepad++."
+                    return
+                }
+                Start-Process "`"$launcherPath`"" -ArgumentList "`"$BuildLog`""
+
                 Write-Host "-> Notepad++ launched." -ForegroundColor Gray
             } 
             catch {
-                # Handle error if notepad++.exe is not found in PATH or fails to launch
-                Write-Host "-> Notepad++ not found in PATH. Attempting to launch from Program Files..." -ForegroundColor Gray
-                try { 
-                    Start-Process -FilePath "C:\Program Files\Notepad++\notepad++.exe" -ArgumentList $buildLog -ErrorAction Stop; Write-Host "Launched via Program Files." 
-                } 
-                catch {
-                    # Handle error if notepad++.exe is not found in Program Files or fails to launch
-                    Write-Host "-> Notepad++ not found in Program Files. Attempting to launch from Program Files (x86)..." -ForegroundColor Gray
-                    try { 
-                        Start-Process -FilePath "C:\Program Files (x86)\Notepad++\notepad++.exe" -ArgumentList $buildLog -ErrorAction Stop; Write-Host "Launched via Program Files (x86)." 
-                    } 
-                    catch {
                         # Handle error if notepad++.exe is not found in Program Files (x86) or fails to launch
                         Write-Warning "Could not automatically launch Notepad++."
                     }
-                }
             }
-        }
+            
         else {
             Write-Warning "Could not find log file at '$BuildLog' to open."
         }

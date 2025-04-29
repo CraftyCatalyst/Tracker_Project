@@ -8,9 +8,9 @@
             // Points to your specific script file
             "script": "${file}", // Or use "${workspaceFolder}/deploy_to_droplet.ps1" 
             "args": [
-                "-Environment", "QAS", // Set your test environment
-                "-RunDBMigration", "y",   // Set 'y' or 'n' for the test run
-                // "-Version", "v1.0.1"     // Set a valid test version tag
+                "-Environment", "DEV", // Set your test environment
+                "-runDBMigration", "y",   // Set 'y' or 'n' for the test run
+                "-Version", "v1.1.0"     // Set a valid test version tag
             ],
             "cwd": "${fileDirname}" // Sets the working directory to where the script is
         }
