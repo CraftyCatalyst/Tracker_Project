@@ -698,7 +698,9 @@ Function Invoke-WslRsync {
         # Use Start-Process with ArgumentList for wsl.exe
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = "wsl.exe"
-        $processInfo.ArgumentList.AddRange($wslArgs)
+        foreach ($arg in $wslArgs) {
+            $processInfo.ArgumentList.Add($arg)
+        }
         $processInfo.UseShellExecute = $false
         $processInfo.RedirectStandardOutput = $true # Capture output for logging
         $processInfo.RedirectStandardError = $true  # Capture errors for logging
