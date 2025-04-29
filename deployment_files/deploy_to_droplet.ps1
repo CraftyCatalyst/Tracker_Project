@@ -1114,7 +1114,7 @@ Function Write-Log {
         [object]$Message, # Allow any object, convert to string
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet("INFO", "SUCCESS", "WARN", "ERROR", "DEBUG", "FATAL")]
+        [ValidateSet("INFO", "SUCCESS", "WARN", "WARNING", "ERROR", "DEBUG", "FATAL")]
         [string]$Level = "INFO",
 
         [Parameter(Mandatory = $true)]
@@ -1145,6 +1145,7 @@ Function Write-Log {
         switch ($Level.ToUpper()) {
             "SUCCESS" { Write-Host $logEntry -ForegroundColor Green }
             "WARN" { Write-Warning $logEntry } # Write-Warning implicitly adds "WARNING: " prefix
+            "WARNING" { Write-Warning $logEntry } # Write-Warning implicitly adds "WARNING: " prefix
             "ERROR" { Write-Error $logEntry }   # Write-Error implicitly handles error stream formatting
             "FATAL" { Write-Error $logEntry }   # Treat FATAL like ERROR for console output, but signal severity
             "DEBUG" { Write-Host $logEntry -ForegroundColor DarkGray } # Optional: Dim debug messages
