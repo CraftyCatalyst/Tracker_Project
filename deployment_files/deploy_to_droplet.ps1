@@ -1271,7 +1271,7 @@ if (-not (Test-Path $logDir)) {
 $buildLog = Join-Path $logDir "build_${Version}_$timestamp.log"
 
 # Open the log file for writing
-Test_and_Open_Logfile -BuildLog $buildLog
+Test_and_Open_Logfile -BuildLog $buildLog -ScriptRoot $scriptRoot
 
 # --- Initialize Configuration ---
 $configData = Initialize-DeploymentConfiguration -Environment $Environment `
