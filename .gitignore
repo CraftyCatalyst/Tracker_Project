@@ -2,6 +2,7 @@
 satisfactory_tracker/node_modules
 satisfactory_tracker/.env
 deployment_files/.deployment_env
+deployment_files/.vscode/launch.json
 Droplet_Files/
 venv/
 
