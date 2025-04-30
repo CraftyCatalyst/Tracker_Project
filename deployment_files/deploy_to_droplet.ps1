@@ -40,14 +40,15 @@ The script performs the following tasks:
     - Backs up the database using mysqldump and stores it in a specified backup directory.
     - Cleans up old backups based on a specified retention policy (e.g., keep only the last 3 backups).
 4. Builds the React app locally and deploys it to the server.
-   - Uses npm to build the React app and rsync to transfer files to the server.
-   - The script uses WSL (Windows Subsystem for Linux) for rsync operations.
+    - Gets or creates the version to be deployed.
+    - Uses npm to build the React app and rsync to transfer files to the server.
+    - The script uses WSL (Windows Subsystem for Linux) for rsync operations.
 5. Deploys the Flask app to the server.
-   - Uses rsync to transfer Flask app files to the server.
-   - Excludes certain directories and files from the transfer (e.g., __pycache__, logs, scripts, etc.).
+    - Uses rsync to transfer Flask app files to the server.
+    - Excludes certain directories and files from the transfer (e.g., __pycache__, logs, scripts, etc.).
 6. Installs Python dependencies on the server using pip.
-   - Uses a requirements file to install/update the necessary packages.
-   - The script uses WSL (Windows Subsystem for Linux) for pip operations.
+    - Uses a requirements file to install/update the necessary packages.
+    - The script uses WSL (Windows Subsystem for Linux) for pip operations.
 7. Optionally runs database migrations if specified.
     - Uses Flask-Migrate to handle database migrations.
     - The script checks if the migration is needed based on the specified environment.
@@ -88,8 +89,13 @@ The target environment (PROD, QAS, DEV). Mandatory.
 The run migration parameter (y/n). Mandatory. 
     - This is used to determine if the database migration should be run as part of the deployment.
 .PARAMETER Version
-The Git tag/version to deploy (e.g., v1.3.0). Mandatory.
-    - This is used to specify the version of the code to be deployed.
+The Git tag/version to deploy (e.g., v1.3.0). Optional.
+    - This is used to specify an existing version of code to be deployed.
+.PARAMETER BumpType
+Bump type for version bumping (major, minor, patch, rc, dev, prod). Optional.
+    - This is used to specify the type of version bump to perform before deployment.
+    - If this parameter is used, the -Version parameter is ignored.
+    - The script will automatically bump the version based on the specified type and update the version files accordingly.
 .PARAMETER runBackup
 The run backup parameter (y/n). Optional. Default is 'y'.
     - This is used to determine if the backup should be created before deployment.
@@ -111,6 +117,8 @@ If you don't specify any parameters, you will be prompted as follows:
                 Version: v1.3.0
 To set the runBackup and runBuild parameters to 'n', you can use the following command:
     ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -Version v1.3.0 -runBackup n -runBuild n
+To bump the version automatically, you can use the following command:
+    ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -BumpType patch -runBackup n -runBuild n
 
 #>
 
@@ -123,11 +131,15 @@ param(
     [ValidateSet('y', 'n')]
     [string]$runDBMigration,
 
-    [Parameter(Mandatory = $true, HelpMessage = "Specify the Git tag/version to deploy (e.g., v1.3.0)")]
+    [Parameter(Mandatory = $false, HelpMessage = "Specify the Git tag/version to deploy (e.g., v1.3.0). Required if -BumpType is NOT used.")]
     [ValidatePattern('^v\d+\.\d+\.\d+$', Options = 'IgnoreCase')]
     [string]$Version,
 
-    [Parameter(Mandatory = $true, HelpMessage = "Set to 'n' for new environment creation. Valid values are: y, n")]
+    [Parameter(Mandatory = $false, HelpMessage = "Specify the type of version bump to perform before deployment. If used, -Version is ignored. Valid values: major, minor, patch, rc, dev, prod")]
+    [ValidateSet("major", "minor", "patch", "rc", "dev", "prod")]
+    [string]$BumpType,
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set to 'n' for new environment creation. Valid values are: y, n")]
     [ValidateSet('y', 'n')]
     [string]$runBackup = 'y', # Default to 'y' for backup unless specified otherwise
 
@@ -136,8 +148,106 @@ param(
     [string]$runBuild = 'y' # Default to 'y' for build unless specified otherwise
 )
 
+# ------------------------------ Global Variables -------------------------------
+$Script:DeployedVersion = $null
+
 #------------------------------ Start of Functions ------------------------------ 
 
+Function Invoke-VersionBump {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("major", "minor", "patch", "rc", "dev", "prod")]
+        [string]$BumpType,
+
+        [Parameter(Mandatory = $true)]
+        [string]$VersionFilePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PackageJsonPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$GitRepoPath, # Path to the root of the Git repository
+
+        [Parameter(Mandatory = $true)]
+        [string]$BuildLog
+    )
+
+    Write-Log -Message "`n--- Bumping Version ($BumpType) ---" -Level "INFO" -LogFilePath $BuildLog
+
+    if (-not (Test-Path $VersionFilePath)) { Write-Log -Message "FATAL: Version file not found: $VersionFilePath" -Level "FATAL" -LogFilePath $BuildLog; throw "Version file missing"; }
+    if (-not (Test-Path $PackageJsonPath)) { Write-Log -Message "FATAL: package.json not found: $PackageJsonPath" -Level "FATAL" -LogFilePath $BuildLog; throw "package.json missing"; }
+
+    $versionLine = Get-Content -Path $VersionFilePath
+    $currentVersionTag = $versionLine.Trim()
+
+    # Extract SemVer components from the current tag
+    if ($currentVersionTag -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(rc|dev)\.(\d+))?$') { # Allow optional 'v' prefix for reading
+        $major = [int]$matches[1]
+        $minor = [int]$matches[2]
+        $patch = [int]$matches[3]
+        $preType = $matches[4]
+        $preNum = [int]($matches[5] ?? 0)
+    } else {
+        Write-Log -Message "FATAL: Invalid version format in '$VersionFilePath': $currentVersionTag" -Level "FATAL" -LogFilePath $BuildLog
+        throw "Invalid version format"
+    }
+
+    Write-Log -Message "Current version: $currentVersionTag" -Level "INFO" -LogFilePath $BuildLog
+
+    # Calculate new version based on bump type
+    $newVersionBase = "" # Will store the core version part (e.g., 1.2.3 or 1.2.3-rc.0)
+    switch ($BumpType) {
+        "major" { $major++; $minor = 0; $patch = 0; $newVersionBase = "$major.$minor.$patch" }
+        "minor" { $minor++; $patch = 0; $newVersionBase = "$major.$minor.$patch" }
+        "patch" { $patch++; $newVersionBase = "$major.$minor.$patch" }
+        "rc" {
+            if ($preType -ne "rc") { $preNum = 0 } else { $preNum++ }
+            $newVersionBase = "$major.$minor.$patch-rc.$preNum"
+        }
+        "dev" {
+            if ($preType -ne "dev") { $preNum = 0 } else { $preNum++ }
+            $newVersionBase = "$major.$minor.$patch-dev.$preNum"
+        }
+        "prod" { $newVersionBase = "$major.$minor.$patch" } # Bumping to 'prod' just strips pre-release identifier
+        default { throw "Invalid bump type '$BumpType'" } # Should be caught by ValidateSet, but good practice
+    }
+
+    # Prepare versions for files and tag
+    $newVersionCore = $newVersionBase -replace '^[vV]', '' # Version for package.json (no 'v')
+    $newVersionTag = "v$newVersionCore" # Version for version.txt and Git tag (with 'v')
+
+    Write-Log -Message "New version calculated: $newVersionTag" -Level "INFO" -LogFilePath $BuildLog
+
+    # --- Update Files ---
+    Set-Content -Path $VersionFilePath -Value $newVersionTag
+    Write-Log -Message "📝 Updated $VersionFilePath to $newVersionTag" -Level "INFO" -LogFilePath $BuildLog
+
+    $packageJsonContent = Get-Content -Path $PackageJsonPath -Raw | ConvertFrom-Json
+    $packageJsonContent.version = $newVersionCore
+    $packageJsonContent | ConvertTo-Json -Depth 10 | Set-Content -Path $PackageJsonPath -Encoding UTF8
+    Write-Log -Message "📝 Updated $PackageJsonPath version to $newVersionCore" -Level "INFO" -LogFilePath $BuildLog
+
+    # --- Git Operations ---
+    Write-Log -Message "Performing Git operations in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
+    try {
+        Push-Location $GitRepoPath
+        git add $VersionFilePath, $PackageJsonPath
+        if ($LASTEXITCODE -ne 0) { throw "Git add failed." }
+        git commit -m "Bump version to $newVersionTag"
+        if ($LASTEXITCODE -ne 0) { throw "Git commit failed." }
+        git tag $newVersionTag
+        if ($LASTEXITCODE -ne 0) { throw "Git tag failed." }
+        git push origin HEAD # Push the commit
+        if ($LASTEXITCODE -ne 0) { throw "Git push commit failed." }
+        git push origin $newVersionTag # Push the tag
+        if ($LASTEXITCODE -ne 0) { throw "Git push tag failed." }
+        Write-Log -Message "✅ Version bumped, committed, tagged ($newVersionTag), and pushed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
+    } catch {
+        Write-Log -Message "FATAL: Git operation failed during version bump. Error: $($_.Exception.Message)" -Level "FATAL" -LogFilePath $BuildLog; throw "Git operation failed"
+    } finally { Pop-Location }
+
+    return $newVersionTag # Return the new tag to be used for deployment
+}
 Function Import-EnvFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -293,7 +403,7 @@ Function Initialize-DeploymentConfiguration {
         }
         else {
             # Make missing common keys a fatal error
-            Write-Log -Message "FATAL: Required common configuration key '$key' not found in '$depEnvPath'." -Level "ERROR" -LogFilePath $BuildLog
+            Write-Log -Message "FATAL: Required common configuration key '$key' not found in '$depEnvPath'." -Level "FATAL" -LogFilePath $BuildLog
             throw "Halting due to missing required common configuration keys."
         }
     }
@@ -326,7 +436,7 @@ Function Confirm-DeploymentEnvironment {
     # 1.1: Check if the script is running in the correct environment
     # Note: Using .ToUpper() directly in the comparison
     if ($TargetEnv.ToUpper() -ne $RunMode.ToUpper() -or $TargetFlaskEnv.ToUpper() -ne $FlaskEnv.ToUpper()) {
-        Write-Log -Message "FATAL: Local .env variables (RunMode='$RunMode', FlaskEnv='$FlaskEnv') do not match the target deployment environment (TargetEnv='$TargetEnv', TargetFlaskEnv='$TargetFlaskEnv')." -Level "ERROR" -LogFilePath $BuildLog
+        Write-Log -Message "FATAL: Local .env variables (RunMode='$RunMode', FlaskEnv='$FlaskEnv') do not match the target deployment environment (TargetEnv='$TargetEnv', TargetFlaskEnv='$TargetFlaskEnv')." -Level "FATAL" -LogFilePath $BuildLog
         
         # Exit is implicit due to -ErrorAction Stop
     }
@@ -336,7 +446,7 @@ Function Confirm-DeploymentEnvironment {
 
     # 1.2: Add Explicit Confirmation
     Write-Host "`n"
-    $confirmation = Read-Host "You are about to BUILD version '$Version' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'. Proceed? (y/n)"
+    $confirmation = Read-Host "You are about to BUILD version '$Script:DeployedVersion' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'. Proceed? (y/n)"
     # Log the prompt and the answer separately for clarity
     Write-Log -Message "User confirmation prompt displayed." -Level "INFO" -LogFilePath $BuildLog
     
@@ -432,7 +542,7 @@ Function Invoke-ReactBuild {
         [Parameter(Mandatory = $true)]
         [string]$BuildLog,
         [Parameter(Mandatory = $false)]
-        [string]$GitRepoPath = $null
+        [string]$GitRepoPath = $null # Path to the root of the Git repository
     )
 
     
@@ -440,8 +550,21 @@ Function Invoke-ReactBuild {
         Write-Log -Message "Skipping React build as per user request." -Level "WARNING" -LogFilePath $BuildLog
         return
     }
+    # Check if the Git repo has uncommitted changes before the script runs
+    if ($null -ne $GitRepoPath) {
+        Write-Log -Message "Checking for uncommitted changes in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
+        Push-Location $GitRepoPath
+        $status = git status --porcelain
+        if ($status -ne ''){
+            Write-Log -Message "FATAL: Uncommitted changes detected in the Git repository. Please commit or stash changes before running the script." -Level "ERROR" -LogFilePath $BuildLog
+            Pop-Location
+            throw "Uncommitted changes detected."
+        }
+        Pop-Location
+    }
+    
     #Checkout Specified Version ---
-    Write-Log -Message "`n--- Checking out version $Version ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Checking out version $Script:DeployedVersion ---" -Level "INFO" -LogFilePath $BuildLog
 
     try {
         Push-Location $GitRepoPath
@@ -450,15 +573,15 @@ Function Invoke-ReactBuild {
         git fetch --tags origin --force # --force helps overwrite existing tags if needed locally
         if ($LASTEXITCODE -ne 0) { throw "Git fetch failed." }
 
-        Write-Log -Message "Checking out tag '$Version'..." -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Checking out tag '$Script:DeployedVersion'..." -Level "INFO" -LogFilePath $BuildLog
         
-        git checkout $Version
-        if ($LASTEXITCODE -ne 0) { throw "Git checkout of tag '$Version' failed. Does the tag exist locally and remotely?" }
+        git checkout $Script:DeployedVersion
+        if ($LASTEXITCODE -ne 0) { throw "Git checkout of tag '$Script:DeployedVersion' failed. Does the tag exist locally and remotely?" }
 
-        Write-Log -Message "Successfully checked out version $Version." -Level "SUCCESS" -LogFilePath $BuildLog
+        Write-Log -Message "Successfully checked out version $Script:DeployedVersion." -Level "SUCCESS" -LogFilePath $BuildLog
     }
     catch {
-        Write-Log -Message "FATAL: Failed to checkout version '$Version'. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
+        Write-Log -Message "FATAL: Failed to checkout version '$Script:DeployedVersion'. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
     }
     finally {
         Pop-Location
@@ -469,7 +592,7 @@ Function Invoke-ReactBuild {
     Write-Log -Message "Building React app locally in '$LocalFrontendDir'..." -Level "INFO" -LogFilePath $BuildLog
 
     # Define the specific log file for npm build errors within this step
-    $npmErrorLog = Join-Path (Split-Path $BuildLog -Parent) "npm_build_errors${Version}_$timestamp.log" # Use timestamp for uniqueness
+    $npmErrorLog = Join-Path (Split-Path $BuildLog -Parent) "npm_build_errors${Script:DeployedVersion}_$timestamp.log" # Use timestamp for uniqueness
 
     # Change to the frontend directory to run the build command
     try {
@@ -1138,7 +1261,7 @@ Function Write-Log {
     }
 }
 
-Function Test_and_Open_Logfile {
+Function Test-Logfile {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ScriptRoot, # Path to the script root directory
@@ -1186,7 +1309,19 @@ Function Test_and_Open_Logfile {
             # Handle any errors in the logging process itself
             Write-Host "FATAL: Write-Log function test failed. Error: $($_.Exception.Message)" -ErrorAction Stop
         }
-    
+            
+    }
+    catch {
+        Write-Error "FATAL: Failed to open log file '$BuildLog'. Check path and permissions. Error: $($_.Exception.Message)" -ErrorAction Stop
+    }
+}
+
+Function Open-Logfile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BuildLog # Path to the script root directory
+    )
+
         #--- Open Log File in Notepad++ ---
         if (Test-Path $BuildLog -PathType Leaf) {
             Write-Host "`nAttempting to open log file '$BuildLog' in Notepad++..." -ForegroundColor Gray
@@ -1214,15 +1349,13 @@ Function Test_and_Open_Logfile {
             Write-Warning "Could not find log file at '$BuildLog' to open."
         }
     }
-    catch {
-        Write-Error "FATAL: Failed to open log file '$BuildLog'. Check path and permissions. Error: $($_.Exception.Message)" -ErrorAction Stop
-    }
-}
 
 
 ##################################################################################
 #--------------------------- Start of Main Script -------------------------------#
 ##################################################################################
+
+
 
 # --- Define Paths ---
 $scriptRoot = $PSScriptRoot
@@ -1241,15 +1374,39 @@ if (-not (Test-Path $logDir)) {
     }
 }
 # Create a log file name based on the version and timestamp
-$buildLog = Join-Path $logDir "build_${Version}_$timestamp.log"
+# Use a temporary name until version is determined
+$tempLogName = "build_pending_$timestamp.log"
+$buildLog = Join-Path $logDir $tempLogName
 
-# Open the log file for writing
-Test_and_Open_Logfile -BuildLog $buildLog -ScriptRoot $scriptRoot
+
+# Open the log file for writing (using the temporary name initially)
+Test-Logfile -BuildLog $buildLog -ScriptRoot $scriptRoot
 
 # --- Initialize Configuration ---
 $configData = Initialize-DeploymentConfiguration -Environment $Environment `
     -ScriptRoot $scriptRoot `
     -BuildLog $buildLog
+
+# --- Determine Version to Deploy (Bump or Parameter) ---
+if ($PSBoundParameters.ContainsKey('BumpType')) {
+    # User wants to bump the version first
+    $versionFilePath = Join-Path $DEPLOYMENT_LOCAL_BASE_DIR "version.txt"
+    $packageJsonPath = Join-Path $DEPLOYMENT_LOCAL_BASE_DIR "satisfactory_tracker/package.json"
+
+    $Script:DeployedVersion = Invoke-VersionBump -BumpType $BumpType `
+        -VersionFilePath $versionFilePath `
+        -PackageJsonPath $packageJsonPath `
+        -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR `
+        -BuildLog $buildLog
+
+} elseif ($PSBoundParameters.ContainsKey('Version')) {
+    # User specified an existing version
+    $Script:DeployedVersion = $Version
+    Write-Log -Message "Using specified version: $Script:DeployedVersion" -Level "INFO" -LogFilePath $buildLog
+} else {
+    Write-Log -Message "FATAL: You must specify either -BumpType or -Version." -Level "FATAL" -LogFilePath $buildLog
+    throw "Missing required parameter: -BumpType or -Version."
+}
 
 # --- Assign Local and Target Environment Variables ---
 $localEnvSettings = $configData.LocalEnvSettings
@@ -1294,6 +1451,28 @@ $wslLocalFrontendDir = Convert-WindowsPathToWslPath -WindowsPath $localFrontendD
 $wslLocalFlaskDirApp = "$wslLocalFlaskDir/app" # Source directory for local flask app files
 $wslLocalFrontendDirBuild = "$wslLocalFrontendDir/build" # Source directory for local build files
 
+# --- Rename Log File with Actual Version ---
+$finalLogName = "build_${Script:DeployedVersion}_$timestamp.log"
+$finalLogPath = Join-Path $logDir $finalLogName
+$renameSucceeded = $false # Flag to track success
+
+if ($buildLog -ne $finalLogPath) {
+    Write-Log -Message "Attempting to rename log file to '$finalLogPath'..." -Level "INFO" -LogFilePath $buildLog
+    try {
+        Rename-Item -Path $buildLog -NewName $finalLogName -ErrorAction Stop 
+        Write-Log -Message "Log file renamed successfully." -Level "INFO" -LogFilePath $buildLog # Log to OLD name just before changing variable
+        $buildLog = $finalLogPath, # Update the variable ONLY if rename succeeded
+        $renameSucceeded = $true
+        Write-Log -Message "Log variable updated to new path '$buildLog'." -Level "DEBUG" -LogFilePath $buildLog # Log to NEW name
+    } catch {
+        Write-Log -Message "Warning: Failed to rename log file '$buildLog' to '$finalLogName'. File might be locked. Subsequent logs will continue using the temporary name. Note: Consider manually renaming '$buildLog' to '$finalLogName' after script completion. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $buildLog 
+    }
+}
+
+
+# --- Open the log file in Notepad++ with monitoring on ---
+Open-Logfile -BuildLog $buildLog
+
 ##################################################################################
 #--------------------------- Start of Deployment Steps --------------------------#
 ##################################################################################
@@ -1330,7 +1509,7 @@ Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
     -BuildLog $buildLog
 
 # Step 5: Install/Upgrade Flask Dependencies
-Update-Environment -VenvDir $DEPLOYMENT_VENV_DIR `
+Update-FlaskDependencies -VenvDir $DEPLOYMENT_VENV_DIR `
     -ServerFlaskBaseDir $serverFlaskBaseDir `
     -BuildLog $buildLog
 
@@ -1348,6 +1527,6 @@ Restart-Services -FlaskServiceName $DEPLOYMENT_FLASK_SERVICE_NAME `
 # -------------------------- Final Success Message ------------------------------#
 ##################################################################################
 
-Write-Log -Message "`nDeployment to $targetEnv for version $Version completed successfully!" -Level "SUCCESS" -LogFilePath $buildLog
+Write-Log -Message "`nDeployment to $targetEnv for version $Script:DeployedVersion completed successfully!" -Level "SUCCESS" -LogFilePath $buildLog
 Write-Log -Message "Deployment log saved to '$buildLog'." -Level "INFO" -LogFilePath $buildLog
 Write-Log -Message "Please check the application at $displayUrl" -Level "INFO" -LogFilePath $buildLog
