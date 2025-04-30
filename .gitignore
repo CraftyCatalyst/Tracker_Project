@@ -30,3 +30,4 @@ USEFUL_STUFF/
 my_rsync_test/
 deployment_files/build_logs
 deployment_files/LaunchNPP_Monitor.ahk
+deployment_files/deploy_sql_scripts.ps1
