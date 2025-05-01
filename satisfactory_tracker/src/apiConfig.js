@@ -19,16 +19,16 @@ flask_port = baseUrlMap[runMode];
 
 // Handle cases where the runMode is not recognized
 if (!flask_port) {
-  centralLogging(`API_CONFIG: Unrecognized or missing REACT_APP_RUN_MODE: "${runMode}".`);
-  centralLogging(`API_CONFIG: ERROR: Invalid run mode "${runMode}"`, "ERROR");
+  console.log(`API_CONFIG: Unrecognized or missing REACT_APP_RUN_MODE: "${runMode}".`);
+  console.log(`API_CONFIG: ERROR: Invalid run mode "${runMode}"`, "ERROR");
   // Option A: Assign a default fallback (e.g., local)
   // flask_port = process.env.REACT_APP_CLIENT_BASE_URL_LOCAL || 'http://localhost:5000'; // Provide a hardcoded default if needed
   // Option B: Throw an error to stop execution if a valid mode is required
   throw new Error(`Invalid or missing REACT_APP_RUN_MODE: "${runMode}"`);
 } else {
   // Log only if a valid port was assigned
-  centralLogging("API_CONFIG: Run Mode: " + runMode, "INFO");
-  centralLogging("API_CONFIG: Flask Port: " + flask_port, "INFO");
+  console.log("API_CONFIG: Run Mode: " + runMode, "INFO");
+  console.log("API_CONFIG: Flask Port: " + flask_port, "INFO");
 
 }
 export const API_ENDPOINTS = {

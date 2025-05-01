@@ -13,7 +13,6 @@ backup/
 data/
 flask_server/app/__pycache__/
 flask_server/app/logs/
-flask_server/app/models_timestamp_updated.py
 flask_server/app/scripts/
 flask_server/app/utils/__pycache__/
 flask_server/migrations/

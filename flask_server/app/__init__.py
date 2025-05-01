@@ -53,8 +53,46 @@ def create_app():
     
     with app.app_context():
         # Import models to ensure they are registered
-        from .models import User, Part, Recipe, Alternate_Recipe, Machine_Level, Node_Purity, Power_Shards, Miner_Supply, Data_Validation, Tracker, User_Save, Machine, Recipe_Mapping, Resource_Node
-        #db.create_all()  # Ensure tables are created
+        from .models import (User, 
+                             Part, 
+                             Recipe, 
+                             Alternate_Recipe, 
+                             Machine_Level, 
+                             Node_Purity, 
+                             Power_Shards, 
+                             Miner_Supply, 
+                             Data_Validation, 
+                             Tracker, 
+                             UserSelectedRecipe, 
+                             User_Save, 
+                             Machine, 
+                             Resource_Node, 
+                             Recipe_Mapping, 
+                             UserSettings, 
+                             Conveyor_Level, 
+                             Conveyor_Supply, 
+                             Pipeline_Level, 
+                             Pipeline_Supply, 
+                             User_Save_Connections, 
+                             User_Save_Conveyors, 
+                             Icon, 
+                             Splitter, 
+                             Storage, 
+                             User_Save_Pipes, 
+                             Project_Assembly_Phases, 
+                             Project_Assembly_Parts, 
+                             User_Connection_Data, 
+                             User_Pipe_Data, 
+                             User_Tester_Registrations, 
+                             Admin_Settings, 
+                             SupportMessage, 
+                             SupportConversation, 
+                             SupportResponse, 
+                             SupportDraft, 
+                             UserActionTokens, 
+                             AppliedSQLScripts)
+        db.create_all()  # Ensure tables are created
+        
 
     # Register blueprints
     from .routes import main
