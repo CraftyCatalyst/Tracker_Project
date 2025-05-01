@@ -1,6 +1,5 @@
-import centralLogging from "./services/logService";
-
 let flask_port;
+
 
 const runMode = process.env.REACT_APP_RUN_MODE;
 console.log("API_CONFIG: process.env.REACT_APP_RUN_MODE is " + runMode);
