@@ -1735,6 +1735,8 @@ Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
     -ServerFrontendBuildDir $serverFrontendBuildDir `
     -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
     -ServerFlaskAppDir $serverFlaskAppDir `
+    -ServerFlaskBaseDir $serverFlaskBaseDir `
+    -LocalFlaskBaseDir $localFlaskDir `
     -BuildLog $buildLog
 
 # Step 5: Install/Upgrade Flask Dependencies
