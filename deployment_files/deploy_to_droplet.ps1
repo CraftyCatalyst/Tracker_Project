@@ -1675,7 +1675,7 @@ Open-Logfile -BuildLog $buildLog
 ##################################################################################
 
 # Step 1: Check Environment & Confirm
-nConfirm-DeploymentEnvironment -TargetEnv $targetEnv `
+Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
     -RunMode $runMode `
     -TargetFlaskEnv $targetFlaskEnv `
     -FlaskEnv $flaskEnv `
