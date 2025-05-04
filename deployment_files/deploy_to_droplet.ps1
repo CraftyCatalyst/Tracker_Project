@@ -2,6 +2,14 @@
 #                            DEPLOYMENT SCRIPT                            #
 ###########################################################################
 
+###########################################################################
+#                                  TODO!                                  #
+###########################################################################
+# -Add the following script parameters to facilitate the test harness run:#
+#   -ForceConfirmation 
+#   -AutoApproveMigration
+#   -AppendTestRun
+###########################################################################
 
 ###########################################################################
 #                                                                         #
@@ -9,59 +17,80 @@
 #                    !! BEFORE RUNNING THIS SCRIPT !!                     #
 #                    --------------------------------                     #
 #                                                                         #
-# 1. Tag the git repo with the version to be deployed e.g:                #
-#    - git tag -a vX.X.X -m "Release version X.X.X"                       #
-#    - git push origin main                                               #
-#    - git push origin vX.X.X                                             #
-# 2. Version standards:                                                   #
-#    - Version in SemVer format (e.g., v1.3.0)                            #
-#    - See USEFUL_STUFF\Versioning_Control_Standards.md for details.      #
-# 2. Please ensure that:                                                  #
+# 2. Ensure that the version.txt exists in the root of the repository.    #
+#    -  This must contain the current version of the code.                # 
+#    -  Once set do not change it, the deployment script will bump it.    #
+#    -  The script will also tag the git repo with the version that was   #
+#       deployed.                                                         #
+# 3. Please ensure that:                                                  #
 #    - The following files are in the same directory as this script:      #
 #       - .deployment_env                                                 #                 
 #       - LaunchNPP_Monitor.exe                                           #
+#    - sql release scripts have been copied to the correct directories:   #
+#       - release_scripts/dev                                             #
+#       - release_scripts/qas                                             #
+#       - release_scripts/prod                                            #
 #      (TODO: Make these paths configurable in the .env file)             #
 #    - .env file is in satisfactory_tracker directory so it gets          #
 #      picked up by the build process.                                    #
+#    - The REACT_APP_RUN_MODE variable in the .env file is set to         #
+#      the correct environment for deployment(prod, qas, dev).            #      
 #                                                                         #
 ###########################################################################
 
 <#
 .SYNOPSIS
-Deploys the Flask Server and React App to the server for the specified environment.
+Main step of the deployment script.
+    Step 1: Check Environment & Confirm
+    Step 2: Run React Build / Git Checkout
+    Step 3: Backup Server State
+    Step 4: Sync Files (React & Flask)
+    Step 5: Update Flask Dependencies
+    Step 6: Invoke Database Migration (which includes step 6.5 Apply SQL Scripts)
+    Step 7: Restart Services
+    TODO: Consider updating the step numbers in the log messages/comments (--- Step X ---) for clarity.
+
+.DESCRIPTION
+This script is designed to automate the deployment process for Satisfactory Tracker App's Flask server and React app to it's remote LINUX server using rsync and SSH.
 The script performs the following tasks:
-1. Loads environment variables from .deployment_env and .env files.
+- Loads environment variables from .deployment_env and .env files.
    - The .deployment_env file contains environment-specific settings.
    - The .env file contains local settings for the React app.    
-2. Confirms the deployment environment and user confirmation.
+- Confirms the deployment environment and user confirmation.
    - Ensures the script is running in the correct environment and prompts for confirmation before proceeding.
-3. Backs up existing project files (Flask, React, and database).
+- Backs up existing project files (Flask, React, and database).
     - Uses rsync to create backups of the existing Flask and React app files on the server.
     - Backs up the database using mysqldump and stores it in a specified backup directory.
-    - Cleans up old backups based on a specified retention policy (e.g., keep only the last 3 backups).
-4. Builds the React app locally and deploys it to the server.
+- Maintains specified backup retention policy.
+    - Removes old backups based on the specified retention policy (e.g., keep only the last 5 backups).
+- Get or creates the version to be deployed.
+    - If the version is not specified, it will be created based on BumpType and the current version in the version.txt file.
+    - The script uses semantic versioning (SemVer) for versioning.
+- Builds the React app locally and deploys it to the server.
     - Gets or creates the version to be deployed.
     - Uses npm to build the React app and rsync to transfer files to the server.
     - The script uses WSL (Windows Subsystem for Linux) for rsync operations.
-5. Deploys the Flask app to the server.
+- Deploys the Flask app to the server.
     - Uses rsync to transfer Flask app files to the server.
     - Excludes certain directories and files from the transfer (e.g., __pycache__, logs, scripts, etc.).
-6. Installs Python dependencies on the server using pip.
+- Installs Python dependencies on the server using pip.
     - Uses a requirements file to install/update the necessary packages.
     - The script uses WSL (Windows Subsystem for Linux) for pip operations.
-7. Optionally runs database migrations if specified.
+- Optionally runs database migrations if specified.
     - Uses Flask-Migrate to handle database migrations.
     - The script checks if the migration is needed based on the specified environment.
-8. Restarts the Flask service and Nginx server on the target server.
+- Runs SQL release scripts if specified.
+    - The script looks for SQL release scripts in the release_scripts directory.
+    - It checks if the SQL scripts have already been applied to the database.
+    - If the sql scripts have not been applied, it will run them.
+    - If the ForceSqlScripts switch is used, it will re-run all SQL release scripts regardless of their status.
+- Restarts the Flask service and Nginx server on the target server.
     - Uses WSL/SSH to restart the services on the server.
-
-.DESCRIPTION
-This script is designed to automate the deployment process of a Flask server and React app to a remote LINUX server using rsync and SSH.
-
 
 - PREREQUISITES
     - This script is designed to be run in PowerShell, and it uses WSL (Windows Subsystem for Linux) for rsync operations.
     - It requires SSH access to the target server and passwordless authentication set up for the specified user.
+    - This script assumes .my.cnf is configured on the server for passwordless login to MySQL.
     - It also requires the following tools to be installed on the server:
         - rsync
         - MySQL (for database backup and migration)
@@ -72,8 +101,8 @@ This script is designed to automate the deployment process of a Flask server and
         - Gunicorn (for serving Flask app) including configurations for PROD domain and DEV & QAS subdomains
     - If creating a new environment, ensure that the server has the necessary configurations and dependencies installed.
         - Ensure the target database is created and accessible.
-         - This script will create the schema and tables if they do not exist.
-         - You will need to populate the tables with data after the deployment.
+         - This script will create the schema and tables based on the models if they do not exist.
+         - You will need to provide sql scripts to populate the tables with data.
         - Ensure you have nginx and gunicorn configurations set up for the new environment.
             - nginx configurations are located in /etc/nginx/sites-available/ and /etc/nginx/sites-enabled/.
             - gunicorn configurations are located in /etc/systemd/system/.
@@ -81,13 +110,16 @@ This script is designed to automate the deployment process of a Flask server and
             - Create directories and files on the server.
             - Install packages and restart services on the server.
             - Run the script on the server.
+- VERSIONING
+    - Versioning uses the SemVer format (e.g., v1.3.0)
+    - See USEFUL_STUFF\Versioning_Control_Standards.md for details.
 
 .PARAMETER Environment
 The target environment (PROD, QAS, DEV). Mandatory. 
     - This is used to specify the target environment for deployment.
 .PARAMETER runDBMigration
 The run migration parameter (y/n). Mandatory. 
-    - This is used to determine if the database migration should be run as part of the deployment.
+    - This is used to determine if the database migration and any release scripts should be run as part of the deployment.
 .PARAMETER Version
 The Git tag/version to deploy (e.g., v1.3.0). Optional.
     - This is used to specify an existing version of code to be deployed.
@@ -104,21 +136,32 @@ The run backup parameter (y/n). Optional. Default is 'y'.
 The run build parameter (y/n). Optional. Default is 'y'.
     - This is used to determine if the React app should be built before deployment.
     - If you have already built the React app and just want to deploy the build files, set this to 'n'.
-
+.PARAMETER ForceSqlScripts
+This switch is used to force the script to run all SQL release scripts, even if they have already been applied to the database. Optional.
+    - This is useful if data has become corrupted and you need to re-run the scripts to restore the data to a known state.    
 .EXAMPLE
 In PowerShell, run the script with the following command:
-    C:/repos/Tracker_Project/deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -Version v1.3.0
+    C:/repos/Tracker_Project/deploy_to_droplet.ps1 -Environment PROD -runDBMigration y
 or, if you're in the same directory as the script:
-    ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -Version v1.3.0
-If you don't specify any parameters, you will be prompted as follows:
-    (prompt)    Supply values for the following parameters:
-                Environment: PROD
-                runDBMigration: y
-                Version: v1.3.0
+    ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -BumpType patch
+
 To set the runBackup and runBuild parameters to 'n', you can use the following command:
-    ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -Version v1.3.0 -runBackup n -runBuild n
+    ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -runBackup n -runBuild n
+
 To bump the version automatically, you can use the following command:
     ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -BumpType patch -runBackup n -runBuild n
+
+To force the script to run all SQL release scripts, you can use the following command:
+    ./deploy_to_droplet.ps1 -Environment PROD -runDBMigration y -BumpType patch -runBackup n -runBuild n -ForceSqlScripts
+
+If you don't specify any parameters, you will be prompted as follows:
+    (prompt)    - Supply values for the following parameters:
+                - Environment: PROD
+                - runDBMigration: y
+                - Deploy existing [V]ersion or [B]ump version? (v/b)
+                    - (v) - Enter existing version tag to deploy (e.g., v1.2.3)
+                    - (b) - Enter bump type (major, minor, patch, rc, dev, qas, prod)
+
 
 #>
 
@@ -136,7 +179,7 @@ param(
     [string]$Version,
 
     [Parameter(Mandatory = $false, HelpMessage = "Specify the type of version bump to perform before deployment. If used, -Version is ignored. Valid values: major, minor, patch, rc, dev, prod")]
-    [ValidateSet("major", "minor", "patch", "rc", "dev", "prod")]
+    [ValidateSet("major", "minor", "patch", "rc", "dev", "qas", "prod")]
     [string]$BumpType,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set to 'n' for new environment creation. Valid values are: y, n")]
@@ -145,7 +188,10 @@ param(
 
     [Parameter(Mandatory = $false, HelpMessage = "Set to 'n' if you've already run npm build and just want to deploy. Valid values are: y, n")]
     [ValidateSet('y', 'n')]
-    [string]$runBuild = 'y' # Default to 'y' for build unless specified otherwise
+    [string]$runBuild = 'y', # Default to 'y' for build unless specified otherwise
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to force re-running of all SQL release scripts, even if previously applied.")]
+    [switch]$ForceSqlScripts
 )
 
 # ------------------------------ Global Variables -------------------------------
@@ -173,6 +219,19 @@ Function Invoke-VersionBump {
     )
 
     Write-Log -Message "`n--- Bumping Version ($BumpType) ---" -Level "INFO" -LogFilePath $BuildLog
+
+    # Check if the Git repo has uncommitted changes before the script runs
+    if ($null -ne $GitRepoPath) {
+        Write-Log -Message "Checking for uncommitted changes in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
+        Push-Location $GitRepoPath
+        $status = git status --porcelain
+        if ($status -ne ''){
+            Write-Log -Message "FATAL: Uncommitted changes detected in the Git repository. Please commit or stash changes before running the script." -Level "ERROR" -LogFilePath $BuildLog
+            Pop-Location
+            throw "Uncommitted changes detected."
+        }
+        Pop-Location
+    }
 
     if (-not (Test-Path $VersionFilePath)) { Write-Log -Message "FATAL: Version file not found: $VersionFilePath" -Level "FATAL" -LogFilePath $BuildLog; throw "Version file missing"; }
     if (-not (Test-Path $PackageJsonPath)) { Write-Log -Message "FATAL: package.json not found: $PackageJsonPath" -Level "FATAL" -LogFilePath $BuildLog; throw "package.json missing"; }
@@ -460,79 +519,6 @@ Function Confirm-DeploymentEnvironment {
     Write-Log -Message "User confirmed. Proceeding with deployment to $TargetEnv..." -Level "INFO" -LogFilePath $BuildLog
 }
 
-Function Remove-OldBackups {
-    # This function is a refactored version of the original Remove-OldBackups function.
-    # It simplifies the logic and is easier to read, while maintaining the same functionality.
-    # In practice this function will only be removing 1 backup at a time, so the logic is simplified.
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ParentDir, # The directory containing the backups (e.g., /path/to/backups)
-        [Parameter(Mandatory = $true)]
-        [string]$Prefix, # The prefix of the backup items (e.g., "flask_", "db_backup_")
-        [Parameter(Mandatory = $false)]
-        [string]$Suffix = "", # Optional suffix (e.g., ".sql")
-        [Parameter(Mandatory = $true)]
-        [string]$BuildLog
-    )
-
-    $maxKeep = [int]$DEPLOYMENT_BACKUP_COUNT # Ensure it's an integer
-    Write-Log -Message "Checking for old backups in '$ParentDir' with prefix '$Prefix' (keeping $maxKeep)..." -Level "INFO" -LogFilePath $BuildLog
-
-    # Use find to list items with Unix timestamp, sort numerically (oldest first)
-    # -maxdepth 1: Don't go into subdirs
-    # -name "$Prefix*$Suffix": Match the pattern
-    # -printf '%T@ %p\n': Print Unix timestamp and path, separated by space
-    # sort -n: Sort numerically by timestamp (oldest first)
-    $listCommand = "find '$ParentDir' -maxdepth 1 -name '$Prefix*$Suffix' -printf '%T@ %p\n' | sort -n"
-
-    $listResult = Invoke-SshCommand -Command $listCommand `
-        -ActionDescription "list backups matching '$Prefix*$Suffix' in '$ParentDir'" `
-        -BuildLog $BuildLog `
-        -IsFatal $false ` # Don't stop if listing fails (e.g., dir doesn't exist yet)
-    -CaptureOutput
-
-    if ($listResult.ExitCode -ne 0) {
-        Write-Log -Message "Could not list backups in '$ParentDir'. Skipping cleanup for '$Prefix'." -Level "WARNING" -LogFilePath $BuildLog
-        return
-    }
-
-    # Split the output into lines, remove empty lines, and parse
-    $backupItems = $listResult.StdOut.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object {
-        # Extract the full path after the first space (timestamp)
-        $path = $_.Substring($_.IndexOf(' ') + 1)
-        # Return the path
-        $path
-    }
-
-    $count = $backupItems.Count
-    Write-Log -Message "Found $count backups matching '$Prefix*$Suffix'." -Level "INFO" -LogFilePath $BuildLog
-
-    if ($count -gt $maxKeep) {
-        $toDeleteCount = $count - $maxKeep
-        Write-Log -Message "Need to delete $toDeleteCount oldest backup(s)." -Level "INFO" -LogFilePath $BuildLog
-
-        # Get the oldest items to delete (first $toDeleteCount items from the sorted list)
-        $itemsToDelete = $backupItems | Select-Object -First $toDeleteCount
-
-        foreach ($itemPath in $itemsToDelete) {
-            # Determine if it's likely a file or directory based on suffix (simple check)
-            # A more robust check would involve another SSH call with 'test -d' or 'test -f'
-            # but rm -rf handles both anyway.
-            $deleteCommand = "rm -rf '$itemPath'" # Use rm -rf for simplicity, works on files and dirs
-
-            write-Log -Message "Attempting to delete old backup: $itemPath" -Level "INFO" -LogFilePath $BuildLog
-            Invoke-SshCommand -Command $deleteCommand `
-                -ActionDescription "delete old backup '$itemPath'" `
-                -BuildLog $BuildLog `
-                -IsFatal $false # Log error but don't stop deployment if a single delete fails
-        }
-        Write-Log -Message "Old backups deleted successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-    }
-    else {
-        Write-Log -Message "Backup count ($count) is within limit ($maxKeep). No cleanup needed for '$Prefix*$Suffix'." -Level "INFO" -LogFilePath $BuildLog
-    }
-}
-
 Function Invoke-ReactBuild {
     param(
         [Parameter(Mandatory = $true)]
@@ -550,19 +536,7 @@ Function Invoke-ReactBuild {
         Write-Log -Message "Skipping React build as per user request." -Level "WARNING" -LogFilePath $BuildLog
         return
     }
-    # Check if the Git repo has uncommitted changes before the script runs
-    if ($null -ne $GitRepoPath) {
-        Write-Log -Message "Checking for uncommitted changes in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
-        Push-Location $GitRepoPath
-        $status = git status --porcelain
-        if ($status -ne ''){
-            Write-Log -Message "FATAL: Uncommitted changes detected in the Git repository. Please commit or stash changes before running the script." -Level "ERROR" -LogFilePath $BuildLog
-            Pop-Location
-            throw "Uncommitted changes detected."
-        }
-        Pop-Location
-    }
-    
+        
     #Checkout Specified Version ---
     Write-Log -Message "`n--- Checking out version $Script:DeployedVersion ---" -Level "INFO" -LogFilePath $BuildLog
 
@@ -766,91 +740,6 @@ Function Sync-FilesToServer {
     Write-Log -Message "Application files deployed successfully via rsync." -Level "SUCCESS" -LogFilePath $BuildLog
 }
 
-Function Invoke-WslRsync {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$SourcePath, # WSL path, ensure trailing slash if copying contents
-        [Parameter(Mandatory = $true)]
-        [string]$DestinationPath, # Server path, ensure trailing slash if copying contents
-        [Parameter(Mandatory = $true)]
-        [string]$Purpose, # e.g., "React build files"
-        [Parameter(Mandatory = $false)]
-        [string[]]$ExcludePatterns = @()
-    )
-    # Construct the SSH command for rsync's -e option using the specific key
-    $rsyncSshOptionValue = "ssh -i $DEPLOYMENT_WSL_SSH_KEY_PATH"
-
-    # Base rsync arguments
-    $rsyncArgs = @("-avz", "--delete", "--checksum")
-    $rsyncArgs += "-e", $rsyncSshOptionValue
-
-    # Add excludes
-    if ($ExcludePatterns.Count -gt 0) {
-        $rsyncArgs += ($ExcludePatterns | ForEach-Object { "--exclude=$_" }) # Pass excludes directly
-    }
-
-    # Add source and destination paths
-    $destinationSpec = "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}:$($DestinationPath)"
-    $rsyncArgs += $SourcePath, $destinationSpec
-
-    # Construct the arguments for wsl.exe
-    $wslArgs = @("-u", $DEPLOYMENT_WSL_SSH_USER, "rsync") + $rsyncArgs
-
-    Write-Log -Message "Executing WSL command for ${Purpose}: wsl $($wslArgs -join ' ')" -Level "INFO" -LogFilePath $BuildLog
-
-    $rsyncExitCode = -1
-    try {
-        # Use Start-Process with ArgumentList for wsl.exe
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = "wsl.exe"
-        foreach ($arg in $wslArgs) {
-            $processInfo.ArgumentList.Add($arg)
-        }
-        $processInfo.UseShellExecute = $false
-        $processInfo.RedirectStandardOutput = $true # Capture output for logging
-        $processInfo.RedirectStandardError = $true  # Capture errors for logging
-        $processInfo.CreateNoWindow = $true
-
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $processInfo
-        $process.Start() | Out-Null
-
-        # Log output/error streams (optional but good practice)
-        $stdOut = $process.StandardOutput.ReadToEnd()
-        $stdErr = $process.StandardError.ReadToEnd()
-
-        $process.WaitForExit()
-        $rsyncExitCode = $process.ExitCode
-
-        if ($stdOut) {
-            Write-Log -Message "Rsync StdOut: $stdOut" -Level "INFO" -LogFilePath $BuildLog
-        }
-        if ($stdErr) {
-            # Log stderr as warning or error depending on exit code
-            if ($rsyncExitCode -ne 0) {
-                Write-Log -Message "Rsync StdErr: $stdErr" -Level "ERROR" -LogFilePath $BuildLog
-            }
-            else {
-                Write-Log -Message "Rsync StdErr: $stdErr" -Level "INFO" -LogFilePath $BuildLog
-            }
-        }
-
-    }
-    catch {
-        Write-Error "FATAL: Failed to start WSL rsync process for $Purpose. Error: $($_.Exception.Message)" -ErrorAction Stop | Tee-Object -FilePath $BuildLog -Append
-        Write-Log -Message "FATAL: Failed to start WSL rsync process for $Purpose. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
-        # Exit code remains non-zero
-    }
-
-    if ($rsyncExitCode -ne 0) {
-        Write-Log -Message "FATAL: Failed to sync $Purpose using rsync (Exit Code: $rsyncExitCode). Check WSL user '$DEPLOYMENT_WSL_SSH_USER', key '$DEPLOYMENT_WSL_SSH_KEY_PATH', rsync output above, SSH connectivity, and paths ($SourcePath -> $DestinationPath). Exiting.", -Level "FATAL" -LogFilePath $BuildLog
-        throw "Halting due to fatal error during rsync for '$Purpose'."
-    }
-    else {
-        Write-Log -Message "$Purpose synced successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-    }
-}
-
 Function Update-FlaskDependencies {
     param(
         [Parameter(Mandatory = $true)]
@@ -862,13 +751,12 @@ Function Update-FlaskDependencies {
     )
 
     # Install/Upgrade Flask dependencies
-    Write-Log -Message "Upgrading Flask dependencies..." -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 5: Upgrading Flask dependencies..." -Level "INFO" -LogFilePath $BuildLog
 
     $upgradeFlaskCmd = "cd '$DEPLOYMENT_GLOBAL_DIR' && source '$VenvDir/bin/activate' && pip install -r '$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH' --upgrade"
 
     Invoke-SshCommand -Command $upgradeFlaskCmd `
     -ActionDescription "upgrade Flask dependencies from $ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" `
-    -BuildLog $BuildLog `
         -BuildLog $BuildLog `
         -IsFatal $true # Keep original fatal behavior
     
@@ -890,7 +778,7 @@ Function Invoke-DatabaseMigration {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Step 5: Database Migration (Optional) ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 6: Database Migration (Optional) ---" -Level "INFO" -LogFilePath $BuildLog
 
     if ($runDBMigration -ne 'y') {
         Write-Log -Message "Database migration not requested. Skipping..." -Level "INFO" -LogFilePath $BuildLog
@@ -1012,7 +900,126 @@ Function Invoke-DatabaseMigration {
             -IsFatal $true
         Write-Log -Message "Database migration applied successfully." -Level "SUCCESS" -LogFilePath $BuildLog
         # --- End Apply Migration ---
-    }    
+    }
+
+# --- Apply SQL Release Scripts (if any) ---
+    # Step 6.5: Apply SQL Release Scripts (After Migration)
+    Invoke-SqlReleaseScripts -BuildLog $buildLog -ForceRerun:$ForceSqlScripts                             
+
+    Write-Log -Message "Database migration process completed." -Level "SUCCESS" -LogFilePath $BuildLog
+}
+
+Function Invoke-SqlReleaseScripts {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$BuildLog,
+        [Parameter(Mandatory=$false)]
+        [switch]$ForceRerun # Add switch to force re-running scripts
+        )
+
+    Write-Log -Message "`n--- Step 6.5: Applying SQL Release Scripts ---" -Level "INFO" -LogFilePath $BuildLog
+
+    $localSqlScriptDir = Join-Path $scriptRoot "release_scripts" $Environment.ToLower()
+    $serverSqlScriptArchiveBaseDir = "$DEPLOYMENT_BACKUP_DIR/release_scripts_applied"
+    $localSqlScriptCompletedBaseDir = Join-Path $scriptRoot "release_scripts" "completed"
+
+    if (-not (Test-Path $localSqlScriptDir -PathType Container)) {
+        Write-Log -Message "No release script directory found for environment '$Environment' at '$localSqlScriptDir'. Skipping SQL scripts." -Level "INFO" -LogFilePath $BuildLog
+        return
+    }
+
+    $sqlScripts = Get-ChildItem -Path $localSqlScriptDir -Filter *.sql | Sort-Object Name
+
+    if ($sqlScripts.Count -eq 0) {
+        Write-Log -Message "No .sql scripts found in '$localSqlScriptDir' for environment '$Environment'." -Level "INFO" -LogFilePath $BuildLog
+        return
+    }
+
+    Write-Log -Message "Found $($sqlScripts.Count) SQL script(s) to apply for '$Environment'." -Level "INFO" -LogFilePath $BuildLog
+
+    # Ensure base directories exist locally and on server for this version
+    $localSqlScriptCompletedDirVersion = Join-Path $localSqlScriptCompletedBaseDir $Environment.ToLower() $Script:DeployedVersion
+    $serverSqlScriptArchiveDirVersion = "$serverSqlScriptArchiveBaseDir/$($Environment.ToLower())/$Script:DeployedVersion"
+
+    New-Item -Path $localSqlScriptCompletedDirVersion -ItemType Directory -Force -ErrorAction Stop | Out-Null
+    Invoke-SshCommand -Command "mkdir -p '$serverSqlScriptArchiveDirVersion'" -ActionDescription "create server archive directory for SQL scripts" -BuildLog $BuildLog -IsFatal $true
+
+    foreach ($scriptFile in $sqlScripts) {
+        $localScriptPath = $scriptFile.FullName
+        $scriptName = $scriptFile.Name
+        $wslLocalScriptPath = Convert-WindowsPathToWslPath -WindowsPath $localScriptPath
+        $serverTempScriptPath = "/tmp/$scriptName" # Simple temp path on server
+
+        Write-Log -Message "Processing SQL script: $scriptName" -Level "INFO" -LogFilePath $BuildLog
+        
+        # --- Check if script already applied (unless -ForceRerun is specified) ---
+        if (-not $ForceRerun) {
+            # Use -N (skip column names) and -s (silent) for cleaner output check
+            $checkSql = "SELECT COUNT(*) FROM applied_sql_scripts WHERE script_name = '$scriptName';"
+            $checkCmd = "mysql $DEPLOYMENT_DB_NAME -N -s -e ""$checkSql""" # Execute SQL directly
+            $checkResult = Invoke-SshCommand -Command $checkCmd -ActionDescription "check if SQL script '$scriptName' is already applied" -BuildLog $BuildLog -IsFatal $true -CaptureOutput
+
+            # Check the standard output for the count
+            if ($checkResult.StdOut.Trim() -ne '0') {
+                Write-Log -Message "SQL script '$scriptName' already applied according to database. Skipping (use -ForceRerun to override)." -Level "INFO" -LogFilePath $BuildLog
+                # Don't move the local script if skipped
+                continue # Move to the next script
+            }
+        } else {
+            Write-Log -Message "ForceRerun specified. Will execute '$scriptName' even if already applied." -Level "WARNING" -LogFilePath $BuildLog
+        }
+
+        # 1. Copy script to temp location on server
+        Invoke-WslRsync -SourcePath $wslLocalScriptPath -DestinationPath $serverTempScriptPath -Purpose "copy SQL script '$scriptName' to temp server location"
+
+        # 2. Execute script on server using mysql client
+        $mysqlCmd = "mysql $DEPLOYMENT_DB_NAME < '$serverTempScriptPath'"
+        $execResult = Invoke-SshCommand -Command $mysqlCmd -ActionDescription "execute SQL script '$scriptName'" -BuildLog $BuildLog -IsFatal $true -CaptureOutput
+
+        Write-Log -Message "SQL script '$scriptName' executed with the following output: $($execResult.StdOut)" -Level "INFO" -LogFilePath $BuildLog
+        
+        # 3. Cleanup temp script on server (regardless of success/failure, though script halts on failure anyway)
+        Invoke-SshCommand -Command "rm -f '$serverTempScriptPath'" -ActionDescription "remove temp SQL script '$scriptName'" -BuildLog $BuildLog -IsFatal $false # Don't halt if cleanup fails
+
+        # 4. If execution succeeded log and archive/move the script
+        $baseName = $scriptFile.BaseName # Name without extension
+        $newScriptName = "${baseName}_${Environment.ToLower()}_${Script:DeployedVersion}.sql"
+        $serverArchivePath = "$serverSqlScriptArchiveDirVersion/$newScriptName"
+        $localCompletedPath = Join-Path $localSqlScriptCompletedDirVersion $newScriptName
+
+        # --- Record script application in DB ---
+        
+        # Check again if the record exists to decide between INSERT and UPDATE
+        $checkSqlAgain = "SELECT COUNT(*) FROM applied_sql_scripts WHERE script_name = '$scriptName';"
+        $checkCmdAgain = "mysql $DEPLOYMENT_DB_NAME -N -s -e ""$checkSqlAgain"""
+        $checkResultAgain = Invoke-SshCommand -Command $checkCmdAgain -ActionDescription "re-check if SQL script '$scriptName' exists before recording" -BuildLog $BuildLog -IsFatal $true -CaptureOutput
+        $recordCmd = ""
+        if ($checkResultAgain.StdOut.Trim() -eq '0') {
+            # Record doesn't exist, perform INSERT
+            Write-Log -Message "Recording new application of '$scriptName' in database." -Level "INFO" -LogFilePath $BuildLog
+            $recordSql = "INSERT INTO applied_sql_scripts (script_name, app_version, created_at, updated_at) VALUES ('$scriptName', '$Script:DeployedVersion', UTC_TIMESTAMP(), UTC_TIMESTAMP());"
+            $escapedRecordSql = $recordSql -replace "'", "'\''" # Escape quotes
+            $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$escapedRecordSql"""
+        } else {
+            # Record exists, perform UPDATE (only if ForceRerun was used, though it works even if not)
+            Write-Log -Message "Updating application record for '$scriptName' in database (re-run)." -Level "INFO" -LogFilePath $BuildLog
+            $recordSql = "UPDATE applied_sql_scripts SET updated_at = UTC_TIMESTAMP(), app_version = '$Script:DeployedVersion' WHERE script_name = '$scriptName';"
+            $escapedRecordSql = $recordSql -replace "'", "'\''" # Escape quotes
+            $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$escapedRecordSql"""
+        }
+        Invoke-SshCommand -Command $recordCmd -ActionDescription "record SQL script '$newScriptName' application in database" -BuildLog $BuildLog -IsFatal $true # Fatal if we can't record it
+
+        # --- Archive the script locally and on server ---
+        Write-Log -Message "Archiving successful script '$scriptName' to server: $serverArchivePath" -Level "INFO" -LogFilePath $BuildLog
+        Invoke-WslRsync -SourcePath $wslLocalScriptPath -DestinationPath $serverArchivePath -Purpose "archive successful SQL script '$scriptName' to server"
+
+        Write-Log -Message "Moving successful script '$scriptName' locally to: $localCompletedPath" -Level "INFO" -LogFilePath $BuildLog
+        Move-Item -Path $localScriptPath -Destination $localCompletedPath -Force -ErrorAction Stop
+
+        Write-Log -Message "Successfully applied and processed SQL script: $scriptName" -Level "SUCCESS" -LogFilePath $BuildLog
+    }
+
+    Write-Log -Message "Finished applying SQL release scripts." -Level "SUCCESS" -LogFilePath $BuildLog
 }
 
 Function Restart-Services {
@@ -1023,7 +1030,7 @@ Function Restart-Services {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Step 6: Restart Services ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 7: Restart Services ---" -Level "INFO" -LogFilePath $BuildLog
 
     # Consider making '/bin/systemctl' configurable via .deployment_env if needed
     $systemctlPath = "/bin/systemctl" # Or just "systemctl" if it's always in PATH
@@ -1050,6 +1057,79 @@ Function Restart-Services {
         -IsFatal $false # Map IsCritical=false to IsFatal=false
 
     Write-Log -Message "Service restarts attempted." -Level "SUCCESS" -LogFilePath $BuildLog
+}
+
+Function Remove-OldBackups {
+    # This function is a refactored version of the original Remove-OldBackups function.
+    # It simplifies the logic and is easier to read, while maintaining the same functionality.
+    # In practice this function will only be removing 1 backup at a time, so the logic is simplified.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ParentDir, # The directory containing the backups (e.g., /path/to/backups)
+        [Parameter(Mandatory = $true)]
+        [string]$Prefix, # The prefix of the backup items (e.g., "flask_", "db_backup_")
+        [Parameter(Mandatory = $false)]
+        [string]$Suffix = "", # Optional suffix (e.g., ".sql")
+        [Parameter(Mandatory = $true)]
+        [string]$BuildLog
+    )
+
+    $maxKeep = [int]$DEPLOYMENT_BACKUP_COUNT # Ensure it's an integer
+    Write-Log -Message "Checking for old backups in '$ParentDir' with prefix '$Prefix' (keeping $maxKeep)..." -Level "INFO" -LogFilePath $BuildLog
+
+    # Use find to list items with Unix timestamp, sort numerically (oldest first)
+    # -maxdepth 1: Don't go into subdirs
+    # -name "$Prefix*$Suffix": Match the pattern
+    # -printf '%T@ %p\n': Print Unix timestamp and path, separated by space
+    # sort -n: Sort numerically by timestamp (oldest first)
+    $listCommand = "find '$ParentDir' -maxdepth 1 -name '$Prefix*$Suffix' -printf '%T@ %p\n' | sort -n"
+
+    $listResult = Invoke-SshCommand -Command $listCommand `
+        -ActionDescription "list backups matching '$Prefix*$Suffix' in '$ParentDir'" `
+        -BuildLog $BuildLog `
+        -IsFatal $false ` # Don't stop if listing fails (e.g., dir doesn't exist yet)
+    -CaptureOutput
+
+    if ($listResult.ExitCode -ne 0) {
+        Write-Log -Message "Could not list backups in '$ParentDir'. Skipping cleanup for '$Prefix'." -Level "WARNING" -LogFilePath $BuildLog
+        return
+    }
+
+    # Split the output into lines, remove empty lines, and parse
+    $backupItems = $listResult.StdOut.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object {
+        # Extract the full path after the first space (timestamp)
+        $path = $_.Substring($_.IndexOf(' ') + 1)
+        # Return the path
+        $path
+    }
+
+    $count = $backupItems.Count
+    Write-Log -Message "Found $count backups matching '$Prefix*$Suffix'." -Level "INFO" -LogFilePath $BuildLog
+
+    if ($count -gt $maxKeep) {
+        $toDeleteCount = $count - $maxKeep
+        Write-Log -Message "Need to delete $toDeleteCount oldest backup(s)." -Level "INFO" -LogFilePath $BuildLog
+
+        # Get the oldest items to delete (first $toDeleteCount items from the sorted list)
+        $itemsToDelete = $backupItems | Select-Object -First $toDeleteCount
+
+        foreach ($itemPath in $itemsToDelete) {
+            # Determine if it's likely a file or directory based on suffix (simple check)
+            # A more robust check would involve another SSH call with 'test -d' or 'test -f'
+            # but rm -rf handles both anyway.
+            $deleteCommand = "rm -rf '$itemPath'" # Use rm -rf for simplicity, works on files and dirs
+
+            write-Log -Message "Attempting to delete old backup: $itemPath" -Level "INFO" -LogFilePath $BuildLog
+            Invoke-SshCommand -Command $deleteCommand `
+                -ActionDescription "delete old backup '$itemPath'" `
+                -BuildLog $BuildLog `
+                -IsFatal $false # Log error but don't stop deployment if a single delete fails
+        }
+        Write-Log -Message "Old backups deleted successfully." -Level "SUCCESS" -LogFilePath $BuildLog
+    }
+    else {
+        Write-Log -Message "Backup count ($count) is within limit ($maxKeep). No cleanup needed for '$Prefix*$Suffix'." -Level "INFO" -LogFilePath $BuildLog
+    }
 }
 
 Function Invoke-SshCommand {
@@ -1204,60 +1284,88 @@ Function Invoke-SshCommand {
     return ($sshExitCode -eq 0)
 }
 
-Function Write-Log {
+Function Invoke-WslRsync {
     param(
         [Parameter(Mandatory = $true)]
-        [object]$Message, # Allow any object, convert to string
-
-        [Parameter(Mandatory = $false)]
-        [ValidateSet("INFO", "SUCCESS", "WARN", "WARNING", "ERROR", "DEBUG", "FATAL")]
-        [string]$Level = "INFO",
-
+        [string]$SourcePath, # WSL path, ensure trailing slash if copying contents
         [Parameter(Mandatory = $true)]
-        [string]$LogFilePath,
-
+        [string]$DestinationPath, # Server path, ensure trailing slash if copying contents
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose, # e.g., "React build files"
         [Parameter(Mandatory = $false)]
-        [switch]$NoConsole # Optionally suppress console output
+        [string[]]$ExcludePatterns = @()
     )
+    # Construct the SSH command for rsync's -e option using the specific key
+    $rsyncSshOptionValue = "ssh -i $DEPLOYMENT_WSL_SSH_KEY_PATH"
 
-    # --- Prepare Log Entry ---
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    
-    # Convert message object to string if needed
-    if ($Message -isnot [string]) {
-        $messageString = $Message | Out-String
-    }
-    else {
-        $messageString = $Message
-    }
+    # Base rsync arguments
+    $rsyncArgs = @("-avz", "--delete", "--checksum")
+    $rsyncArgs += "-e", $rsyncSshOptionValue
 
-    # Trim trailing whitespace often added by Out-String
-    $messageString = $messageString.Trim() 
-
-    $logEntry = "$timestamp [$($Level.ToUpper())] $messageString"
-
-    # --- Write to Console (Conditional) ---
-    if (-not $NoConsole) {
-        switch ($Level.ToUpper()) {
-            "SUCCESS" { Write-Host $logEntry -ForegroundColor Green }
-            "WARN" { Write-Warning $logEntry } # Write-Warning implicitly adds "WARNING: " prefix
-            "WARNING" { Write-Warning $logEntry } # Write-Warning implicitly adds "WARNING: " prefix
-            "ERROR" { Write-Error $logEntry }   # Write-Error implicitly handles error stream formatting
-            "FATAL" { Write-Error $logEntry }   # Treat FATAL like ERROR for console output, but signal severity
-            "DEBUG" { Write-Host $logEntry -ForegroundColor DarkGray } # Optional: Dim debug messages
-            default { Write-Host $logEntry -ForegroundColor Cyan } # INFO and any others default to plain Write-Host
-        }
+    # Add excludes
+    if ($ExcludePatterns.Count -gt 0) {
+        $rsyncArgs += ($ExcludePatterns | ForEach-Object { "--exclude=$_" }) # Pass excludes directly
     }
 
-    # --- Append to Log File ---
+    # Add source and destination paths
+    $destinationSpec = "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}:$($DestinationPath)"
+    $rsyncArgs += $SourcePath, $destinationSpec
+
+    # Construct the arguments for wsl.exe
+    $wslArgs = @("-u", $DEPLOYMENT_WSL_SSH_USER, "rsync") + $rsyncArgs
+
+    Write-Log -Message "Executing WSL command for ${Purpose}: wsl $($wslArgs -join ' ')" -Level "INFO" -LogFilePath $BuildLog
+
+    $rsyncExitCode = -1
     try {
-        $logEntry | Out-File -FilePath $LogFilePath -Append -Encoding UTF8 -ErrorAction Stop
+        # Use Start-Process with ArgumentList for wsl.exe
+        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $processInfo.FileName = "wsl.exe"
+        foreach ($arg in $wslArgs) {
+            $processInfo.ArgumentList.Add($arg)
+        }
+        $processInfo.UseShellExecute = $false
+        $processInfo.RedirectStandardOutput = $true # Capture output for logging
+        $processInfo.RedirectStandardError = $true  # Capture errors for logging
+        $processInfo.CreateNoWindow = $true
+
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $processInfo
+        $process.Start() | Out-Null
+
+        # Log output/error streams (optional but good practice)
+        $stdOut = $process.StandardOutput.ReadToEnd()
+        $stdErr = $process.StandardError.ReadToEnd()
+
+        $process.WaitForExit()
+        $rsyncExitCode = $process.ExitCode
+
+        if ($stdOut) {
+            Write-Log -Message "Rsync StdOut: $stdOut" -Level "INFO" -LogFilePath $BuildLog
+        }
+        if ($stdErr) {
+            # Log stderr as warning or error depending on exit code
+            if ($rsyncExitCode -ne 0) {
+                Write-Log -Message "Rsync StdErr: $stdErr" -Level "ERROR" -LogFilePath $BuildLog
+            }
+            else {
+                Write-Log -Message "Rsync StdErr: $stdErr" -Level "INFO" -LogFilePath $BuildLog
+            }
+        }
+
     }
     catch {
-        # Critical failure: Can't write to log file. Output to console error stream instead.
-        Write-Error "CRITICAL LOGGING FAILURE: Could not write to '$LogFilePath'. Original message: [$Level] $messageString. Error: $($_.Exception.Message)"
-        # Throwing here as the log essential for tracking deployment issues
-        throw "Logging failed. Halting execution." 
+        Write-Error "FATAL: Failed to start WSL rsync process for $Purpose. Error: $($_.Exception.Message)" -ErrorAction Stop | Tee-Object -FilePath $BuildLog -Append
+        Write-Log -Message "FATAL: Failed to start WSL rsync process for $Purpose. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
+        # Exit code remains non-zero
+    }
+
+    if ($rsyncExitCode -ne 0) {
+        Write-Log -Message "FATAL: Failed to sync $Purpose using rsync (Exit Code: $rsyncExitCode). Check WSL user '$DEPLOYMENT_WSL_SSH_USER', key '$DEPLOYMENT_WSL_SSH_KEY_PATH', rsync output above, SSH connectivity, and paths ($SourcePath -> $DestinationPath). Exiting.", -Level "FATAL" -LogFilePath $BuildLog
+        throw "Halting due to fatal error during rsync for '$Purpose'."
+    }
+    else {
+        Write-Log -Message "$Purpose synced successfully." -Level "SUCCESS" -LogFilePath $BuildLog
     }
 }
 
@@ -1350,10 +1458,103 @@ Function Open-Logfile {
         }
     }
 
+Function Write-Log {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Message, # Allow any object, convert to string
 
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("INFO", "SUCCESS", "WARN", "WARNING", "ERROR", "DEBUG", "FATAL")]
+        [string]$Level = "INFO",
+
+        [Parameter(Mandatory = $true)]
+        [string]$LogFilePath,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoConsole # Optionally suppress console output
+    )
+
+    # --- Prepare Log Entry ---
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    
+    # Convert message object to string if needed
+    if ($Message -isnot [string]) {
+        $messageString = $Message | Out-String
+    }
+    else {
+        $messageString = $Message
+    }
+
+    # Trim trailing whitespace often added by Out-String
+    $messageString = $messageString.Trim() 
+
+    $logEntry = "$timestamp [$($Level.ToUpper())] $messageString"
+
+    # --- Write to Console (Conditional) ---
+    if (-not $NoConsole) {
+        switch ($Level.ToUpper()) {
+            "SUCCESS" { Write-Host $logEntry -ForegroundColor Green }
+            "WARN" { Write-Warning $logEntry } # Write-Warning implicitly adds "WARNING: " prefix
+            "WARNING" { Write-Warning $logEntry } # Write-Warning implicitly adds "WARNING: " prefix
+            "ERROR" { Write-Error $logEntry }   # Write-Error implicitly handles error stream formatting
+            "FATAL" { Write-Error $logEntry }   # Treat FATAL like ERROR for console output, but signal severity
+            "DEBUG" { Write-Host $logEntry -ForegroundColor DarkGray } # Optional: Dim debug messages
+            default { Write-Host $logEntry -ForegroundColor Cyan } # INFO and any others default to plain Write-Host
+        }
+    }
+
+    # --- Append to Log File ---
+    try {
+        $logEntry | Out-File -FilePath $LogFilePath -Append -Encoding UTF8 -ErrorAction Stop
+    }
+    catch {
+        # Critical failure: Can't write to log file. Output to console error stream instead.
+        Write-Error "CRITICAL LOGGING FAILURE: Could not write to '$LogFilePath'. Original message: [$Level] $messageString. Error: $($_.Exception.Message)"
+        # Throwing here as the log essential for tracking deployment issues
+        throw "Logging failed. Halting execution." 
+    }
+}
+    
 ##################################################################################
 #--------------------------- Start of Main Script -------------------------------#
 ##################################################################################
+
+# --- Obtain Version Parameters ---
+if (-not ($PSBoundParameters.ContainsKey('Version') -or $PSBoundParameters.ContainsKey('BumpType'))) {
+    Write-Host "`nDeployment Version:" -ForegroundColor Yellow
+    $choice = ''
+    while ($choice -ne 'v' -and $choice -ne 'b') {
+        $choice = Read-Host "Deploy existing [V]ersion or [B]ump version? (v/b)"
+    }
+
+    if ($choice -eq 'v') {
+        $validVersion = $false
+        while (-not $validVersion) {
+            $Version = Read-Host "Enter existing version tag to deploy (e.g., v1.2.3)"
+            if ($Version -match '^v\d+\.\d+\.\d+$') {
+                $validVersion = $true
+            } else {
+                Write-Warning "Invalid format. Please use 'vX.X.X' (e.g., v1.2.3)."
+            }
+        }
+        # Update the PSBoundParameter Version
+        $PSBoundParameters['Version'] = $Version
+    }
+    else { # $choice -eq 'b'
+        $validBump = $false
+        $allowedBumpTypes = @("major", "minor", "patch", "rc", "dev", "prod")
+        while (-not $validBump) {
+            $BumpType = Read-Host "Enter bump type ($($allowedBumpTypes -join ', '))"
+            if ($allowedBumpTypes -contains $BumpType) {
+                $validBump = $true
+            } else {
+                Write-Warning "Invalid bump type. Please choose from: $($allowedBumpTypes -join ', ')."
+            }
+        }
+        # Update the PSBoundParameter BumpType
+        $PSBoundParameters['BumpType'] = $BumpType
+    }
+}
 
 
 
@@ -1403,9 +1604,6 @@ if ($PSBoundParameters.ContainsKey('BumpType')) {
     # User specified an existing version
     $Script:DeployedVersion = $Version
     Write-Log -Message "Using specified version: $Script:DeployedVersion" -Level "INFO" -LogFilePath $buildLog
-} else {
-    Write-Log -Message "FATAL: You must specify either -BumpType or -Version." -Level "FATAL" -LogFilePath $buildLog
-    throw "Missing required parameter: -BumpType or -Version."
 }
 
 # --- Assign Local and Target Environment Variables ---
