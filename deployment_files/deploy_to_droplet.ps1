@@ -224,13 +224,25 @@ Function Invoke-VersionBump {
     if ($null -ne $GitRepoPath) {
         Write-Log -Message "Checking for uncommitted changes in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
         Push-Location $GitRepoPath
-        $status = git status --porcelain
-        if ($status -ne ''){
-            Write-Log -Message "FATAL: Uncommitted changes detected in the Git repository. Please commit or stash changes before running the script." -Level "ERROR" -LogFilePath $BuildLog
-            Pop-Location
-            throw "Uncommitted changes detected."
+        try { # Add try/finally around Push-Location
+            # Capture output as string, trim whitespace
+            $statusOutput = (git status --porcelain | Out-String).Trim() 
+
+            # Check the LENGTH of the trimmed string
+            if ($statusOutput.Length -gt 0) { 
+                # Log the actual status output for debugging
+                Write-Log -Message "Git status reported changes:" -Level "DEBUG" -LogFilePath $BuildLog 
+                Write-Log -Message $statusOutput -Level "DEBUG" -LogFilePath $BuildLog -NoConsole
+
+                Write-Log -Message "FATAL: Uncommitted changes detected in the Git repository. Please commit or stash changes before running the script." -Level "FATAL" -LogFilePath $BuildLog # Changed level to FATAL
+                
+                throw "Uncommitted changes detected." # Throw AFTER logging FATAL
+            } else {
+                 Write-Log -Message "Git status clean." -Level "INFO" -LogFilePath $BuildLog
+            }
+        } finally {
+            Pop-Location # Ensure Pop-Location runs even if 'throw' happens
         }
-        Pop-Location
     }
 
     if (-not (Test-Path $VersionFilePath)) { Write-Log -Message "FATAL: Version file not found: $VersionFilePath" -Level "FATAL" -LogFilePath $BuildLog; throw "Version file missing"; }
