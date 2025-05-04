@@ -302,24 +302,31 @@ Function Invoke-VersionBump {
     Write-Log -Message "Performing Git operations in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
     try {
         Push-Location $GitRepoPath
-        git add $VersionFilePath
+        git add $VersionFilePath | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Git add failed for $VersionFilePath." }
-        git add $PackageJsonPath
+        
+        git add $PackageJsonPath | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Git add failed for $PackageJsonPath." }
-        git commit -m "Bump version to $newVersionTag"
+
+        # Commit messages often go to stdout AND stderr, redirect both with *> $null
+        git commit -m "Bump version to $newVersionTag" *> $null 
         if ($LASTEXITCODE -ne 0) { throw "Git commit failed." }
-        git tag $newVersionTag
+        
+        git tag $newVersionTag | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Git tag failed." }
-        git push origin HEAD # Push the commit
+        
+        git push origin HEAD *> $null 
         if ($LASTEXITCODE -ne 0) { throw "Git push commit failed." }
-        git push origin $newVersionTag # Push the tag
+        
+        git push origin $newVersionTag *> $null 
         if ($LASTEXITCODE -ne 0) { throw "Git push tag failed." }
+
         Write-Log -Message "✅ Version bumped, committed, tagged ($newVersionTag), and pushed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
     } catch {
         Write-Log -Message "FATAL: Git operation failed during version bump. Error: $($_.Exception.Message)" -Level "FATAL" -LogFilePath $BuildLog; throw "Git operation failed"
     } finally { Pop-Location }
 
-    return $newVersionTag # Return the new tag to be used for deployment
+    return $newVersionTag
 }
 Function Import-EnvFile {
     param(
