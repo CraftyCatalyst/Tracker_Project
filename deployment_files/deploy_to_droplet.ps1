@@ -724,7 +724,7 @@ Function Sync-FilesToServer {
         [Parameter(Mandatory = $true)]
         [string]$ServerFlaskBaseDir, # Server path for Flask base directory
         [Parameter(Mandatory = $true)]
-        [string]$LocalFlaskBaseDir, # Local path for Flask base directory
+        [string]$WslLocalFlaskBaseDir, # Local path for Flask base directory
         [Parameter(Mandatory = $true)]
         [string]$BuildLog
     )
@@ -1736,7 +1736,7 @@ Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
     -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
     -ServerFlaskAppDir $serverFlaskAppDir `
     -ServerFlaskBaseDir $serverFlaskBaseDir `
-    -LocalFlaskBaseDir $localFlaskDir `
+    -WslLocalFlaskBaseDir $wslLocalFlaskDir `
     -BuildLog $buildLog
 
 # Step 5: Install/Upgrade Flask Dependencies
