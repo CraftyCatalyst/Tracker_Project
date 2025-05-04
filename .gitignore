@@ -31,3 +31,4 @@ deployment_files/build_logs
 deployment_files/LaunchNPP_Monitor.ahk
 deployment_files/deploy_to_droplet release_script.ps1
 deployment_files/test_harness/
+deployment_files/release_scripts/qas/Dump20250504.sql

@@ -1652,15 +1652,14 @@ $wslLocalFrontendDirBuild = "$wslLocalFrontendDir/build" # Source directory for 
 # --- Rename Log File with Actual Version ---
 $finalLogName = "build_${Script:DeployedVersion}_$timestamp.log"
 $finalLogPath = Join-Path $logDir $finalLogName
-$renameSucceeded = $false # Flag to track success
+
 
 if ($buildLog -ne $finalLogPath) {
     Write-Log -Message "Attempting to rename log file to '$finalLogPath'..." -Level "INFO" -LogFilePath $buildLog
     try {
         Rename-Item -Path $buildLog -NewName $finalLogName -ErrorAction Stop 
         Write-Log -Message "Log file renamed successfully." -Level "INFO" -LogFilePath $buildLog # Log to OLD name just before changing variable
-        $buildLog = $finalLogPath, # Update the variable ONLY if rename succeeded
-        $renameSucceeded = $true
+        $buildLog = $finalLogPath # Update the variable ONLY if rename succeeded       
         Write-Log -Message "Log variable updated to new path '$buildLog'." -Level "DEBUG" -LogFilePath $buildLog # Log to NEW name
     } catch {
         Write-Log -Message "Warning: Failed to rename log file '$buildLog' to '$finalLogName'. File might be locked. Subsequent logs will continue using the temporary name. Note: Consider manually renaming '$buildLog' to '$finalLogName' after script completion. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $buildLog 
@@ -1676,7 +1675,7 @@ Open-Logfile -BuildLog $buildLog
 ##################################################################################
 
 # Step 1: Check Environment & Confirm
-Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
+nConfirm-DeploymentEnvironment -TargetEnv $targetEnv `
     -RunMode $runMode `
     -TargetFlaskEnv $targetFlaskEnv `
     -FlaskEnv $flaskEnv `
