@@ -763,10 +763,9 @@ Function Sync-FilesToServer {
         -ExcludePatterns $flaskExcludes `
 
     # Copy the pip_requirements.txt file from the local flask_server dir to the flask base directory on the server
-    $pipReqFilePath = Join-Path $ServerFlaskBaseDir $DEPLOYMENT_PIP_REQ_FILE_PATH # Full path on server
-    $pipReqFileSource = Join-Path $LocalFlaskBaseDir $DEPLOYMENT_PIP_REQ_FILE_PATH # Full path on local machine
+    $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on server
     Invoke-WslRsync -SourcePath "$($pipReqFileSource)" `
-        -DestinationPath "$($pipReqFilePath)" `
+        -DestinationPath "$($serverPipReqFilePath)" `
         -Purpose "Pip requirements file"
 
     Write-Log -Message "Application files deployed successfully via rsync." -Level "SUCCESS" -LogFilePath $BuildLog
