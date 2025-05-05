@@ -851,7 +851,7 @@ Function Invoke-DatabaseMigration {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Step 6: Database Migration (Optional) ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 6: Database Migration ---" -Level "INFO" -LogFilePath $BuildLog
 
     if ($runDBMigration -ne 'y') {
         Write-Log -Message "Database migration not requested. Skipping..." -Level "INFO" -LogFilePath $BuildLog
@@ -879,7 +879,7 @@ Function Invoke-DatabaseMigration {
     if (-not $migrationDirExists) {
         Write-Log -Message "Migrations directory not found. Initializing Flask-Migrate..." -Level "INFO" -LogFilePath $BuildLog
 
-        $initCmd = "cd '$ServerFlaskBaseDir' && flask db init"
+        $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init"
         Invoke-SshCommand -Command $initCmd `
             -ActionDescription "initialize migrations (flask db init)" `
             -BuildLog $BuildLog `
@@ -897,14 +897,13 @@ Function Invoke-DatabaseMigration {
     # 5.1: Generate Migration Script (using the determined message)
     Write-Log -Message "Generating database migration script with message: '$migrationMessage'" -Level "INFO" -LogFilePath $BuildLog
     $escapedMigrationMessageForCmd = $migrationMessage -replace "'", "'\''"
-    $migrateCmd = "cd '$ServerFlaskBaseDir' && flask db migrate -m '$escapedMigrationMessageForCmd'"
+    $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd'"
     Invoke-SshCommand -Command $migrateCmd `
         -ActionDescription "generate migration script" `
         -BuildLog $BuildLog `
         -IsFatal $true # Keep original fatal behavior
     Write-Log -Message "Migration script generated. Please review it on the server." -Level "WARNING" -LogFilePath $BuildLog
 
-    # 5.2: Pause for User Review (unless AutoApproveMigration is set)
     # 5.2: Pause for User Review (unless AutoApproveMigration is set)
     $migrationScriptDir = "$ServerFlaskBaseDir/migrations/versions/" # This path should now exist
     Write-Log -Message "The migration script has been generated in '$migrationScriptDir' on the server." -Level "WARNING" -LogFilePath $BuildLog
@@ -974,7 +973,7 @@ Function Invoke-DatabaseMigration {
         # --- Apply Migration ---
         Write-Log -Message "Migration script review completed. Proceeding with upgrade..." -Level "INFO" -LogFilePath $BuildLog
         Write-Log -Message "Applying database migration (upgrade)..." -Level "INFO" -LogFilePath $BuildLog        
-        $upgradeCmd = "cd '$ServerFlaskBaseDir' && flask db upgrade"
+        $upgradeCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db upgrade"
         Invoke-SshCommand -Command $upgradeCmd `
             -ActionDescription "apply database migration (upgrade)" `
             -BuildLog $BuildLog `
