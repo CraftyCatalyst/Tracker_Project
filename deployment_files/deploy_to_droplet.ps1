@@ -880,8 +880,7 @@ Function Invoke-DatabaseMigration {
         Write-Log -Message "Migrations directory not found. Initializing Flask-Migrate..." -Level "INFO" -LogFilePath $BuildLog
 
         # Append '; exit' to ensure the SSH session closes even if flask db init doesn't signal EOF correctly on first run
-        # $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init; exit"
-        $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init"
+        $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init; exit"
         Invoke-SshCommand -Command $initCmd `
             -ActionDescription "initialize migrations (flask db init)" `
             -BuildLog $BuildLog `
