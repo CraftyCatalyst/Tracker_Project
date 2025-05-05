@@ -1082,14 +1082,12 @@ Function Invoke-SqlReleaseScripts {
             # Record doesn't exist, perform INSERT
             Write-Log -Message "Recording new application of '$scriptName' in database." -Level "INFO" -LogFilePath $BuildLog
             $recordSql = "INSERT INTO applied_sql_scripts (script_name, app_version, created_at, updated_at) VALUES ('$scriptName', '$Script:DeployedVersion', UTC_TIMESTAMP(), UTC_TIMESTAMP());"
-            $escapedRecordSql = $recordSql -replace "'", "'\''" # Escape quotes
-            $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$escapedRecordSql"""
+            $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$recordSql"""
         } else {
             # Record exists, perform UPDATE (only if ForceRerun was used, though it works even if not)
             Write-Log -Message "Updating application record for '$scriptName' in database (re-run)." -Level "INFO" -LogFilePath $BuildLog
             $recordSql = "UPDATE applied_sql_scripts SET updated_at = UTC_TIMESTAMP(), app_version = '$Script:DeployedVersion' WHERE script_name = '$scriptName';"
-            $escapedRecordSql = $recordSql -replace "'", "'\''" # Escape quotes
-            $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$escapedRecordSql"""
+            $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$recordSql"""
         }
         Invoke-SshCommand -Command $recordCmd -ActionDescription "record SQL script '$newScriptName' application in database" -BuildLog $BuildLog -IsFatal $true # Fatal if we can't record it
 
