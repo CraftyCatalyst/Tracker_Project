@@ -899,7 +899,8 @@ Function Invoke-DatabaseMigration {
     # 5.1: Generate Migration Script (using the determined message)
     Write-Log -Message "Generating database migration script with message: '$migrationMessage'" -Level "INFO" -LogFilePath $BuildLog
     $escapedMigrationMessageForCmd = $migrationMessage -replace "'", "'\''"
-    $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd'"
+    # Redirect output to prevent potential hangs similar to 'flask db init'
+    $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd' > /dev/null 2>&1; exit"
     Invoke-SshCommand -Command $migrateCmd `
         -ActionDescription "generate migration script" `
         -BuildLog $BuildLog `
