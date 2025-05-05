@@ -764,7 +764,7 @@ Function Sync-FilesToServer {
 
     # Copy the pip_requirements.txt file from the local flask_server dir to the flask base directory on the server
     $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on server
-    Invoke-WslRsync -SourcePath "$($pipReqFileSource)" `
+    Invoke-WslRsync -SourcePath "$($WslLocalFlaskBaseDir)" `
         -DestinationPath "$($serverPipReqFilePath)" `
         -Purpose "Pip requirements file"
 
