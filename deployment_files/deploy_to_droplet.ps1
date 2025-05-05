@@ -191,7 +191,40 @@ param(
     [string]$runBuild = 'y', # Default to 'y' for build unless specified otherwise
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to force re-running of all SQL release scripts, even if previously applied.")]
-    [switch]$ForceSqlScripts
+    [switch]$ForceSqlScripts,
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set the switch to ONLY Confirm the deployment environment and not run the script.")]
+    [switch]$ForceConfirmEnvOnly, # Added to allow for Environment check without running the script
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the React build and not run the script.")]
+    [switch]$ForceReactBuildOnly, # Added to allow for React build without running the script
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the backup and not run the script.")]
+    [switch]$ForceBackupOnly, # Added to allow for backup without running the script
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the Flask deployment and not run the script.")]
+    [switch]$ForceSyncFilesToServerOnly, # Added to allow for Flask deployment without running the script
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the Flask dependency update and not run the script.")]
+    [switch]$ForceFlaskUpdateOnly, # Added to allow for Flask dependency update without running the script
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the database migration and not run the script.")]
+    [switch]$ForceDBMigrationOnly, # Added to allow for database migration without running the script
+
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY restart the services and not run the script.")]
+    [switch]$ForceRestartServicesOnly, # Added to allow for restarting services without running the script
+
+    # -ForceConfirmation (or similar name): Skips the "Proceed? (y/n)" prompt.
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to skip the confirmation prompt.")]
+    [switch]$ForceConfirmation, # Added to allow for skipping confirmation prompt when using the test harness
+
+    #-AutoApproveMigration (or similar name): Skips the "Have you reviewed..." prompt for DB migration, assuming 'y'. (Alternatively, test the 'n' path separately).
+    [Parameter(Mandatory = $false, HelpMessage = "Set this switch to skip the DB migration review prompt.")]
+    [switch]$AutoApproveMigration, # Added to allow for skipping DB migration review prompt when using the test harness
+
+    #-AppendTestRun: accepts a string to append to the log file name for test runs.
+    [Parameter(Mandatory = $false, HelpMessage = "Append a string to the log file name for test runs.")]
+    [string]$AppendTestRun = '' # Default to empty string for no appending
 )
 
 # ------------------------------ Global Variables -------------------------------
@@ -525,6 +558,13 @@ Function Confirm-DeploymentEnvironment {
     }
 
     # 1.2: Add Explicit Confirmation
+    # Check to see if the ForceConfirmation switch is set to skip the prompt, if not then prompt the user
+    if ($ForceConfirmation) {
+        Write-Log -Message "Skipping user confirmation prompt due to ForceConfirmation switch." -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Build version '$Script:DeployedVersion' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'." -Level "INFO" -LogFilePath $BuildLog
+        return # Skip the confirmation prompt
+    }
+    
     Write-Host "`n"
     $confirmation = Read-Host "You are about to BUILD version '$Script:DeployedVersion' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'. Proceed? (y/n)"
     # Log the prompt and the answer separately for clarity
@@ -864,14 +904,22 @@ Function Invoke-DatabaseMigration {
         -IsFatal $true # Keep original fatal behavior
     Write-Log -Message "Migration script generated. Please review it on the server." -Level "WARNING" -LogFilePath $BuildLog
 
-    # 5.2: Pause for User Review
+    # 5.2: Pause for User Review (unless AutoApproveMigration is set)
+    # 5.2: Pause for User Review (unless AutoApproveMigration is set)
     $migrationScriptDir = "$ServerFlaskBaseDir/migrations/versions/" # This path should now exist
     Write-Log -Message "The migration script has been generated in '$migrationScriptDir' on the server." -Level "WARNING" -LogFilePath $BuildLog
-    Write-Log -Message "Please SSH into the server ($DEPLOYMENT_SERVER_USER@$DEPLOYMENT_SERVER_IP) and review the latest script in that directory." -Level "WARNING" -LogFilePath $BuildLog
+
     $reviewConfirmation = ''
+    if ($AutoApproveMigration) {
+        Write-Log -Message "Auto-approving migration script review due to -AutoApproveMigration switch." -Level "WARN" -LogFilePath $BuildLog
+        $reviewConfirmation = 'y'
+    } else {
+        Write-Log -Message "Please SSH into the server ($DEPLOYMENT_SERVER_USER@$DEPLOYMENT_SERVER_IP) and review the latest script in that directory." -Level "WARNING" -LogFilePath $BuildLog
+    }
     while ($reviewConfirmation -ne 'y' -and $reviewConfirmation -ne 'n') {
         $reviewConfirmation = Read-Host "Have you reviewed the migration script and want to apply it? (y/n)"
     }
+
 
     if ($reviewConfirmation -ne 'y') {
         # --- Handle Cancellation ---
@@ -1589,8 +1637,6 @@ if (-not ($PSBoundParameters.ContainsKey('Version') -or $PSBoundParameters.Conta
     }
 }
 
-
-
 # --- Define Paths ---
 $scriptRoot = $PSScriptRoot
 
@@ -1609,9 +1655,17 @@ if (-not (Test-Path $logDir)) {
 }
 # Create a log file name based on the version and timestamp
 # Use a temporary name until version is determined
-$tempLogName = "build_pending_$timestamp.log"
-$buildLog = Join-Path $logDir $tempLogName
+# Append $AppendTestRun if it's not empty
+if ($AppendTestRun) { # Checks if the string is not null or empty
+    $tempLogName = "build_pending_${timestamp}_${AppendTestRun}.log"
+    # Optional: Log only if appending actually happens
+    Write-Log -Message "Appending test run info to log name: $AppendTestRun" -Level "INFO" -LogFilePath $buildLog
+} else {
+    $tempLogName = "build_pending_$timestamp.log"
+}
 
+
+$buildLog = Join-Path $logDir $tempLogName
 
 # Open the log file for writing (using the temporary name initially)
 Test-Logfile -BuildLog $buildLog -ScriptRoot $scriptRoot
@@ -1707,58 +1761,137 @@ Open-Logfile -BuildLog $buildLog
 #--------------------------- Start of Deployment Steps --------------------------#
 ##################################################################################
 
-# Step 1: Check Environment & Confirm
-Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
-    -RunMode $runMode `
-    -TargetFlaskEnv $targetFlaskEnv `
-    -FlaskEnv $flaskEnv `
-    -BuildLog $buildLog
+# Check if any Force*Only switch is set
+if ($ForceConfirmEnvOnly -or $ForceReactBuildOnly -or $ForceBackupOnly -or $ForceSyncFilesToServerOnly -or $ForceFlaskUpdateOnly -or $ForceDBMigrationOnly -or $ForceRestartServicesOnly) {
+    Write-Log -Message "Force*Only switch detected. Running only the specified step." -Level "WARN" -LogFilePath $buildLog
 
-# Step 2: Run React build locally
-Invoke-ReactBuild -RunBuild $runBuild `
-    -LocalFrontendDir $localFrontendDir `
-    -BuildLog $buildLog `
-    -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
+    if ($ForceConfirmEnvOnly) {
+        Write-Log -Message "--- Running ONLY Step 1: Environment Check & Confirmation ---" -Level "INFO" -LogFilePath $buildLog
+        Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
+            -RunMode $runMode `
+            -TargetFlaskEnv $targetFlaskEnv `
+            -FlaskEnv $flaskEnv `
+            -BuildLog $buildLog
+        Write-Log -Message "--- Finished ONLY Step 1 ---" -Level "INFO" -LogFilePath $buildLog
+    }
+    elseif ($ForceReactBuildOnly) {
+        Write-Log -Message "--- Running ONLY Step 2: Run React Build Locally ---" -Level "INFO" -LogFilePath $buildLog
+        Invoke-ReactBuild -RunBuild 'y' ` # Force build to 'y' when running this step only
+            -LocalFrontendDir $localFrontendDir `
+            -BuildLog $buildLog `
+            -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
+        Write-Log -Message "--- Finished ONLY Step 2 ---" -Level "INFO" -LogFilePath $buildLog
+    }
+    elseif ($ForceBackupOnly) {
+        Write-Log -Message "--- Running ONLY Step 3: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $buildLog
+        Backup-ServerState -RunBackup 'y' ` # Force backup to 'y' when running this step only
+            -BackupDirFlask $backupDirFlask `
+            -ServerFlaskDir $serverFlaskBaseDir `
+            -BackupDirFrontend $backupDirFrontend `
+            -ServerFrontendBuildDir $serverFrontendBuildDir `
+            -BackupDirDB $backupDirDB `
+            -DatabaseName $DEPLOYMENT_DB_NAME `
+            -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
+            -BuildLog $buildLog
+        Write-Log -Message "--- Finished ONLY Step 3 ---" -Level "INFO" -LogFilePath $buildLog
+    }
+    elseif ($ForceSyncFilesToServerOnly) {
+        Write-Log -Message "--- Running ONLY Step 4: Deploy Application Files using rsync ---" -Level "INFO" -LogFilePath $buildLog
+        Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
+            -ServerFrontendBuildDir $serverFrontendBuildDir `
+            -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
+            -ServerFlaskAppDir $serverFlaskAppDir `
+            -ServerFlaskBaseDir $serverFlaskBaseDir `
+            -WslLocalFlaskBaseDir $wslLocalFlaskDir `
+            -BuildLog $buildLog
+        Write-Log -Message "--- Finished ONLY Step 4 ---" -Level "INFO" -LogFilePath $buildLog
+    }
+    elseif ($ForceFlaskUpdateOnly) {
+        Write-Log -Message "--- Running ONLY Step 5: Install/Upgrade Flask Dependencies ---" -Level "INFO" -LogFilePath $buildLog
+        Update-FlaskDependencies -VenvDir $DEPLOYMENT_VENV_DIR `
+            -ServerFlaskBaseDir $serverFlaskBaseDir `
+            -BuildLog $buildLog
+        Write-Log -Message "--- Finished ONLY Step 5 ---" -Level "INFO" -LogFilePath $buildLog
+    }
+    elseif ($ForceDBMigrationOnly) {
+        Write-Log -Message "--- Running ONLY Step 6: Database Migration ---" -Level "INFO" -LogFilePath $buildLog
+        Invoke-DatabaseMigration -runDBMigration 'y' ` # Force migration to 'y' when running this step only
+            -VenvDir $DEPLOYMENT_VENV_DIR `
+            -ServerFlaskBaseDir $serverFlaskBaseDir `
+            -BuildLog $buildLog
+        Write-Log -Message "--- Finished ONLY Step 6 ---" -Level "INFO" -LogFilePath $buildLog
+    }
+    elseif ($ForceRestartServicesOnly) {
+        Write-Log -Message "--- Running ONLY Step 7: Restart Services ---" -Level "INFO" -LogFilePath $buildLog
+        Restart-Services -FlaskServiceName $DEPLOYMENT_FLASK_SERVICE_NAME `
+            -BuildLog $buildLog
+        Write-Log -Message "--- Finished ONLY Step 7 ---" -Level "INFO" -LogFilePath $buildLog
+    }
 
-# Step 3: Backup Existing Project Files
-Backup-ServerState -RunBackup $runBackup `
-    -BackupDirFlask $backupDirFlask `
-    -ServerFlaskDir $serverFlaskBaseDir `
-    -BackupDirFrontend $backupDirFrontend `
-    -ServerFrontendBuildDir $serverFrontendBuildDir `
-    -BackupDirDB $backupDirDB `
-    -DatabaseName $DEPLOYMENT_DB_NAME `
-    -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
-    -BuildLog $buildLog
+    Write-Log -Message "Specified single step completed. Exiting script." -Level "INFO" -LogFilePath $buildLog
+    return # Exit the script after the forced step is done
 
-# Step 4: Deploy Application Files using rsync
-Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
-    -ServerFrontendBuildDir $serverFrontendBuildDir `
-    -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
-    -ServerFlaskAppDir $serverFlaskAppDir `
-    -ServerFlaskBaseDir $serverFlaskBaseDir `
-    -WslLocalFlaskBaseDir $wslLocalFlaskDir `
-    -BuildLog $buildLog
+}
+else {
+    # --- Normal Full Deployment Flow ---
+    Write-Log -Message "No Force*Only switch detected. Running full deployment." -Level "INFO" -LogFilePath $buildLog
 
-# Step 5: Install/Upgrade Flask Dependencies
-Update-FlaskDependencies -VenvDir $DEPLOYMENT_VENV_DIR `
-    -ServerFlaskBaseDir $serverFlaskBaseDir `
-    -BuildLog $buildLog
+    # Step 1: Check Environment & Confirm
+    Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
+        -RunMode $runMode `
+        -TargetFlaskEnv $targetFlaskEnv `
+        -FlaskEnv $flaskEnv `
+        -BuildLog $buildLog
 
-# Step 6: Database Migration (Optional)
-Invoke-DatabaseMigration -runDBMigration $runDBMigration `
-    -VenvDir $DEPLOYMENT_VENV_DIR `
-    -ServerFlaskBaseDir $serverFlaskBaseDir `
-    -BuildLog $buildLog
+    # Step 2: Run React build locally
+    Invoke-ReactBuild -RunBuild $runBuild `
+        -LocalFrontendDir $localFrontendDir `
+        -BuildLog $buildLog `
+        -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
 
-# Step 7: Restart Services
-Restart-Services -FlaskServiceName $DEPLOYMENT_FLASK_SERVICE_NAME `
-    -BuildLog $buildLog
+    # Step 3: Backup Existing Project Files
+    Backup-ServerState -RunBackup $runBackup `
+        -BackupDirFlask $backupDirFlask `
+        -ServerFlaskDir $serverFlaskBaseDir `
+        -BackupDirFrontend $backupDirFrontend `
+        -ServerFrontendBuildDir $serverFrontendBuildDir `
+        -BackupDirDB $backupDirDB `
+        -DatabaseName $DEPLOYMENT_DB_NAME `
+        -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
+        -BuildLog $buildLog
 
+    # Step 4: Deploy Application Files using rsync
+    Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
+        -ServerFrontendBuildDir $serverFrontendBuildDir `
+        -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
+        -ServerFlaskAppDir $serverFlaskAppDir `
+        -ServerFlaskBaseDir $serverFlaskBaseDir `
+        -WslLocalFlaskBaseDir $wslLocalFlaskDir `
+        -BuildLog $buildLog
+
+    # Step 5: Install/Upgrade Flask Dependencies
+    Update-FlaskDependencies -VenvDir $DEPLOYMENT_VENV_DIR `
+        -ServerFlaskBaseDir $serverFlaskBaseDir `
+        -BuildLog $buildLog
+
+    # Step 6: Database Migration (Optional)
+    Invoke-DatabaseMigration -runDBMigration $runDBMigration `
+        -VenvDir $DEPLOYMENT_VENV_DIR `
+        -ServerFlaskBaseDir $serverFlaskBaseDir `
+        -BuildLog $buildLog
+
+    # Step 7: Restart Services
+    Restart-Services -FlaskServiceName $DEPLOYMENT_FLASK_SERVICE_NAME `
+        -BuildLog $buildLog
+
+    ##################################################################################
+    # -------------------------- Final Success Message ------------------------------#
+    ##################################################################################
+
+    Write-Log -Message "`nDeployment to $targetEnv for version $Script:DeployedVersion completed successfully!" -Level "SUCCESS" -LogFilePath $buildLog
+    Write-Log -Message "Deployment log saved to '$buildLog'." -Level "INFO" -LogFilePath $buildLog
+    Write-Log -Message "Please check the application at $displayUrl" -Level "INFO" -LogFilePath $buildLog
+}
+
+# ------------------------------ End of Script --------------------------------- #
 ##################################################################################
-# -------------------------- Final Success Message ------------------------------#
-##################################################################################
-
-Write-Log -Message "`nDeployment to $targetEnv for version $Script:DeployedVersion completed successfully!" -Level "SUCCESS" -LogFilePath $buildLog
-Write-Log -Message "Deployment log saved to '$buildLog'." -Level "INFO" -LogFilePath $buildLog
-Write-Log -Message "Please check the application at $displayUrl" -Level "INFO" -LogFilePath $buildLog
