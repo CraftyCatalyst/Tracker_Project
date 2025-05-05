@@ -766,7 +766,7 @@ Function Sync-FilesToServer {
     $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on server
     $localPipReqFilePath = "$WslLocalFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on local WSL
     Write-Log -Message "Copying pip requirements file from '$localPipReqFilePath' to '$serverPipReqFilePath'..." -Level "INFO" -LogFilePath $BuildLog
-    Invoke-WslRsync -SourcePath "$($WslLocalFlaskBaseDir)" `
+    Invoke-WslRsync -SourcePath "$($localPipReqFilePath)" `
         -DestinationPath "$($serverPipReqFilePath)" `
         -Purpose "Pip requirements file"
 
