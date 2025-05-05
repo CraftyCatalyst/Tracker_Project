@@ -881,7 +881,7 @@ Function Invoke-DatabaseMigration {
 
         # Append '; exit' to ensure the SSH session closes even if flask db init doesn't signal EOF correctly on first run
         # Also redirect stdout and stderr to /dev/null to prevent potential buffer issues/deadlocks
-        $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init > /dev/null 2>&1; exit $?"
+        $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init > /dev/null 2>&1; exit `$?"
         Invoke-SshCommand -Command $initCmd `
             -ActionDescription "initialize migrations (flask db init)" `
             -BuildLog $BuildLog `
@@ -900,7 +900,7 @@ Function Invoke-DatabaseMigration {
     Write-Log -Message "Generating database migration script with message: '$migrationMessage'" -Level "INFO" -LogFilePath $BuildLog
     $escapedMigrationMessageForCmd = $migrationMessage -replace "'", "'\''"
     # Redirect output to prevent potential hangs similar to 'flask db init'
-    $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd' > /dev/null 2>&1; exit $?"
+    $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd' > /dev/null 2>&1; exit `$?"
     Invoke-SshCommand -Command $migrateCmd `
         -ActionDescription "generate migration script" `
         -BuildLog $BuildLog `
@@ -977,7 +977,7 @@ Function Invoke-DatabaseMigration {
         Write-Log -Message "Migration script review completed. Proceeding with upgrade..." -Level "INFO" -LogFilePath $BuildLog
         Write-Log -Message "Applying database migration (upgrade)..." -Level "INFO" -LogFilePath $BuildLog        
         # Redirect output and add exit to prevent potential hangs
-        $upgradeCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db upgrade > /dev/null 2>&1; exit $?"
+        $upgradeCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db upgrade > /dev/null 2>&1; exit `$?"
         Invoke-SshCommand -Command $upgradeCmd `
             -ActionDescription "apply database migration (upgrade)" `
             -BuildLog $BuildLog `
