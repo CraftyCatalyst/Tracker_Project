@@ -5,10 +5,20 @@
 ###########################################################################
 #                                  TODO!                                  #
 ###########################################################################
-# -Add the following script parameters to facilitate the test harness run:#
-#   -ForceConfirmation 
-#   -AutoApproveMigration
-#   -AppendTestRun
+# - Get the implementation of the new parameters reviewed:
+#   -Test Harness:
+#       -ForceConfirmation 
+#       -AutoApproveMigration
+#       -AppendTestRun
+#   -New Test Assist Parameters:
+#       -ForceConfirmEnvOnly
+#       -ForceReactBuildOnly
+#       -ForceBackupOnly
+#       -ForceSyncFilesToServerOnly
+#       -ForceFlaskUpdateOnly
+#       -ForceDBMigrationOnly
+#       -ForceRestartServicesOnly
+#    
 ###########################################################################
 
 ###########################################################################
@@ -257,7 +267,8 @@ Function Invoke-VersionBump {
     if ($null -ne $GitRepoPath) {
         Write-Log -Message "Checking for uncommitted changes in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
         Push-Location $GitRepoPath
-        try { # Add try/finally around Push-Location
+        try {
+            # Add try/finally around Push-Location
             # Capture output as string, trim whitespace
             $statusOutput = (git status --porcelain | Out-String).Trim() 
 
@@ -270,10 +281,12 @@ Function Invoke-VersionBump {
                 Write-Log -Message "FATAL: Uncommitted changes detected in the Git repository. Please commit or stash changes before running the script." -Level "FATAL" -LogFilePath $BuildLog # Changed level to FATAL
                 
                 throw "Uncommitted changes detected." # Throw AFTER logging FATAL
-            } else {
-                 Write-Log -Message "Git status clean." -Level "INFO" -LogFilePath $BuildLog
             }
-        } finally {
+            else {
+                Write-Log -Message "Git status clean." -Level "INFO" -LogFilePath $BuildLog
+            }
+        }
+        finally {
             Pop-Location # Ensure Pop-Location runs even if 'throw' happens
         }
     }
@@ -285,13 +298,15 @@ Function Invoke-VersionBump {
     $currentVersionTag = $versionLine.Trim()
 
     # Extract SemVer components from the current tag
-    if ($currentVersionTag -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(rc|dev)\.(\d+))?$') { # Allow optional 'v' prefix for reading
+    if ($currentVersionTag -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(rc|dev)\.(\d+))?$') {
+        # Allow optional 'v' prefix for reading
         $major = [int]$matches[1]
         $minor = [int]$matches[2]
         $patch = [int]$matches[3]
         $preType = $matches[4]
         $preNum = [int]($matches[5] ?? 0)
-    } else {
+    }
+    else {
         Write-Log -Message "FATAL: Invalid version format in '$VersionFilePath': $currentVersionTag" -Level "FATAL" -LogFilePath $BuildLog
         throw "Invalid version format"
     }
@@ -355,9 +370,11 @@ Function Invoke-VersionBump {
         if ($LASTEXITCODE -ne 0) { throw "Git push tag failed." }
 
         Write-Log -Message "✅ Version bumped, committed, tagged ($newVersionTag), and pushed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-    } catch {
+    }
+    catch {
         Write-Log -Message "FATAL: Git operation failed during version bump. Error: $($_.Exception.Message)" -Level "FATAL" -LogFilePath $BuildLog; throw "Git operation failed"
-    } finally { Pop-Location }
+    }
+    finally { Pop-Location }
 
     return $newVersionTag
 }
@@ -829,7 +846,7 @@ Function Update-FlaskDependencies {
     $upgradeFlaskCmd = "cd '$DEPLOYMENT_GLOBAL_DIR' && source '$VenvDir/bin/activate' && pip install -r '$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH' --upgrade"
 
     Invoke-SshCommand -Command $upgradeFlaskCmd `
-    -ActionDescription "upgrade Flask dependencies from $ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" `
+        -ActionDescription "upgrade Flask dependencies from $ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" `
         -BuildLog $BuildLog `
         -IsFatal $true # Keep original fatal behavior
     
@@ -915,7 +932,8 @@ Function Invoke-DatabaseMigration {
     if ($AutoApproveMigration) {
         Write-Log -Message "Auto-approving migration script review due to -AutoApproveMigration switch." -Level "WARN" -LogFilePath $BuildLog
         $reviewConfirmation = 'y'
-    } else {
+    }
+    else {
         Write-Log -Message "Please SSH into the server ($DEPLOYMENT_SERVER_USER@$DEPLOYMENT_SERVER_IP) and review the latest script in that directory." -Level "WARNING" -LogFilePath $BuildLog
     }
     while ($reviewConfirmation -ne 'y' -and $reviewConfirmation -ne 'n') {
@@ -986,7 +1004,7 @@ Function Invoke-DatabaseMigration {
         # --- End Apply Migration ---
     }
 
-# --- Apply SQL Release Scripts (if any) ---
+    # --- Apply SQL Release Scripts (if any) ---
     # Step 6.5: Apply SQL Release Scripts (After Migration)
     Invoke-SqlReleaseScripts -BuildLog $buildLog -ForceRerun:$ForceSqlScripts                             
 
@@ -995,11 +1013,11 @@ Function Invoke-DatabaseMigration {
 
 Function Invoke-SqlReleaseScripts {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$BuildLog,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [switch]$ForceRerun # Add switch to force re-running scripts
-        )
+    )
 
     Write-Log -Message "`n--- Step 6.5: Applying SQL Release Scripts ---" -Level "INFO" -LogFilePath $BuildLog
 
@@ -1049,7 +1067,8 @@ Function Invoke-SqlReleaseScripts {
                 # Don't move the local script if skipped
                 continue # Move to the next script
             }
-        } else {
+        }
+        else {
             Write-Log -Message "ForceRerun specified. Will execute '$scriptName' even if already applied." -Level "WARNING" -LogFilePath $BuildLog
         }
 
@@ -1083,13 +1102,30 @@ Function Invoke-SqlReleaseScripts {
             Write-Log -Message "Recording new application of '$scriptName' in database." -Level "INFO" -LogFilePath $BuildLog
             $recordSql = "INSERT INTO applied_sql_scripts (script_name, app_version, created_at, updated_at) VALUES ('$scriptName', '$Script:DeployedVersion', UTC_TIMESTAMP(), UTC_TIMESTAMP());"
             $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$recordSql"""
-        } else {
-            # Record exists, perform UPDATE (only if ForceRerun was used, though it works even if not)
+        }
+        elseif ($ForceRerun) { 
+            # Record exists, AND force was specified, perform UPDATE
             Write-Log -Message "Updating application record for '$scriptName' in database (re-run)." -Level "INFO" -LogFilePath $BuildLog
             $recordSql = "UPDATE applied_sql_scripts SET updated_at = UTC_TIMESTAMP(), app_version = '$Script:DeployedVersion' WHERE script_name = '$scriptName';"
             $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$recordSql"""
         }
-        Invoke-SshCommand -Command $recordCmd -ActionDescription "record SQL script '$newScriptName' application in database" -BuildLog $BuildLog -IsFatal $true # Fatal if we can't record it
+        else {
+            # Record exists, but ForceRerun was *not* specified.
+            # This state should only be reached if the first check passed (i.e. script not applied),
+            # but the second check found it (unlikely race condition, but possible?).
+            # Or, if the script logic reached here erroneously after skipping in the outer loop.
+            # Better to log a warning or potentially error here, as it's an unexpected state if ForceRerun is false.
+            Write-Log -Message "Warning: SQL script '$scriptName' record found unexpectedly before INSERT/UPDATE. Skipping DB record update." -Level "WARNING" -LogFilePath $BuildLog
+            # Don't move the local script if skipped
+            continue # Move to the next script
+        }
+         
+        # Only invoke if recordCmd was actually set
+        if ($recordCmd) {
+            Write-Log -Message "Recording application of SQL script '$scriptName' in database." -Level "INFO" -LogFilePath $BuildLog
+            Invoke-SshCommand -Command $recordCmd -ActionDescription "record SQL script '$newScriptName' application in database" -BuildLog $BuildLog -IsFatal $true # Fatal if we can't record it
+        }
+        
 
         # --- Archive the script locally and on server ---
         Write-Log -Message "Archiving successful script '$scriptName' to server: $serverArchivePath" -Level "INFO" -LogFilePath $BuildLog
@@ -1436,7 +1472,6 @@ Function Invoke-WslRsync {
 
     }
     catch {
-        Write-Error "FATAL: Failed to start WSL rsync process for $Purpose. Error: $($_.Exception.Message)" -ErrorAction Stop | Tee-Object -FilePath $BuildLog -Append
         Write-Log -Message "FATAL: Failed to start WSL rsync process for $Purpose. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
         # Exit code remains non-zero
     }
@@ -1511,33 +1546,33 @@ Function Open-Logfile {
         [string]$BuildLog # Path to the script root directory
     )
 
-        #--- Open Log File in Notepad++ ---
-        if (Test-Path $BuildLog -PathType Leaf) {
-            Write-Host "`nAttempting to open log file '$BuildLog' in Notepad++..." -ForegroundColor Gray
-            try {
-                # Try assuming notepad++.exe is in the system PATH first
-                # Start-Process -FilePath "notepad++.exe" -ArgumentList $BuildLog -ErrorAction Stop 
+    #--- Open Log File in Notepad++ ---
+    if (Test-Path $BuildLog -PathType Leaf) {
+        Write-Host "`nAttempting to open log file '$BuildLog' in Notepad++..." -ForegroundColor Gray
+        try {
+            # Try assuming notepad++.exe is in the system PATH first
+            # Start-Process -FilePath "notepad++.exe" -ArgumentList $BuildLog -ErrorAction Stop 
                 
-                # Using custom ahk script to launch Notepad++ with monitoring mode on
-                $launcherPath = Join-Path $ScriptRoot "LaunchNPP_Monitor.exe"
-                if (-not (Test-Path $launcherPath)) {
-                    Write-Warning "Launcher script not found at '$launcherPath'. Not launching Notepad++."
-                    return
-                }
-                Start-Process "`"$launcherPath`"" -ArgumentList "`"$BuildLog`""
-
-                Write-Host "-> Notepad++ launched." -ForegroundColor Gray
-            } 
-            catch {
-                        # Handle error if notepad++.exe is not found in Program Files (x86) or fails to launch
-                        Write-Warning "Could not automatically launch Notepad++."
-                    }
+            # Using custom ahk script to launch Notepad++ with monitoring mode on
+            $launcherPath = Join-Path $ScriptRoot "LaunchNPP_Monitor.exe"
+            if (-not (Test-Path $launcherPath)) {
+                Write-Warning "Launcher script not found at '$launcherPath'. Not launching Notepad++."
+                return
             }
-            
-        else {
-            Write-Warning "Could not find log file at '$BuildLog' to open."
+            Start-Process "`"$launcherPath`"" -ArgumentList "`"$BuildLog`""
+
+            Write-Host "-> Notepad++ launched." -ForegroundColor Gray
+        } 
+        catch {
+            # Handle error if notepad++.exe is not found in Program Files (x86) or fails to launch
+            Write-Warning "Could not automatically launch Notepad++."
         }
     }
+            
+    else {
+        Write-Warning "Could not find log file at '$BuildLog' to open."
+    }
+}
 
 Function Write-Log {
     param(
@@ -1614,21 +1649,24 @@ if (-not ($PSBoundParameters.ContainsKey('Version') -or $PSBoundParameters.Conta
             $Version = Read-Host "Enter existing version tag to deploy (e.g., v1.2.3)"
             if ($Version -match '^v\d+\.\d+\.\d+$') {
                 $validVersion = $true
-            } else {
+            }
+            else {
                 Write-Warning "Invalid format. Please use 'vX.X.X' (e.g., v1.2.3)."
             }
         }
         # Update the PSBoundParameter Version
         $PSBoundParameters['Version'] = $Version
     }
-    else { # $choice -eq 'b'
+    else {
+        # $choice -eq 'b'
         $validBump = $false
         $allowedBumpTypes = @("major", "minor", "patch", "rc", "dev", "prod")
         while (-not $validBump) {
             $BumpType = Read-Host "Enter bump type ($($allowedBumpTypes -join ', '))"
             if ($allowedBumpTypes -contains $BumpType) {
                 $validBump = $true
-            } else {
+            }
+            else {
                 Write-Warning "Invalid bump type. Please choose from: $($allowedBumpTypes -join ', ')."
             }
         }
@@ -1656,11 +1694,13 @@ if (-not (Test-Path $logDir)) {
 # Create a log file name based on the version and timestamp
 # Use a temporary name until version is determined
 # Append $AppendTestRun if it's not empty
-if ($AppendTestRun) { # Checks if the string is not null or empty
+if ($AppendTestRun) {
+    # Checks if the string is not null or empty
     $tempLogName = "build_pending_${timestamp}_${AppendTestRun}.log"
     # Optional: Log only if appending actually happens
     Write-Log -Message "Appending test run info to log name: $AppendTestRun" -Level "INFO" -LogFilePath $buildLog
-} else {
+}
+else {
     $tempLogName = "build_pending_$timestamp.log"
 }
 
@@ -1687,7 +1727,8 @@ if ($PSBoundParameters.ContainsKey('BumpType')) {
         -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR `
         -BuildLog $buildLog
 
-} elseif ($PSBoundParameters.ContainsKey('Version')) {
+}
+elseif ($PSBoundParameters.ContainsKey('Version')) {
     # User specified an existing version
     $Script:DeployedVersion = $Version
     Write-Log -Message "Using specified version: $Script:DeployedVersion" -Level "INFO" -LogFilePath $buildLog
@@ -1748,7 +1789,8 @@ if ($buildLog -ne $finalLogPath) {
         Write-Log -Message "Log file renamed successfully." -Level "INFO" -LogFilePath $buildLog # Log to OLD name just before changing variable
         $buildLog = $finalLogPath # Update the variable ONLY if rename succeeded       
         Write-Log -Message "Log variable updated to new path '$buildLog'." -Level "DEBUG" -LogFilePath $buildLog # Log to NEW name
-    } catch {
+    }
+    catch {
         Write-Log -Message "Warning: Failed to rename log file '$buildLog' to '$finalLogName'. File might be locked. Subsequent logs will continue using the temporary name. Note: Consider manually renaming '$buildLog' to '$finalLogName' after script completion. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $buildLog 
     }
 }
@@ -1761,8 +1803,9 @@ Open-Logfile -BuildLog $buildLog
 #--------------------------- Start of Deployment Steps --------------------------#
 ##################################################################################
 
-# Check if any Force*Only switch is set
-if ($ForceConfirmEnvOnly -or $ForceReactBuildOnly -or $ForceBackupOnly -or $ForceSyncFilesToServerOnly -or $ForceFlaskUpdateOnly -or $ForceDBMigrationOnly -or $ForceRestartServicesOnly) {
+# Check if any key starting with 'Force' and ending with 'Only' was bound
+$forceOnlySwitchUsed = $PSBoundParameters.Keys.Where({ $_ -like 'Force*Only' -and $PSBoundParameters[$_] }) # Check if the bound parameter value is True
+if ($forceOnlySwitchUsed.Count -gt 0) {
     Write-Log -Message "Force*Only switch detected. Running only the specified step." -Level "WARN" -LogFilePath $buildLog
 
     if ($ForceConfirmEnvOnly) {
@@ -1777,7 +1820,7 @@ if ($ForceConfirmEnvOnly -or $ForceReactBuildOnly -or $ForceBackupOnly -or $Forc
     elseif ($ForceReactBuildOnly) {
         Write-Log -Message "--- Running ONLY Step 2: Run React Build Locally ---" -Level "INFO" -LogFilePath $buildLog
         Invoke-ReactBuild -RunBuild 'y' ` # Force build to 'y' when running this step only
-            -LocalFrontendDir $localFrontendDir `
+        -LocalFrontendDir $localFrontendDir `
             -BuildLog $buildLog `
             -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
         Write-Log -Message "--- Finished ONLY Step 2 ---" -Level "INFO" -LogFilePath $buildLog
@@ -1785,7 +1828,7 @@ if ($ForceConfirmEnvOnly -or $ForceReactBuildOnly -or $ForceBackupOnly -or $Forc
     elseif ($ForceBackupOnly) {
         Write-Log -Message "--- Running ONLY Step 3: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $buildLog
         Backup-ServerState -RunBackup 'y' ` # Force backup to 'y' when running this step only
-            -BackupDirFlask $backupDirFlask `
+        -BackupDirFlask $backupDirFlask `
             -ServerFlaskDir $serverFlaskBaseDir `
             -BackupDirFrontend $backupDirFrontend `
             -ServerFrontendBuildDir $serverFrontendBuildDir `
@@ -1816,7 +1859,7 @@ if ($ForceConfirmEnvOnly -or $ForceReactBuildOnly -or $ForceBackupOnly -or $Forc
     elseif ($ForceDBMigrationOnly) {
         Write-Log -Message "--- Running ONLY Step 6: Database Migration ---" -Level "INFO" -LogFilePath $buildLog
         Invoke-DatabaseMigration -runDBMigration 'y' ` # Force migration to 'y' when running this step only
-            -VenvDir $DEPLOYMENT_VENV_DIR `
+        -VenvDir $DEPLOYMENT_VENV_DIR `
             -ServerFlaskBaseDir $serverFlaskBaseDir `
             -BuildLog $buildLog
         Write-Log -Message "--- Finished ONLY Step 6 ---" -Level "INFO" -LogFilePath $buildLog
