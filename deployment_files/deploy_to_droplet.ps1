@@ -1121,22 +1121,21 @@ Function Restart-Services {
     Write-Log -Message "Restarting Flask service ('$FlaskServiceName')..." -Level "INFO" -LogFilePath $BuildLog
 
     $flaskRestartCmd = "$systemctlPath restart '$FlaskServiceName'"
-    # --- Refactored Call 1 ---
     Invoke-SshCommand -Command $flaskRestartCmd `
-        -UseSudo # Add sudo prefix
-    -ActionDescription "restart Flask service '$FlaskServiceName'" `
+        -UseSudo `
+        -ActionDescription "restart Flask service '$FlaskServiceName'" `
         -BuildLog $BuildLog `
-        -IsFatal $true # Map IsCritical=true to IsFatal=true
+        -IsFatal $true
 
     # 6.2: Restart Nginx (Non-Critical - Warning only)
     $nginxServiceName = "nginx" # Consider making this configurable via .deployment_env
     Write-Log -Message "Restarting Nginx service ('$nginxServiceName')..." -Level "INFO" -LogFilePath $BuildLog
     $nginxRestartCmd = "$systemctlPath restart '$nginxServiceName'"
     Invoke-SshCommand -Command $nginxRestartCmd `
-        -UseSudo # Add sudo prefix
-    -ActionDescription "restart Nginx service '$nginxServiceName'" `
+        -UseSudo `
+        -ActionDescription "restart Nginx service '$nginxServiceName'" `
         -BuildLog $BuildLog `
-        -IsFatal $false # Map IsCritical=false to IsFatal=false
+        -IsFatal $false
 
     Write-Log -Message "Service restarts attempted." -Level "SUCCESS" -LogFilePath $BuildLog
 }

@@ -34,3 +34,4 @@ deployment_files/test_harness/
 deployment_files/release_scripts/qas/Dump20250504.sql
 deployment_files/release_scripts/StaticTablesSeedData.sql
 deployment_files/release_scripts/qas/StaticTablesSeedData.sql
+deployment_files/release_scripts/completed/qas/v0.3.27/StaticTablesSeedData__v0.3.27.sql
