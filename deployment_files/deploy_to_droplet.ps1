@@ -214,15 +214,15 @@ param(
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY restart the services and not run the script.")]
     [switch]$ForceRestartServicesOnly, # Added to allow for restarting services without running the script
 
-    # -ForceConfirmation (or similar name): Skips the "Proceed? (y/n)" prompt.
+    # -ForceConfirmation: Skips the "Proceed? (y/n)" prompt.
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to skip the confirmation prompt.")]
     [switch]$ForceConfirmation, # Added to allow for skipping confirmation prompt when using the test harness
 
-    #-AutoApproveMigration (or similar name): Skips the "Have you reviewed..." prompt for DB migration, assuming 'y'. (Alternatively, test the 'n' path separately).
+    # -AutoApproveMigration: Skips the "Have you reviewed..." prompt for DB migration, assuming 'y'. (Alternatively, test the 'n' path separately).
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to skip the DB migration review prompt.")]
     [switch]$AutoApproveMigration, # Added to allow for skipping DB migration review prompt when using the test harness
 
-    #-AppendTestRun: accepts a string to append to the log file name for test runs.
+    # -AppendTestRun: accepts a string to append to the log file name for test runs.
     [Parameter(Mandatory = $false, HelpMessage = "Append a string to the log file name for test runs.")]
     [string]$AppendTestRun = '' # Default to empty string for no appending
 )
