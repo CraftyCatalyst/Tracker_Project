@@ -5,20 +5,10 @@
 ###########################################################################
 #                                  TODO!                                  #
 ###########################################################################
-# - Get the implementation of the new parameters reviewed:
-#   -Test Harness:
-#       -ForceConfirmation 
-#       -AutoApproveMigration
-#       -AppendTestRun
-#   -New Test Assist Parameters:
-#       -ForceConfirmEnvOnly
-#       -ForceReactBuildOnly
-#       -ForceBackupOnly
-#       -ForceSyncFilesToServerOnly
-#       -ForceFlaskUpdateOnly
-#       -ForceDBMigrationOnly
-#       -ForceRestartServicesOnly
-#    
+#   -
+#   -
+#   -
+#   -
 ###########################################################################
 
 ###########################################################################
@@ -32,7 +22,7 @@
 #    -  Once set do not change it, the deployment script will bump it.    #
 #    -  The script will also tag the git repo with the version that was   #
 #       deployed.                                                         #
-# 3. Please ensure that:                                                  #
+# 3. Also ensure that:                                                    #
 #    - The following files are in the same directory as this script:      #
 #       - .deployment_env                                                 #                 
 #       - LaunchNPP_Monitor.exe                                           #
@@ -40,11 +30,11 @@
 #       - release_scripts/dev                                             #
 #       - release_scripts/qas                                             #
 #       - release_scripts/prod                                            #
-#      (TODO: Make these paths configurable in the .env file)             #
+#       - release_scripts/test                                            #
 #    - .env file is in satisfactory_tracker directory so it gets          #
 #      picked up by the build process.                                    #
 #    - The REACT_APP_RUN_MODE variable in the .env file is set to         #
-#      the correct environment for deployment(prod, qas, dev).            #      
+#      the correct environment for deployment(prod, qas, dev, test).      #      
 #                                                                         #
 ###########################################################################
 
@@ -107,8 +97,8 @@ The script performs the following tasks:
         - Flask (backend)
         - React (frontend)
         - Flask-Migrate (for database migrations)
-        - Nginx (for web server) including configurations for PROD domain and DEV & QAS subdomains
-        - Gunicorn (for serving Flask app) including configurations for PROD domain and DEV & QAS subdomains
+        - Nginx (for web server) including configurations for PROD domain and DEV, QAS & TEST subdomains
+        - Gunicorn (for serving Flask app) including configurations for PROD domain and DEV, QAS & TEST subdomains
     - If creating a new environment, ensure that the server has the necessary configurations and dependencies installed.
         - Ensure the target database is created and accessible.
          - This script will create the schema and tables based on the models if they do not exist.
@@ -125,7 +115,7 @@ The script performs the following tasks:
     - See USEFUL_STUFF\Versioning_Control_Standards.md for details.
 
 .PARAMETER Environment
-The target environment (PROD, QAS, DEV). Mandatory. 
+The target environment (PROD, QAS, DEV, TEST). Mandatory. 
     - This is used to specify the target environment for deployment.
 .PARAMETER runDBMigration
 The run migration parameter (y/n). Mandatory. 
@@ -134,7 +124,7 @@ The run migration parameter (y/n). Mandatory.
 The Git tag/version to deploy (e.g., v1.3.0). Optional.
     - This is used to specify an existing version of code to be deployed.
 .PARAMETER BumpType
-Bump type for version bumping (major, minor, patch, rc, dev, prod). Optional.
+Bump type for version bumping (major, minor, patch, rc, dev, prod, test). Optional.
     - This is used to specify the type of version bump to perform before deployment.
     - If this parameter is used, the -Version parameter is ignored.
     - The script will automatically bump the version based on the specified type and update the version files accordingly.
@@ -170,14 +160,14 @@ If you don't specify any parameters, you will be prompted as follows:
                 - runDBMigration: y
                 - Deploy existing [V]ersion or [B]ump version? (v/b)
                     - (v) - Enter existing version tag to deploy (e.g., v1.2.3)
-                    - (b) - Enter bump type (major, minor, patch, rc, dev, qas, prod)
+                    - (b) - Enter bump type (major, minor, patch, rc, dev, qas, prod or test)
 
 
 #>
 
 param(
-    [Parameter(Mandatory = $true, HelpMessage = "Specify the target environment. Valid values are: PROD, QAS, DEV")]
-    [ValidateSet('PROD', 'QAS', 'DEV')]
+    [Parameter(Mandatory = $true, HelpMessage = "Specify the target environment. Valid values are: PROD, QAS, DEV or TEST")]
+    [ValidateSet('PROD', 'QAS', 'DEV', 'TEST')]
     [string]$Environment,
 
     [Parameter(Mandatory = $true, HelpMessage = "Specify if database migration should run. Valid values are: y, n")]
@@ -188,8 +178,8 @@ param(
     [ValidatePattern('^v\d+\.\d+\.\d+$', Options = 'IgnoreCase')]
     [string]$Version,
 
-    [Parameter(Mandatory = $false, HelpMessage = "Specify the type of version bump to perform before deployment. If used, -Version is ignored. Valid values: major, minor, patch, rc, dev, prod")]
-    [ValidateSet("major", "minor", "patch", "rc", "dev", "qas", "prod")]
+    [Parameter(Mandatory = $false, HelpMessage = "Specify the type of version bump to perform before deployment. If used, -Version is ignored. Valid values: major, minor, patch, rc, dev, prod or test")]
+    [ValidateSet("major", "minor", "patch", "rc", "dev", "qas", "prod", "test")]
     [string]$BumpType,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set to 'n' for new environment creation. Valid values are: y, n")]
@@ -245,7 +235,7 @@ $Script:DeployedVersion = $null
 Function Invoke-VersionBump {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("major", "minor", "patch", "rc", "dev", "prod")]
+        [ValidateSet("major", "minor", "patch", "rc", "dev", "prod", "test")]
         [string]$BumpType,
 
         [Parameter(Mandatory = $true)]
@@ -326,9 +316,19 @@ Function Invoke-VersionBump {
         "dev" {
             if ($preType -ne "dev") { $preNum = 0 } else { $preNum++ }
             $newVersionBase = "$major.$minor.$patch-dev.$preNum"
+        
+        }
+        "qas" {
+            if ($preType -ne "qas") { $preNum = 0 } else { $preNum++ }
+            $newVersionBase = "$major.$minor.$patch-qas.$preNum"
+        }
+        "test" {
+            if ($preType -ne "test") { $preNum = 0 } else { $preNum++ }
+            $newVersionBase = "$major.$minor.$patch-test.$preNum"
         }
         "prod" { $newVersionBase = "$major.$minor.$patch" } # Bumping to 'prod' just strips pre-release identifier
-        default { throw "Invalid bump type '$BumpType'" } # Should be caught by ValidateSet, but good practice
+        
+        default { throw "Invalid bump type '$BumpType'" }
     }
 
     # Prepare versions for files and tag
@@ -472,13 +472,14 @@ Function Initialize-DeploymentConfiguration {
         'DEPLOYMENT_FLASK_SERVICE_NAME',
         'DEPLOYMENT_DB_NAME',
         'DEPLOYMENT_BACKUP_DIR',
-        'DEPLOYMENT_SERVER_BASE_DIR'
+        'DEPLOYMENT_SERVER_BASE_DIR',
+        'DEPLOYMENT_GIT_REPO_PATH'
     )
 
     # --- Dynamically construct and check required ENVIRONMENT-SPECIFIC keys ---
     $requiredEnvKeys = @{}
     $missingKeys = @()
-    $envSuffix = $Environment.ToUpper() # e.g., "DEV", "QAS", "PROD"
+    $envSuffix = $Environment.ToUpper() # e.g., "DEV", "QAS", "PROD", "TEST"
 
     Write-Log -Message "Constructing and checking for required environment-specific keys (Suffix: _$envSuffix)..." -Level "INFO" -LogFilePath $BuildLog
 
@@ -523,7 +524,11 @@ Function Initialize-DeploymentConfiguration {
         'DEPLOYMENT_DOMAIN',
         'DEPLOYMENT_WSL_SSH_USER',
         'DEPLOYMENT_WSL_SSH_KEY_PATH',
-        'DEPLOYMENT_BACKUP_COUNT')
+        'DEPLOYMENT_BACKUP_COUNT',
+        'DEPLOYMENT_GIT_REPO_PATH',
+        'DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_PATH',
+        'DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_COMPLETED_PATH',
+        'DEPLOYMENT_SERVER_RELEASE_SCRIPTS_DIR')
     foreach ($key in $commonKeys) {
         if ($depEnvSettings.ContainsKey($key)) {
             $value = $depEnvSettings[$key]
@@ -1021,9 +1026,9 @@ Function Invoke-SqlReleaseScripts {
 
     Write-Log -Message "`n--- Step 6.5: Applying SQL Release Scripts ---" -Level "INFO" -LogFilePath $BuildLog
 
-    $localSqlScriptDir = Join-Path $scriptRoot "release_scripts" $Environment.ToLower()
-    $serverSqlScriptArchiveBaseDir = "$DEPLOYMENT_BACKUP_DIR/release_scripts_applied"
-    $localSqlScriptCompletedBaseDir = Join-Path $scriptRoot "release_scripts" "completed"
+    $localSqlScriptDir = Join-Path $DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_PATH $Environment.ToLower()
+    $localSqlScriptCompletedBaseDir = $DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_COMPLETED_PATH
+    $serverSqlScriptArchiveBaseDir = "$DEPLOYMENT_BACKUP_DIR/$DEPLOYMENT_SERVER_RELEASE_SCRIPTS_DIR"
 
     if (-not (Test-Path $localSqlScriptDir -PathType Container)) {
         Write-Log -Message "No release script directory found for environment '$Environment' at '$localSqlScriptDir'. Skipping SQL scripts." -Level "INFO" -LogFilePath $BuildLog
@@ -1660,7 +1665,7 @@ if (-not ($PSBoundParameters.ContainsKey('Version') -or $PSBoundParameters.Conta
     else {
         # $choice -eq 'b'
         $validBump = $false
-        $allowedBumpTypes = @("major", "minor", "patch", "rc", "dev", "prod")
+        $allowedBumpTypes = @("major", "minor", "patch", "rc", "dev", "prod", "test")
         while (-not $validBump) {
             $BumpType = Read-Host "Enter bump type ($($allowedBumpTypes -join ', '))"
             if ($allowedBumpTypes -contains $BumpType) {
@@ -1691,6 +1696,7 @@ if (-not (Test-Path $logDir)) {
         Write-Error "FATAL: Failed to create log directory '$logDir'. Check permissions." -ErrorAction Stop
     }
 }
+
 # Create a log file name based on the version and timestamp
 # Use a temporary name until version is determined
 # Append $AppendTestRun if it's not empty
@@ -1724,7 +1730,7 @@ if ($PSBoundParameters.ContainsKey('BumpType')) {
     $Script:DeployedVersion = Invoke-VersionBump -BumpType $BumpType `
         -VersionFilePath $versionFilePath `
         -PackageJsonPath $packageJsonPath `
-        -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR `
+        -GitRepoPath $DEPLOYMENT_GIT_REPO_PATH `
         -BuildLog $buildLog
 
 }
@@ -1734,22 +1740,36 @@ elseif ($PSBoundParameters.ContainsKey('Version')) {
     Write-Log -Message "Using specified version: $Script:DeployedVersion" -Level "INFO" -LogFilePath $buildLog
 }
 
+# --- Rename Log File with Actual Version ---
+$finalLogName = "build_${Script:DeployedVersion}_$timestamp.log"
+$finalLogPath = Join-Path $logDir $finalLogName
+
+if ($buildLog -ne $finalLogPath) {
+    Write-Log -Message "Attempting to rename log file from '$buildLog' to '$finalLogPath'..." -Level "INFO" -LogFilePath $buildLog
+    try {
+        Rename-Item -Path $buildLog -NewName $finalLogName -ErrorAction Stop 
+        Write-Log -Message "Log file renamed successfully." -Level "INFO" -LogFilePath $buildLog
+        $buildLog = $finalLogPath    
+        Write-Log -Message "Log variable updated to new path '$buildLog'." -Level "DEBUG" -LogFilePath $buildLog
+    }
+    catch {
+        Write-Log -Message "Warning: Failed to rename log file '$buildLog' to '$finalLogName'. File might be locked. Subsequent logs will continue using the temporary name. Note: Consider manually renaming '$buildLog' to '$finalLogName' after script completion. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $buildLog 
+    }
+}
+
+# --- Open the log file in Notepad++ with monitoring on ---
+Open-Logfile -BuildLog $buildLog
+
 # --- Assign Local and Target Environment Variables ---
 $localEnvSettings = $configData.LocalEnvSettings
-$runMode = $localEnvSettings['REACT_APP_RUN_MODE'].ToUpper() # e.g., "DEV", "QAS", "PROD"
-$flaskEnv = $localEnvSettings['FLASK_ENV'].ToUpper() # e.g., "DEVELOPEMENT", "TESTING", "PRODUCTION"
+$runMode = $localEnvSettings['REACT_APP_RUN_MODE'].ToUpper() # e.g., "DEV", "QAS", "PROD", "TEST"
+$flaskEnv = $localEnvSettings['FLASK_ENV'].ToUpper() # e.g., "DEVELOPEMENT", "TESTING", "PRODUCTION", "STAGING", "PROD", "TEST"
 
-# Target environment variables (using script-scoped variables set by the function)
-$targetEnv = $DEPLOYMENT_TARGET # Already set by Initialize-DeploymentConfiguration
-$targetFlaskEnv = $DEPLOYMENT_FLASK_ENV # Already set by Initialize-DeploymentConfiguration
+# Target environment variables (using script-scoped variables set by Initialize-DeploymentConfiguration)
+$targetEnv = $DEPLOYMENT_TARGET 
+$targetFlaskEnv = $DEPLOYMENT_FLASK_ENV
 
 # --- Construct Derived Variables ---
-# These now use the script-scoped variables set by Initialize-DeploymentConfiguration
-
-# Backup directories
-$backupDirFlask = "$DEPLOYMENT_BACKUP_DIR/flask_$timestamp"
-$backupDirFrontend = "$DEPLOYMENT_BACKUP_DIR/frontend_$timestamp"
-$backupDirDB = "$DEPLOYMENT_BACKUP_DIR/db_backup_$timestamp.sql"
 
 # Directories for the local machine
 $localFlaskDir = Join-Path $DEPLOYMENT_LOCAL_BASE_DIR "flask_server"
@@ -1760,14 +1780,19 @@ $serverFlaskBaseDir = "$DEPLOYMENT_SERVER_BASE_DIR/flask_server"
 $serverFlaskAppDir = "$serverFlaskBaseDir/app"
 $serverFrontendBaseDir = "$DEPLOYMENT_SERVER_BASE_DIR/satisfactory_tracker"
 $serverFrontendBuildDir = "$serverFrontendBaseDir/build"
+$backupDirFlask = "$DEPLOYMENT_BACKUP_DIR/flask_$timestamp"
+$backupDirFrontend = "$DEPLOYMENT_BACKUP_DIR/frontend_$timestamp"
+$backupDirDB = "$DEPLOYMENT_BACKUP_DIR/db_backup_$timestamp.sql"
+
+# --- Construct Server URL for Display ---
 
 $displayUrl = ""
 if ($Environment.ToUpper() -eq "PROD") {
-    # For PROD, assume it's the main domain
-    $displayUrl = "https://$DEPLOYMENT_DOMAIN" # Or https://www.domain... if you use www
+    # For PROD, use the main domain directly
+    $displayUrl = "https://$DEPLOYMENT_DOMAIN"
 }
 else {
-    # For non-PROD, assume subdomain format
+    # For non-PROD, use the subdomain format
     $displayUrl = "https://$($Environment.ToLower()).$DEPLOYMENT_DOMAIN" 
 }
 
@@ -1777,34 +1802,12 @@ $wslLocalFrontendDir = Convert-WindowsPathToWslPath -WindowsPath $localFrontendD
 $wslLocalFlaskDirApp = "$wslLocalFlaskDir/app" # Source directory for local flask app files
 $wslLocalFrontendDirBuild = "$wslLocalFrontendDir/build" # Source directory for local build files
 
-# --- Rename Log File with Actual Version ---
-$finalLogName = "build_${Script:DeployedVersion}_$timestamp.log"
-$finalLogPath = Join-Path $logDir $finalLogName
-
-
-if ($buildLog -ne $finalLogPath) {
-    Write-Log -Message "Attempting to rename log file to '$finalLogPath'..." -Level "INFO" -LogFilePath $buildLog
-    try {
-        Rename-Item -Path $buildLog -NewName $finalLogName -ErrorAction Stop 
-        Write-Log -Message "Log file renamed successfully." -Level "INFO" -LogFilePath $buildLog # Log to OLD name just before changing variable
-        $buildLog = $finalLogPath # Update the variable ONLY if rename succeeded       
-        Write-Log -Message "Log variable updated to new path '$buildLog'." -Level "DEBUG" -LogFilePath $buildLog # Log to NEW name
-    }
-    catch {
-        Write-Log -Message "Warning: Failed to rename log file '$buildLog' to '$finalLogName'. File might be locked. Subsequent logs will continue using the temporary name. Note: Consider manually renaming '$buildLog' to '$finalLogName' after script completion. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $buildLog 
-    }
-}
-
-
-# --- Open the log file in Notepad++ with monitoring on ---
-Open-Logfile -BuildLog $buildLog
-
 ##################################################################################
 #--------------------------- Start of Deployment Steps --------------------------#
 ##################################################################################
 
 # Check if any key starting with 'Force' and ending with 'Only' was bound
-$forceOnlySwitchUsed = $PSBoundParameters.Keys.Where({ $_ -like 'Force*Only' -and $PSBoundParameters[$_] }) # Check if the bound parameter value is True
+$forceOnlySwitchUsed = $PSBoundParameters.Keys.Where({ $_ -like 'Force*Only' -and $PSBoundParameters[$_] })
 if ($forceOnlySwitchUsed.Count -gt 0) {
     Write-Log -Message "Force*Only switch detected. Running only the specified step." -Level "WARN" -LogFilePath $buildLog
 
@@ -1822,7 +1825,7 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
         Invoke-ReactBuild -RunBuild 'y' ` # Force build to 'y' when running this step only
         -LocalFrontendDir $localFrontendDir `
             -BuildLog $buildLog `
-            -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
+            -GitRepoPath $DEPLOYMENT_GIT_REPO_PATH
         Write-Log -Message "--- Finished ONLY Step 2 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceBackupOnly) {
@@ -1890,7 +1893,7 @@ else {
     Invoke-ReactBuild -RunBuild $runBuild `
         -LocalFrontendDir $localFrontendDir `
         -BuildLog $buildLog `
-        -GitRepoPath $DEPLOYMENT_LOCAL_BASE_DIR
+        -GitRepoPath $DEPLOYMENT_GIT_REPO_PATH
 
     # Step 3: Backup Existing Project Files
     Backup-ServerState -RunBackup $runBackup `

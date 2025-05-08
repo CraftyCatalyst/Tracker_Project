@@ -73,8 +73,10 @@ function App() {
       title = 'Satisfactory Tracker - Development';
     } else if (hostname === process.env.REACT_HOSTNAME_QAS) {
       title = 'Satisfactory Tracker - Closed Beta Test';
+    } else if (hostname === process.env.REACT_HOSTNAME_TEST) {
+      title = 'Satisfactory Tracker - Testing Environment';
     }
-
+    
     // Set the document title
     document.title = title;
   }, []);
