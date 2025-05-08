@@ -124,7 +124,7 @@ The run migration parameter (y/n). Mandatory.
 The Git tag/version to deploy (e.g., v1.3.0). Optional.
     - This is used to specify an existing version of code to be deployed.
 .PARAMETER BumpType
-Bump type for version bumping (major, minor, patch, rc, dev, prod, test). Optional.
+Bump type for version bumping (major, minor, patch, rc, dev, prod, qas, test). Optional.
     - This is used to specify the type of version bump to perform before deployment.
     - If this parameter is used, the -Version parameter is ignored.
     - The script will automatically bump the version based on the specified type and update the version files accordingly.
@@ -233,6 +233,22 @@ $Script:DeployedVersion = $null
 #------------------------------ Start of Functions ------------------------------ 
 
 Function Invoke-VersionBump {
+    <#
+    - The BumpType parameter in deploy_to_droplet.ps1 will determine the next version number based on the following rules:
+        - Major version bump for breaking changes.
+        - Minor version bump for new features.
+        - Patch version bump for bug fixes.
+        - dev version bump for development versions.
+        - qas version bump for quality assurance versions.
+        - rc version bump for release candidates.
+        - prod version bump for production versions.
+        - test version bump for testing versions.
+        - The version number will be updated in both the version.txt file and the package.json file.
+        - The version number will be in the format of x.y.z, where x is the major version, y is the minor version, and z is the patch version.
+        - If a pre-release identifier is specified (dev, qas, rc, or test), the version number will be in the format of x.y.z-dev, x.y.z-qas, x.y.z-rc or x.y.z-test respectively.
+        - Bumping to 'prod' just strips pre-release identifier.
+    #>
+    
     param(
         [Parameter(Mandatory = $true)]
         [ValidateSet("major", "minor", "patch", "rc", "dev", "prod", "test")]
