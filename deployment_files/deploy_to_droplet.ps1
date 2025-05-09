@@ -1342,6 +1342,9 @@ Function Invoke-SshCommand {
         
         # Start the process
         $process.Start() | Out-Null
+        
+        Start-Sleep -Milliseconds 100 # Introduce a very small delay - PURELY FOR DEBUGGING THIS FUNCTION
+        
         $process.BeginOutputReadLine()
         $process.BeginErrorReadLine()
 
@@ -1514,7 +1517,8 @@ Function Invoke-WslRsync {
         $process.StartInfo = $processInfo
         $process.Start() | Out-Null
 
-        # Log output/error streams (optional but good practice)
+        
+
         $stdOut = $process.StandardOutput.ReadToEnd()
         $stdErr = $process.StandardError.ReadToEnd()
 
