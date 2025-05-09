@@ -304,7 +304,7 @@ Function Invoke-VersionBump {
     $currentVersionTag = $versionLine.Trim()
 
     # Extract SemVer components from the current tag
-    if ($currentVersionTag -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(rc|dev)\.(\d+))?$') {
+    if ($currentVersionTag -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(rc|dev|qas|test)\.(\d+))?$') {
         # Allow optional 'v' prefix for reading
         $major = [int]$matches[1]
         $minor = [int]$matches[2]
