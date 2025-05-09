@@ -453,7 +453,7 @@ def system_status():
         db_status = f"Error: {str(e)}"
     
     # Check Nginx Status (only if running on server)
-    if RUN_MODE in ["prod, dev, qas"]:
+    if RUN_MODE in ["prod, dev, qas, test"]:
         try:
             #nginx_status = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
             nginx_status = subprocess.run(["/bin/sudo", "/usr/bin/systemctl", "is-active", "nginx"], capture_output=True, text=True)
@@ -2001,8 +2001,6 @@ def test_pages():
     """Run tests on page accessibility by reading from admin_settings."""
     if current_user.role != 'admin':
         return jsonify({"error": "Unauthorized"}), 403
-
-    #base_url = "https://dev.satisfactorytracker.com" if RUN_MODE == "prod" else "http://localhost:5000"
 
     # Fetch pages dynamically from the admin_settings table
     test_pages = Admin_Settings.query.filter_by(setting_category="system_test_pages").all()

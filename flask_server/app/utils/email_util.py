@@ -104,6 +104,10 @@ def apply_env_suffix(addresses, run_mode):
                 modified.append(f"{local_part}@dev.{domain}")
             elif run_mode == "qas":
                 modified.append(f"{local_part}@qas.{domain}")
+            elif run_mode == "test":
+                modified.append(f"{local_part}@test.{domain}")
+            elif run_mode == "local":
+                modified.append(f"{local_part}@local.{domain}")
             else:
                 modified.append(address)
         else:

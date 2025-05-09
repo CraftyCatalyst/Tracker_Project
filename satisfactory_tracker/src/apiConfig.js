@@ -9,6 +9,7 @@ const baseUrlMap = {
   prod: process.env.REACT_APP_API_BASE_URL_PROD,
   dev: process.env.REACT_APP_API_BASE_URL_DEV,
   qas: process.env.REACT_APP_API_BASE_URL_QAS,
+  test: process.env.REACT_APP_API_BASE_URL_TEST,
   local: process.env.REACT_APP_API_BASE_URL_LOCAL,
   docker: process.env.REACT_APP_API_BASE_URL_DOCKER
 };

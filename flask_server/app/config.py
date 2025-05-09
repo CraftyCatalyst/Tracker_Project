@@ -40,9 +40,13 @@ elif Config.RUN_MODE == 'qas':
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_QAS')
     BASE_API_URL = os.getenv('REACT_APP_API_BASE_URL_QAS')
     BASE_CLIENT_URL = os.getenv('REACT_CLIENT_BASE_URL_QAS')
+elif Config.RUN_MODE == 'test':
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI_TEST')
+    BASE_API_URL = os.getenv('REACT_APP_API_BASE_URL_TEST')
+    BASE_CLIENT_URL = os.getenv('REACT_CLIENT_BASE_URL_TEST')
 else:
     logging.error(f"ERROR: REACT_APP_RUN_MODE is not set: {Config.RUN_MODE} (type: {type(Config.RUN_MODE)})")
-    raise ValueError('REACT_APP_RUN_MODE environment variable not set. Please set REACT_APP_RUN_MODE to "local", "docker", "prod", "dev", or "qas".')
+    raise ValueError('REACT_APP_RUN_MODE environment variable not set. Please set REACT_APP_RUN_MODE to "local", "docker", "prod", "dev", "qas" or "test".')
 
 logging.debug(f"SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}")
 logging.debug(f"BASE_API_URL: {BASE_API_URL}")
