@@ -1332,20 +1332,15 @@ Function Invoke-SshCommand {
             if ($null -ne $EventArgs.Data) {
                 $outputBuilder.AppendLine($EventArgs.Data) | Out-Null
             }
-        } -ErrorAction SilentlyContinue 
+        } -ErrorAction Stop 
 
         $errorEventSubscription = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action {
             if ($null -ne $EventArgs.Data) {
                 $errorBuilder.AppendLine($EventArgs.Data) | Out-Null
             }
-        } -ErrorAction SilentlyContinue
-
-        if (-not $outputEventSubscription -or -not $errorEventSubscription) {
-            Write-Log -Message "WARNING: One or both event subscriptions could not be registered for '$ActionDescription'. Output handling might be incomplete." -Level "WARNING" -LogFilePath $BuildLog
-            # Decide if this is fatal for your use case or if you want to proceed with potential partial output.
-            # For now, we'll let it proceed, but it's a sign of a problem.
-        }
-
+        } -ErrorAction Stop
+        
+        # Start the process
         $process.Start() | Out-Null
         $process.BeginOutputReadLine()
         $process.BeginErrorReadLine()
