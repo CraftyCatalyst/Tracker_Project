@@ -488,8 +488,7 @@ Function Initialize-DeploymentConfiguration {
         'DEPLOYMENT_FLASK_SERVICE_NAME',
         'DEPLOYMENT_DB_NAME',
         'DEPLOYMENT_BACKUP_DIR',
-        'DEPLOYMENT_SERVER_BASE_DIR',
-        'DEPLOYMENT_GIT_REPO_PATH'
+        'DEPLOYMENT_SERVER_BASE_DIR'
     )
 
     # --- Dynamically construct and check required ENVIRONMENT-SPECIFIC keys ---
