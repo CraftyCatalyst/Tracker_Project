@@ -3,6 +3,7 @@ satisfactory_tracker/node_modules
 satisfactory_tracker/.env
 deployment_files/.deployment_env
 deployment_files/.vscode/launch.json
+deployment_files/release_scripts
 Droplet_Files/
 venv/
 
@@ -31,7 +32,4 @@ deployment_files/build_logs
 deployment_files/LaunchNPP_Monitor.ahk
 deployment_files/deploy_to_droplet release_script.ps1
 deployment_files/test_harness/.deployment_test_env
-deployment_files/release_scripts/qas/Dump20250504.sql
-deployment_files/release_scripts/StaticTablesSeedData.sql
-deployment_files/release_scripts/qas/StaticTablesSeedData.sql
-deployment_files/release_scripts/completed/qas/v0.3.27/StaticTablesSeedData__v0.3.27.sql
+
