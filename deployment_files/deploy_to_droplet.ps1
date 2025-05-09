@@ -1879,8 +1879,8 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
     }
     elseif ($ForceDBMigrationOnly) {
         Write-Log -Message "--- Running ONLY Step 6: Database Migration ---" -Level "INFO" -LogFilePath $buildLog
-        Invoke-DatabaseMigration -runDBMigration 'y' ` # Force migration to 'y' when running this step only
-        -VenvDir $DEPLOYMENT_VENV_DIR `
+        Invoke-DatabaseMigration -runDBMigration 'y' `
+            -VenvDir $DEPLOYMENT_VENV_DIR `
             -ServerFlaskBaseDir $serverFlaskBaseDir `
             -BuildLog $buildLog
         Write-Log -Message "--- Finished ONLY Step 6 ---" -Level "INFO" -LogFilePath $buildLog
