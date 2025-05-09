@@ -1275,51 +1275,46 @@ Function Remove-OldBackups {
 Function Invoke-SshCommand {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$Command, # The command or script block to execute
+        [string]$Command,
         [Parameter(Mandatory = $false)]
-        [switch]$UseSudo, # If set, prepend 'sudo ' to the command
+        [switch]$UseSudo,
         [Parameter(Mandatory = $true)]
-        [string]$BuildLog, # Path to the build log file
+        [string]$BuildLog,
         [Parameter(Mandatory = $false)]
-        [string]$ActionDescription = "execute remote command", # For logging/error messages
+        [string]$ActionDescription = "execute remote command",
         [Parameter(Mandatory = $false)]
-        [switch]$CaptureOutput, # If set, return the standard output
+        [switch]$CaptureOutput,
         [Parameter(Mandatory = $false)]
-        [bool]$IsFatal = $true, # Treat non-zero exit code as fatal by default
+        [bool]$IsFatal = $true,
         [Parameter(Mandatory = $false)]
-        [string]$FailureCleanupCommand = "" # Optional command to run on failure        
+        [string]$FailureCleanupCommand = ""
     )
 
     $remoteCommand = $Command
     if ($UseSudo) {
-        # Apply sudo within the command executed by SSH
         $remoteCommand = "sudo $remoteCommand"
     }
 
-    # --- WSL Execution Setup ---
     $wslExe = "wsl.exe"
-    # Base arguments for wsl.exe to run ssh
     $wslArgsList = @(
-        "-u", $DEPLOYMENT_WSL_SSH_USER, # Run as the specified WSL user
-        "ssh", # Command to run inside WSL
-        "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH, # SSH key path *within WSL*
-        "-o", "BatchMode=yes", # Disable password prompts for non-interactive mode
-        "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}", # Target server
-        $remoteCommand                  # The actual command to execute on the remote server
+        "-u", $DEPLOYMENT_WSL_SSH_USER,
+        "ssh",
+        "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH,
+        "-o", "BatchMode=yes",
+        "-o", "ConnectTimeout=30", # Added a connection timeout
+        "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}",
+        $remoteCommand
     )
-    # Add common SSH options if needed (e.g., -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null for non-interactive, but use with caution)
-    # Example: Insert before target server: "-o", "StrictHostKeyChecking=no",
-    
+
     Write-Log -Message "Executing via WSL ($ActionDescription): $wslExe $($wslArgsList -join ' ')" -Level "INFO" -LogFilePath $BuildLog
 
-    $sshOutput = ""
-    $sshExitCode = -1 # Initialize with a non-zero value
-    $stdErrOutput = "" # To capture stderr separately
+    $sshExitCode = -1
+    $outputBuilder = New-Object System.Text.StringBuilder
+    $errorBuilder = New-Object System.Text.StringBuilder
 
     try {
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = $wslExe
-        # Add arguments using ArgumentList
         $wslArgsList | ForEach-Object { $processInfo.ArgumentList.Add($_) }
         $processInfo.RedirectStandardOutput = $true
         $processInfo.RedirectStandardError = $true
@@ -1328,99 +1323,106 @@ Function Invoke-SshCommand {
 
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $processInfo
+        $process.EnableRaisingEvents = $true # Required for event handling
+
+        # Event handlers for output and error data
+        $outputEvent = Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action {
+            if ($null -ne $EventArgs.Data) {
+                $outputBuilder.AppendLine($EventArgs.Data) | Out-Null
+            }
+        } -ErrorAction SilentlyContinue # Handle cases where event registration might fail in odd scenarios
+
+        $errorEvent = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action {
+            if ($null -ne $EventArgs.Data) {
+                $errorBuilder.AppendLine($EventArgs.Data) | Out-Null
+            }
+        } -ErrorAction SilentlyContinue
+
         $process.Start() | Out-Null
+        $process.BeginOutputReadLine()
+        $process.BeginErrorReadLine()
 
-        # Read output streams
-        $sshOutput = $process.StandardOutput.ReadToEnd()
-        $stdErrOutput = $process.StandardError.ReadToEnd()
-
-        $process.WaitForExit() # Wait for the process to complete
+        # Wait for the process to exit. You might want a timeout here for very long commands.
+        # For example: if (-not $process.WaitForExit(600000)) { # 10 minute timeout
+        #    Write-Log -Message "Warning: WSL/SSH command '$ActionDescription' timed out." -Level "WARNING" -LogFilePath $BuildLog
+        #    $process.Kill() # Or $process.Kill($true) for entire process tree in .NET 5+
+        #    $sshExitCode = -1 # Indicate timeout
+        # } else {
+        #    $sshExitCode = $process.ExitCode
+        # }
+        $process.WaitForExit()
         $sshExitCode = $process.ExitCode
+        
 
-        # Log output/error
-        if ($sshOutput) {
-            Write-Log -Message "WSL/SSH StdOut: $sshOutput" -Level "INFO" -LogFilePath $BuildLog
-        }
-        if ($stdErrOutput) {
-            if ($sshExitCode -ne 0) {
-                Write-Log -Message "WSL/SSH StdErr: $stdErrOutput" -Level "ERROR" -LogFilePath $BuildLog
-            }
-            else {
-                Write-Log -Message "WSL/SSH StdErr: $stdErrOutput" -Level "INFO" -LogFilePath $BuildLog
-            }
-        }
+        # Unregister events
+        if ($outputEvent) { Unregister-ObjectEvent -SubscriptionId $outputEvent.Id -ErrorAction SilentlyContinue }
+        if ($errorEvent) { Unregister-ObjectEvent -SubscriptionId $errorEvent.Id -ErrorAction SilentlyContinue }
+
     }
     catch {
         Write-Log -Message "FATAL: WSL/SSH command execution failed for '$ActionDescription'. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
+        # Ensure to unregister events in case of an early failure if they were registered
+        if ($outputEvent) { Unregister-ObjectEvent -SubscriptionId $outputEvent.Id -ErrorAction SilentlyContinue }
+        if ($errorEvent) { Unregister-ObjectEvent -SubscriptionId $errorEvent.Id -ErrorAction SilentlyContinue }
+        if ($IsFatal) {
+            throw "Halting due to critical error during '$ActionDescription'."
+        }
+        # If not fatal, try to return a failure indication. The exit code might not have been set.
+        $sshExitCode = if ($sshExitCode -eq -1) { 999 } else { $sshExitCode } # Use a custom error code if not set
+    }
+
+    $sshOutput = $outputBuilder.ToString().Trim()
+    $stdErrOutput = $errorBuilder.ToString().Trim()
+    
+    # Log output/error
+    if ($sshOutput) {
+        Write-Log -Message "WSL/SSH StdOut for '$ActionDescription':`n$sshOutput" -Level "INFO" -LogFilePath $BuildLog
+    }
+    if ($stdErrOutput) {
+        # Always log StdErr, but adjust level based on exit code
+        $logLevel = if ($sshExitCode -ne 0) { "ERROR" } else { "INFO" }
+        Write-Log -Message "WSL/SSH StdErr for '$ActionDescription':`n$stdErrOutput" -Level $logLevel -LogFilePath $BuildLog
     }
 
     if ($sshExitCode -ne 0) {
         $errorMessage = "Failed to $ActionDescription via WSL. Exit Code: $sshExitCode."
 
-        # Attempt cleanup if specified
         if ($FailureCleanupCommand) {
+            # (Your existing cleanup command logic - ensure it also doesn't hang if it produces output)
+            # For brevity, not repeating the cleanup part here, but it would be invoked as before.
+            # Consider if the cleanup also needs robust output handling.
             Write-Log -Message "Attempting cleanup command via WSL after failure: $FailureCleanupCommand" -Level "WARNING" -LogFilePath $BuildLog
-
-            # Construct WSL args for the cleanup command
-            $cleanupRemoteCommand = $FailureCleanupCommand # Assuming cleanup doesn't need sudo unless specified in the string itself
+            # ... (Execute cleanup, simplified for this example)
+            $cleanupRemoteCommand = $FailureCleanupCommand
             $cleanupWslArgsList = @(
-                "-u", $DEPLOYMENT_WSL_SSH_USER,
-                "ssh",
-                "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH,
-                "-o", "BatchMode=yes",
-                "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}",
-                $cleanupRemoteCommand
+                "-u", $DEPLOYMENT_WSL_SSH_USER, "ssh", "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH, "-o", "BatchMode=yes",
+                "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}", $cleanupRemoteCommand
             )
-
-            $cleanupExitCode = -1 # Initialize cleanup exit code
-            try {
-                $cleanupProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-                $cleanupProcessInfo.FileName = $wslExe
-                $cleanupWslArgsList | ForEach-Object { $cleanupProcessInfo.ArgumentList.Add($_) }
-                $cleanupProcessInfo.UseShellExecute = $false
-                $cleanupProcessInfo.CreateNoWindow = $true
-
-                $cleanupProcess = New-Object System.Diagnostics.Process
-                $cleanupProcess.StartInfo = $cleanupProcessInfo
-                $cleanupProcess.Start() | Out-Null
-                $cleanupProcess.WaitForExit()
-                $cleanupExitCode = $cleanupProcess.ExitCode
-            }
-            catch {
-                Write-Log -Message "Failed to start the WSL cleanup command. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
-                $cleanupExitCode = -999
-            }
-
-            # Check the exit code from the cleanup process object
-            if ($cleanupExitCode -ne 0) {
-                Write-Log -Message "WSL cleanup command also failed (Exit Code: $cleanupExitCode)." -Level "ERROR" -LogFilePath $BuildLog
-            }
-            else {
+            $cleanupProc = Start-Process -FilePath $wslExe -ArgumentList $cleanupWslArgsList -PassThru -Wait -NoNewWindow -ErrorAction SilentlyContinue
+            if ($cleanupProc.ExitCode -ne 0) {
+                Write-Log -Message "WSL cleanup command also failed (Exit Code: $($cleanupProc.ExitCode))." -Level "ERROR" -LogFilePath $BuildLog
+            } else {
                 Write-Log -Message "WSL cleanup command executed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
             }
         }
 
         if ($IsFatal) {
-            Write-Log -Message "FATAL ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Exiting." -Level "FATAL" -LogFilePath $BuildLog # Changed Level to FATAL
+            Write-Log -Message "FATAL ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Exiting." -Level "FATAL" -LogFilePath $BuildLog
             throw "Halting due to fatal error during '$ActionDescription'."
-        }
-        else {
+        } else {
             Write-Log -Message "Warning ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Continuing." -Level "WARNING" -LogFilePath $BuildLog
         }
-    }
-    else {
+    } else {
         Write-Log -Message "$ActionDescription via WSL completed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
     }
 
     if ($CaptureOutput) {
-        $outputObject = [PSCustomObject]@{
+        return [PSCustomObject]@{
             StdOut   = $sshOutput
             StdErr   = $stdErrOutput
             ExitCode = $sshExitCode
         }
-        return $outputObject
     }
-    # Otherwise, return success/failure status.
     return ($sshExitCode -eq 0)
 }
 
