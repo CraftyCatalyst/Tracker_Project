@@ -1350,14 +1350,17 @@ Function Invoke-SshCommand {
         
         # Unregister events (normal path)
         try {
-            if ($outputEventSubscription) { # Check if the subscription object exists
+            if ($outputEventSubscription) {
+                # Check if the subscription object exists
                 Unregister-Event -SubscriptionId $outputEventSubscription.Id -ErrorAction SilentlyContinue
             }
-            if ($errorEventSubscription) { # Check if the subscription object exists
+            if ($errorEventSubscription) {
+                # Check if the subscription object exists
                 Unregister-Event -SubscriptionId $errorEventSubscription.Id -ErrorAction SilentlyContinue
             }
-        } catch {
-             Write-Log -Message "DEBUG: Non-critical error during event unregistration in try block for '$ActionDescription'. Cleanup Error: $($_.Exception.Message)" -Level "DEBUG" -LogFilePath $BuildLog
+        }
+        catch {
+            Write-Log -Message "DEBUG: Non-critical error during event unregistration in try block for '$ActionDescription'. Cleanup Error: $($_.Exception.Message)" -Level "DEBUG" -LogFilePath $BuildLog
         }
 
     }
@@ -1397,7 +1400,30 @@ Function Invoke-SshCommand {
     }
 
     if ($sshExitCode -ne 0) {
+        # ENHANCED ERROR MESSAGE CONSTRUCTION
         $errorMessage = "Failed to $ActionDescription via WSL. Exit Code: $sshExitCode."
+        
+        if ($stdErrOutput) {
+            # Take the first few lines of StdErr for the summary
+            $errLines = $stdErrOutput.Split([System.Environment]::NewLine)
+            $errSnippet = $errLines | Select-Object -First 5 # Get up to 5 lines
+            $errSnippetText = $errSnippet -join [System.Environment]::NewLine
+            if ($errLines.Count -gt 5) {
+                $errSnippetText += "`n[... StdErr truncated in this summary. See full StdErr above in logs ...]"
+            }
+            $errorMessage += "`nRemote StdErr Snippet:`n$errSnippetText"
+        }
+        elseif ($sshOutput) { 
+            # If no StdErr, but there was StdOut, include a snippet of that as it might contain a hint
+            $outLines = $sshOutput.Split([System.Environment]::NewLine)
+            $outSnippet = $outLines | Select-Object -First 3 # Get up to 3 lines
+            $outSnippetText = $outSnippet -join [System.Environment]::NewLine
+            if ($outLines.Count -gt 3) {
+                $outSnippetText += "`n[... StdOut truncated in this summary. See full StdOut above in logs ...]"
+            }
+            $errorMessage += "`nRemote StdOut Snippet (since StdErr was empty):`n$outSnippetText"
+        }
+        # END OF ENHANCED ERROR MESSAGE CONSTRUCTION
 
         if ($FailureCleanupCommand) {
             Write-Log -Message "Attempting cleanup command via WSL after failure: $FailureCleanupCommand" -Level "WARNING" -LogFilePath $BuildLog
@@ -1408,20 +1434,24 @@ Function Invoke-SshCommand {
             $cleanupResult = Start-Process -FilePath $wslExe -ArgumentList $cleanupWslArgsList -PassThru -Wait -NoNewWindow -ErrorAction SilentlyContinue
             if ($cleanupResult -and $cleanupResult.ExitCode -ne 0) {
                 Write-Log -Message "WSL cleanup command also failed (Exit Code: $($cleanupResult.ExitCode))." -Level "ERROR" -LogFilePath $BuildLog
-            } elseif ($cleanupResult) {
+            }
+            elseif ($cleanupResult) {
                 Write-Log -Message "WSL cleanup command executed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-            } else {
+            }
+            else {
                 Write-Log -Message "WSL cleanup command failed to start or returned no result." -Level "ERROR" -LogFilePath $BuildLog
             }
         }
 
         if ($IsFatal) {
             Write-Log -Message "FATAL ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Exiting." -Level "FATAL" -LogFilePath $BuildLog
-            throw "Halting due to fatal error during '$ActionDescription' (SSH Exit Code: $sshExitCode)."
-        } else {
+            throw "Halting due to fatal error during '$ActionDescription' (SSH Exit Code: $errorMessage)."
+        }
+        else {
             Write-Log -Message "Warning ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Continuing." -Level "WARNING" -LogFilePath $BuildLog
         }
-    } else {
+    }
+    else {
         Write-Log -Message "$ActionDescription via WSL completed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
     }
 
