@@ -24,7 +24,7 @@ def setup_logger(name):
   
     # Create a logger
     logger = logging.getLogger(name)
-    print(f"Initializing logger: {name}")
+    # print(f"Initializing logger: {name}")
 
 
     # Set the logger level to DEBUG to capture all levels of logs
@@ -32,7 +32,7 @@ def setup_logger(name):
 
     # Clear existing handlers to avoid duplication
     logger.handlers.clear()
-    print(f"Cleared existing handlers for logger: {name}")
+    # print(f"Cleared existing handlers for logger: {name}")
     # Ensure no propagation to parent loggers
     logger.propagate = False
 

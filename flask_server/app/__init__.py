@@ -13,16 +13,17 @@ login_manager = LoginManager()
 migrate = Migrate()
 mail = Mail()
 
-logging.basicConfig(level=logging.DEBUG)
-
+logging.basicConfig(level=logging.WARNING)
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('boto3').setLevel(logging.WARNING)
 
 def create_app():
     # Construct the absolute path to the config file
     base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-    print(f"base path: {base_path}")
+    # print(f"base path: {base_path}")
         
     config_path = os.path.join(base_path, "config.py")
-    print(f"Loading config from: {config_path}")
+    # print(f"Loading config from: {config_path}")
     # logging.debug(f"Loading config from: {config_path}")
     
     
@@ -104,7 +105,7 @@ def create_app():
         x += 1
         # logger.debug(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")        
         # print(f"Endpoint: {rule.endpoint}, URL: {rule.rule}")    
-    print(f"Total Routes Registered: {x}")
+    # print(f"Total Routes Registered: {x}")
     logger.info(f"Total Routes Registered: {x}")
     # logging.info(f"Total Routes Registered: {x}")
     
