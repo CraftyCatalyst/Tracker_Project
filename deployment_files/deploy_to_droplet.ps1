@@ -1311,14 +1311,13 @@ Function Invoke-SshCommand {
     $sshExitCode = -1
     $outputBuilder = New-Object System.Text.StringBuilder
     $errorBuilder = New-Object System.Text.StringBuilder
+    $eventActionDebugLogPath = Join-Path $PSScriptRoot "debug_logs" "ps_event_action_debug.log" 
+    $capturedActionDescription = $ActionDescription 
+    
     $outputEventSubscription = $null
     $errorEventSubscription = $null
 
-    # Primary debug log for event actions, defined locally and passed via $using:
-    $eventActionDebugLogPath = Join-Path $PSScriptRoot "debug_logs" "ps_event_action_debug.log" 
     Clear-Content -Path $eventActionDebugLogPath -ErrorAction SilentlyContinue
-    $capturedActionDescription = $ActionDescription 
-
     "[$([DateTime]::UtcNow.ToString('o'))] Invoke-SshCommand for '$capturedActionDescription' started. EventActionDebugLog: '$eventActionDebugLogPath'" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
 
     try {
@@ -1334,60 +1333,55 @@ Function Invoke-SshCommand {
         $process.StartInfo = $processInfo
         $process.EnableRaisingEvents = $true
 
+        # --- Accessing outer scope variables directly due to closure ---
         $outputEventSubscription = Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action {
-            # YOUR Write-Log calls are useful here for the main build log
-            Write-Log -Message "DEBUG: Inside OutputDataReceived event for '$($using:capturedActionDescription)'" -Level "DEBUG" -LogFilePath $using:BuildLog # Use $using:BuildLog
-            # Note: Accessing $outputEventSubscription.state directly here might be problematic due to timing/state updates.
+            # These variables (outputBuilder, eventActionDebugLogPath, capturedActionDescription, BuildLog) 
+            # are from the Invoke-SshCommand's scope, captured by the closure.
+            
+            # Optional: Your existing Write-Log to the main build log
 
-            # BRING ALL $using: variables needed in THIS ACTION into local scope FIRST
-            $localDebugPath = $using:eventActionDebugLogPath
-            $localOutputBuilder = $using:outputBuilder
-            $localDesc = $using:capturedActionDescription # Already captured this outside
+            Write-Log -Message "DEBUG: Inside OutputDataReceived event for '$capturedActionDescription'" -Level "DEBUG" -LogFilePath $BuildLog
             
             $eventTimestamp = [DateTime]::UtcNow.ToString('o')
-
-            # Log to the $localDebugPath (derived from $using:eventActionDebugLogPath)
-            "[$eventTimestamp] OutputDataReceived Fired for '$localDesc'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+            "[$eventTimestamp] OutputDataReceived Fired for '$capturedActionDescription'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
             
-            if ($null -eq $localOutputBuilder) {
-                "[$eventTimestamp] FATAL_EVENT_ACTION: localOutputBuilder IS NULL in OutputDataReceived for '$localDesc'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+            if ($null -eq $outputBuilder) { # Direct access
+                "[$eventTimestamp] FATAL_EVENT_ACTION: outputBuilder IS NULL in OutputDataReceived for '$capturedActionDescription'" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
             } else {
                 try {
                     if ($null -ne $EventArgs.Data) {
-                        $localOutputBuilder.AppendLine($EventArgs.Data) | Out-Null
-                        "[$eventTimestamp] Appended to localOutputBuilder for '$localDesc'. Current Length: $($localOutputBuilder.Length)" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+                        $outputBuilder.AppendLine($EventArgs.Data) | Out-Null # Direct access
+                        "[$eventTimestamp] Appended to outputBuilder for '$capturedActionDescription'. Current Length: $($outputBuilder.Length)" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
                     }
                 } catch {
-                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on localOutputBuilder for '$localDesc'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on outputBuilder for '$capturedActionDescription'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
                 }
             }
         } -ErrorAction Stop 
-        Write-Log -Message "DEBUG: OutputEventSubscription registered." -Level "DEBUG" -LogFilePath $BuildLog
-        if ($outputEventSubscription) { Write-Log -Message "DEBUG: OutputEventSubscription State $($outputEventSubscription.state), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog }
-
 
         $errorEventSubscription = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action {
-            Write-Log -Message "DEBUG: Inside ErrorDataReceived event for '$($using:capturedActionDescription)'" -Level "DEBUG" -LogFilePath $using:BuildLog # Use $using:BuildLog
+            Write-Log -Message "DEBUG: Inside ErrorDataReceived event for '$capturedActionDescription'" -Level "DEBUG" -LogFilePath $BuildLog
 
-            $localDebugPath = $using:eventActionDebugLogPath
-            $localErrorBuilder = $using:errorBuilder
-            $localDesc = $using:capturedActionDescription
             $eventTimestamp = [DateTime]::UtcNow.ToString('o')
+            "[$eventTimestamp] ErrorDataReceived Fired for '$capturedActionDescription'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
 
-            "[$eventTimestamp] ErrorDataReceived Fired for '$localDesc'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
-            if ($null -eq $localErrorBuilder) {
-                "[$eventTimestamp] FATAL_EVENT_ACTION: localErrorBuilder IS NULL in ErrorDataReceived for '$localDesc'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+            if ($null -eq $errorBuilder) { # Direct access
+                "[$eventTimestamp] FATAL_EVENT_ACTION: errorBuilder IS NULL in ErrorDataReceived for '$capturedActionDescription'" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
             } else {
                 try {
                     if ($null -ne $EventArgs.Data) {
-                        $localErrorBuilder.AppendLine($EventArgs.Data) | Out-Null
-                        "[$eventTimestamp] Appended to localErrorBuilder for '$localDesc'. Current Length: $($localErrorBuilder.Length)" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+                        $errorBuilder.AppendLine($EventArgs.Data) | Out-Null # Direct access
+                        "[$eventTimestamp] Appended to errorBuilder for '$capturedActionDescription'. Current Length: $($errorBuilder.Length)" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
                     }
                 } catch {
-                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on localErrorBuilder for '$localDesc'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on errorBuilder for '$capturedActionDescription'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
                 }
             } 
         } -ErrorAction Stop
+        
+        # Your logging for subscription state AFTER registration is good here
+        Write-Log -Message "DEBUG: OutputEventSubscription registered." -Level "DEBUG" -LogFilePath $BuildLog
+        if ($outputEventSubscription) { Write-Log -Message "DEBUG: OutputEventSubscription State $($outputEventSubscription.state), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog }
         Write-Log -Message "DEBUG: errorEventSubscription registered." -Level "DEBUG" -LogFilePath $BuildLog
         if ($errorEventSubscription) { Write-Log -Message "DEBUG: errorEventSubscription State $($errorEventSubscription.state), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog }
         
