@@ -2,11 +2,11 @@ import os
 import logging
 from dotenv import load_dotenv
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 
 # Base directory of the project
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-print(f"CONFIG BASE DIRECTORY: {basedir}")
+# print(f"CONFIG BASE DIRECTORY: {basedir}")
 
 # Load environment variables from .env file
 dotenv_path = os.path.join(basedir, "satisfactory_tracker", ".env")

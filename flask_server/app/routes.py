@@ -68,10 +68,10 @@ import email
 
 # config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../app/config.py'))
 base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-print(f"INIT Base path: {base_path}")
+# print(f"INIT Base path: {base_path}")
     
 config_path = os.path.join(base_path, "config.py")
-print(f"INIT Loading config from: {config_path}")
+# print(f"INIT Loading config from: {config_path}")
 
 # Load the config module dynamically
 spec = importlib.util.spec_from_file_location("config", config_path)
@@ -494,13 +494,13 @@ def get_table_entries(table_name):
 def get_tables():
     inspector = inspect(db.engine)
     tables = inspector.get_table_names()  # Fetch all table names
-    print(tables)
+    # print(tables)
     return jsonify({"tables": tables})
     
 # Adding a GET route for fetching all rows from a table    
 @main.route('/api/tables/<table_name>', methods=['GET'])
 def get_table_data(table_name):
-    print("Getting table data" + table_name)
+    # print("Getting table data " + table_name)
     query = text(f"SELECT * FROM {table_name}")
     rows = db.session.execute(query).fetchall()
     return jsonify({"rows": [dict(row._mapping) for row in rows]})
@@ -3725,4 +3725,4 @@ def catchall(path):
     logger.info("CATCH-ALL - Serving React app index.html")
     return send_from_directory(REACT_BUILD_DIR, 'index.html')
 
-print("LOADED routes.py!")
+# print("LOADED routes.py!")

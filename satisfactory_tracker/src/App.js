@@ -65,18 +65,20 @@ function App() {
     const hostname = window.location.hostname;
     let title = 'Satisfactory Tracker';
 
-    if (hostname === process.env.REACT_HOSTNAME_LOCAL) {
+    if (hostname === process.env.REACT_APP_HOSTNAME_LOCAL) {
       title = 'Satisfactory Tracker - LOCAL';
-    } else if (hostname === process.env.REACT_HOSTNAME_PROD) {
+    } else if (hostname === process.env.REACT_APP_HOSTNAME_PROD) {
       title = 'Satisfactory Tracker';
-    } else if (hostname === process.env.REACT_HOSTNAME_DEV) {
+    } else if (hostname === process.env.REACT_APP_HOSTNAME_DEV) {
       title = 'Satisfactory Tracker - Development';
-    } else if (hostname === process.env.REACT_HOSTNAME_QAS) {
+    } else if (hostname === process.env.REACT_APP_HOSTNAME_QAS) {
       title = 'Satisfactory Tracker - Closed Beta Test';
-    } else if (hostname === process.env.REACT_HOSTNAME_TEST) {
+    } else if (hostname === process.env.REACT_APP_HOSTNAME_TEST) {
       title = 'Satisfactory Tracker - Testing Environment';
     }
-    
+    console.log("process.env.REACT_HOSTNAME_LOCAL", process.env.REACT_APP_HOSTNAME_LOCAL);
+    console.log("Hostname:", hostname);
+    console.log("Title:", title);
     // Set the document title
     document.title = title;
   }, []);
