@@ -1312,7 +1312,7 @@ Function Invoke-SshCommand {
     $sshExitCode = -1
     # MAKE THESE ACCESSIBLE VIA A GLOBAL-LIKE SCOPE FOR THIS TEST to eliminate $using: complexity temporarily
     $Script:TEST_ActionDesc = $ActionDescription 
-    $Script:TEST_EventDebugLog = Join-Path $env:TEMP "ps_event_invoke_ssh_ultra_debug.log" 
+    $Script:TEST_EventDebugLog = Join-Path $PSScriptRoot "debug_logs" "ps_event_invoke_ssh_ultra_debug_$Script:DeployedVersion.log" 
     Clear-Content -Path $Script:TEST_EventDebugLog -ErrorAction SilentlyContinue # Clear for fresh run
 
     # Output builders remain local to Invoke-SshCommand, 
@@ -1395,10 +1395,11 @@ Function Invoke-SshCommand {
         # Start the process
         $process.Start() | Out-Null
         Write-Log -Message "DEBUG: Process started for '$ActionDescription'." -Level "DEBUG" -LogFilePath $BuildLog
-        Write-Log -MesWrite-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+        Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         try {
             $process.BeginOutputReadLine()
+            Write-Log -Message "BeginOutputReadLine for process completed." -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         } catch [System.InvalidOperationException] {
@@ -1411,6 +1412,7 @@ Function Invoke-SshCommand {
 
         try {
             $process.BeginErrorReadLine()
+            Write-Log -Message "BeginErrorReadLine for process completed." -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
 
@@ -1428,6 +1430,8 @@ Function Invoke-SshCommand {
             try { $process.Kill($true); $sshExitCode = -1 } catch { Write-Log -Message "ERROR: Failed to kill timed-out process '$ActionDescription'. $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog; $sshExitCode = -2 }
         } else {
             $sshExitCode = $process.ExitCode
+            Write-Log -Message "DEBUG: Process exited for '$ActionDescription'. ExitCode: $sshExitCode" -Level "DEBUG" -LogFilePath $BuildLog
+            "[$([DateTime]::UtcNow.ToString('o'))] Process for '$ActionDescription' exited. ExitCode: $sshExitCode" | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
             Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         }
