@@ -1272,7 +1272,6 @@ Function Remove-OldBackups {
     }
 }
 
-# CURRENT FUNCTION: Invoke-SshCommand
 Function Invoke-SshCommand {
     param(
         [Parameter(Mandatory = $true)]
@@ -1310,25 +1309,17 @@ Function Invoke-SshCommand {
     Write-Log -Message "Executing via WSL ($ActionDescription): $wslExe $($wslArgsList -join ' ')" -Level "INFO" -LogFilePath $BuildLog
 
     $sshExitCode = -1
-    # MAKE THESE ACCESSIBLE VIA A GLOBAL-LIKE SCOPE FOR THIS TEST to eliminate $using: complexity temporarily
-    $Script:TEST_ActionDesc = $ActionDescription 
-    $Script:TEST_EventDebugLog = Join-Path $PSScriptRoot "debug_logs" "ps_event_invoke_ssh_ultra_debug_$Script:DeployedVersion.log" 
-    Clear-Content -Path $Script:TEST_EventDebugLog -ErrorAction SilentlyContinue # Clear for fresh run
-
-    # Output builders remain local to Invoke-SshCommand, 
-    # but we'll try to append to them without $using: from the global space first.
     $outputBuilder = New-Object System.Text.StringBuilder
     $errorBuilder = New-Object System.Text.StringBuilder
-    
     $outputEventSubscription = $null
     $errorEventSubscription = $null
 
-    # --- TEMPORARY DEBUG LOG FILE ---
-    # Ensure this path is writable by the user running the script
-    # Or use $env:TEMP or Get-TemporaryFile
-    $eventDebugLogPath = Join-Path $env:TEMP "ps_event_invoke_ssh_debug.log" 
-    #$actionDescriptionForEvent = $ActionDescription # Capture for use in events to avoid complex $using inside strings
-    "[$([DateTime]::UtcNow.ToString('o'))] Invoke-SshCommand for '$($Script:TEST_ActionDesc)' started." | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
+    # Primary debug log for event actions, defined locally and passed via $using:
+    $eventActionDebugLogPath = Join-Path $PSScriptRoot "debug_logs" "ps_event_action_debug.log" 
+    Clear-Content -Path $eventActionDebugLogPath -ErrorAction SilentlyContinue
+    $capturedActionDescription = $ActionDescription 
+
+    "[$([DateTime]::UtcNow.ToString('o'))] Invoke-SshCommand for '$capturedActionDescription' started. EventActionDebugLog: '$eventActionDebugLogPath'" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
 
     try {
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -1343,57 +1334,62 @@ Function Invoke-SshCommand {
         $process.StartInfo = $processInfo
         $process.EnableRaisingEvents = $true
 
-        # EXTREMELY SIMPLIFIED ACTION BLOCK
         $outputEventSubscription = Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action {
-            Write-Log -Message "DEBUG: Inside OutputDataReceived event for '$($Script:TEST_ActionDesc)'" -Level "DEBUG" -LogFilePath $BuildLog
-            Write-Log -Message "DEBUG: OutputEventSubscription State $($outputEventSubscription.state), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
-            $eventTimestamp = [DateTime]::UtcNow.ToString('o')
-            # Log directly using script scope vars to see if event even fires
-            "[$eventTimestamp] OutputDataReceived Fired for '$($Script:TEST_ActionDesc)'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
+            # YOUR Write-Log calls are useful here for the main build log
+            Write-Log -Message "DEBUG: Inside OutputDataReceived event for '$($using:capturedActionDescription)'" -Level "DEBUG" -LogFilePath $using:BuildLog # Use $using:BuildLog
+            # Note: Accessing $outputEventSubscription.state directly here might be problematic due to timing/state updates.
+
+            # BRING ALL $using: variables needed in THIS ACTION into local scope FIRST
+            $localDebugPath = $using:eventActionDebugLogPath
+            $localOutputBuilder = $using:outputBuilder
+            $localDesc = $using:capturedActionDescription # Already captured this outside
             
-            # Try appending to a SCRIPT-scoped stringbuilder (less ideal but for test)
-            if ($null -ne $EventArgs.Data) {
-                # This is NOT how you'd normally do it, but we're isolating the problem
-                # In a real scenario, you'd pass data back to the main thread more robustly.
-                # For this test, if $using: fails, we try something else.
-                # Let's assume outputBuilder from Invoke-SshCommand is accessible, 
-                # but if $using: fails, then regular variable access also likely fails.
-                # The key here is if Out-File ABOVE works, the event IS firing.
+            $eventTimestamp = [DateTime]::UtcNow.ToString('o')
+
+            # Log to the $localDebugPath (derived from $using:eventActionDebugLogPath)
+            "[$eventTimestamp] OutputDataReceived Fired for '$localDesc'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+            
+            if ($null -eq $localOutputBuilder) {
+                "[$eventTimestamp] FATAL_EVENT_ACTION: localOutputBuilder IS NULL in OutputDataReceived for '$localDesc'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+            } else {
                 try {
-                    # This line still implicitly relies on the outputBuilder from the outer function being in a closured scope
-                    # which PowerShell eventing normally handles.
-                    $outputBuilderFromClosure = $using:outputBuilder # Attempt to use $using first
-                    if ($null -ne $outputBuilderFromClosure) {
-                       $outputBuilderFromClosure.AppendLine($EventArgs.Data) | Out-Null
-                    } else {
-                         "[$eventTimestamp] outputBuilderFromClosure (via $using:outputBuilder) WAS NULL in OutputDataReceived" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
+                    if ($null -ne $EventArgs.Data) {
+                        $localOutputBuilder.AppendLine($EventArgs.Data) | Out-Null
+                        "[$eventTimestamp] Appended to localOutputBuilder for '$localDesc'. Current Length: $($localOutputBuilder.Length)" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
                     }
                 } catch {
-                    "[$eventTimestamp] Error in OutputDataReceived when trying to use outputBuilder. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
+                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on localOutputBuilder for '$localDesc'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
                 }
             }
         } -ErrorAction Stop 
         Write-Log -Message "DEBUG: OutputEventSubscription registered." -Level "DEBUG" -LogFilePath $BuildLog
-        Write-Log -Message "DEBUG: OutputEventSubscription State $($outputEventSubscription.state), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+        if ($outputEventSubscription) { Write-Log -Message "DEBUG: OutputEventSubscription State $($outputEventSubscription.state), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog }
+
 
         $errorEventSubscription = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action {
-            Write-Log -Message "DEBUG: Inside ErrorDataReceived event for '$($Script:TEST_ActionDesc)'" -Level "DEBUG" -LogFilePath $BuildLog
-            Write-Log -Message "DEBUG: errorEventSubscription State $($errorEventSubscription.state), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG: Inside ErrorDataReceived event for '$($using:capturedActionDescription)'" -Level "DEBUG" -LogFilePath $using:BuildLog # Use $using:BuildLog
+
+            $localDebugPath = $using:eventActionDebugLogPath
+            $localErrorBuilder = $using:errorBuilder
+            $localDesc = $using:capturedActionDescription
             $eventTimestamp = [DateTime]::UtcNow.ToString('o')
-            "[$eventTimestamp] ErrorDataReceived Fired for '$($Script:TEST_ActionDesc)'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
-             try {
-                    $errorBuilderFromClosure = $using:errorBuilder # Attempt to use $using first
-                    if ($null -ne $errorBuilderFromClosure) {
-                       $errorBuilderFromClosure.AppendLine($EventArgs.Data) | Out-Null
-                    } else {
-                         "[$eventTimestamp] errorBuilderFromClosure (via $using:errorBuilder) WAS NULL in ErrorDataReceived" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
+
+            "[$eventTimestamp] ErrorDataReceived Fired for '$localDesc'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+            if ($null -eq $localErrorBuilder) {
+                "[$eventTimestamp] FATAL_EVENT_ACTION: localErrorBuilder IS NULL in ErrorDataReceived for '$localDesc'" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
+            } else {
+                try {
+                    if ($null -ne $EventArgs.Data) {
+                        $localErrorBuilder.AppendLine($EventArgs.Data) | Out-Null
+                        "[$eventTimestamp] Appended to localErrorBuilder for '$localDesc'. Current Length: $($localErrorBuilder.Length)" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
                     }
                 } catch {
-                    "[$eventTimestamp] Error in ErrorDataReceived when trying to use errorBuilder. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
+                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on localErrorBuilder for '$localDesc'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $localDebugPath -Encoding utf8
                 }
+            } 
         } -ErrorAction Stop
         Write-Log -Message "DEBUG: errorEventSubscription registered." -Level "DEBUG" -LogFilePath $BuildLog
-        Write-Log -Message "DEBUG: errorEventSubscription State $($errorEventSubscription.state), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+        if ($errorEventSubscription) { Write-Log -Message "DEBUG: errorEventSubscription State $($errorEventSubscription.state), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog }
         
         Write-Log -Message "DEBUG: Starting process..." -Level "DEBUG" -LogFilePath $BuildLog
         # Start the process
@@ -1406,12 +1402,14 @@ Function Invoke-SshCommand {
             Write-Log -Message "BeginOutputReadLine for process completed." -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG: OutputEventSubscription State $($outputEventSubscription.state), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG: errorEventSubscription State $($errorEventSubscription.state), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
-        } catch [System.InvalidOperationException] {
+        }
+        catch [System.InvalidOperationException] {
             # ... (existing catch block for BeginOutputReadLine "Cannot mix..." error - keep this as it was if it helped before) ...
             if ($_.Exception.Message -like "*Cannot mix synchronous and asynchronous operation*") {
                 Write-Log -Message "WARNING: BeginOutputReadLine failed for '$ActionDescription' (Cannot mix...)." -Level "WARNING" -LogFilePath $BuildLog
                 "[$([DateTime]::UtcNow.ToString('o'))] BeginOutputReadLine for '$ActionDescription' caught 'Cannot mix...'." | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-            } else { throw }
+            }
+            else { throw }
         }
 
         try {
@@ -1420,19 +1418,23 @@ Function Invoke-SshCommand {
             Write-Log -Message "DEBUG: OutputEventSubscription State $($outputEventSubscription.state), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
             Write-Log -Message "DEBUG: errorEventSubscription State $($errorEventSubscription.state), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
 
-        } catch [System.InvalidOperationException] {
+        }
+        catch [System.InvalidOperationException] {
             # ... (existing catch block for BeginErrorReadLine "Cannot mix..." error) ...
             if ($_.Exception.Message -like "*Cannot mix synchronous and asynchronous operation*") {
                 Write-Log -Message "WARNING: BeginErrorReadLine failed for '$ActionDescription' (Cannot mix...)." -Level "WARNING" -LogFilePath $BuildLog
                 "[$([DateTime]::UtcNow.ToString('o'))] BeginErrorReadLine for '$ActionDescription' caught 'Cannot mix...'." | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-            } else { throw }
+            }
+            else { throw }
         }
         
         Write-Log -Message "DEBUG: Attempting to wait for exit for '$ActionDescription'." -Level "DEBUG" -LogFilePath $BuildLog
-        if (-not $process.WaitForExit(600000)) { # 10 minute timeout
+        if (-not $process.WaitForExit(600000)) {
+            # 10 minute timeout
             Write-Log -Message "WARNING: Process '$ActionDescription' timed out. Attempting to kill." -Level "WARNING" -LogFilePath $BuildLog
             try { $process.Kill($true); $sshExitCode = -1 } catch { Write-Log -Message "ERROR: Failed to kill timed-out process '$ActionDescription'. $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog; $sshExitCode = -2 }
-        } else {
+        }
+        else {
             $sshExitCode = $process.ExitCode
             Write-Log -Message "DEBUG: Process exited for '$ActionDescription'. ExitCode: $sshExitCode" -Level "DEBUG" -LogFilePath $BuildLog
             "[$([DateTime]::UtcNow.ToString('o'))] Process for '$ActionDescription' exited. ExitCode: $sshExitCode" | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
@@ -1464,9 +1466,10 @@ Function Invoke-SshCommand {
     }
     catch {
         $originalException = $_
-        Write-Log -Message "FATAL: Overall failure in Invoke-SshCommand for '$ActionDescription'. $($originalException.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
-        "[$([DateTime]::UtcNow.ToString('o'))] CATCH_BLOCK Invoke-SshCommand for '$($Script:TEST_ActionDesc)'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
-        
+        $errorMsgToLog = "FATAL: Overall failure in Invoke-SshCommand for '$capturedActionDescription'. $($originalException.Exception.Message)"
+        Write-Log -Message $errorMsgToLog -Level "ERROR" -LogFilePath $BuildLog
+        "[$([DateTime]::UtcNow.ToString('o'))] CATCH_BLOCK Invoke-SshCommand for '$capturedActionDescription'. Error: $($originalException.Exception.ToString())" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
+
         # Attempt to unregister events during error handling
         try {
             if ($outputEventSubscription) {
@@ -1494,7 +1497,8 @@ Function Invoke-SshCommand {
         $sshExitCode = if ($sshExitCode -eq -1 -or $sshExitCode -eq 0) { 999 } else { $sshExitCode } 
     }
 
-     "[$([DateTime]::UtcNow.ToString('o'))] End of Invoke-SshCommand for '$($Script:TEST_ActionDesc)'. outputBuilder Length: $($outputBuilder.Length), errorBuilder Length: $($errorBuilder.Length)" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
+    "[$([DateTime]::UtcNow.ToString('o'))] End of Invoke-SshCommand for '$capturedActionDescription'. outputBuilder Length: $($outputBuilder.Length), errorBuilder Length: $($errorBuilder.Length)" | Out-File -Append -FilePath $eventActionDebugLogPath -Encoding utf8
+    
     $sshOutput = $outputBuilder.ToString().Trim()
     $stdErrOutput = $errorBuilder.ToString().Trim()
     
@@ -1571,461 +1575,7 @@ Function Invoke-SshCommand {
     }
     return ($sshExitCode -eq 0)
 }
-<#
-Function Invoke-SshCommand {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Command,
-        [Parameter(Mandatory = $false)]
-        [switch]$UseSudo,
-        [Parameter(Mandatory = $true)]
-        [string]$BuildLog,
-        [Parameter(Mandatory = $false)]
-        [string]$ActionDescription = "execute remote command",
-        [Parameter(Mandatory = $false)]
-        [switch]$CaptureOutput,
-        [Parameter(Mandatory = $false)]
-        [bool]$IsFatal = $true,
-        [Parameter(Mandatory = $false)]
-        [string]$FailureCleanupCommand = ""
-    )
 
-    $remoteCommand = $Command
-    if ($UseSudo) {
-        $remoteCommand = "sudo $remoteCommand"
-    }
-
-    $wslExe = "wsl.exe"
-    $wslArgsList = @(
-        "-u", $DEPLOYMENT_WSL_SSH_USER,
-        "ssh",
-        "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH,
-        "-o", "BatchMode=yes",
-        "-o", "ConnectTimeout=30",
-        "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}",
-        $remoteCommand
-    )
-
-    Write-Log -Message "Executing via WSL ($ActionDescription): $wslExe $($wslArgsList -join ' ')" -Level "INFO" -LogFilePath $BuildLog
-
-    $sshExitCode = -1
-    $outputBuilder = New-Object System.Text.StringBuilder
-    $errorBuilder = New-Object System.Text.StringBuilder
-    
-    $outputEventSubscription = $null
-    $errorEventSubscription = $null
-
-    # --- TEMPORARY DEBUG LOG FILE ---
-    # Ensure this path is writable by the user running the script
-    # Or use $env:TEMP or Get-TemporaryFile
-    $eventDebugLogPath = Join-Path $env:TEMP "ps_event_invoke_ssh_debug.log" 
-    $actionDescriptionForEvent = $ActionDescription # Capture for use in events to avoid complex $using inside strings
-    "[$([DateTime]::UtcNow.ToString('o'))] Invoke-SshCommand for '$actionDescriptionForEvent' started. outputBuilder is $($outputBuilder.GetType().FullName), errorBuilder is $($errorBuilder.GetType().FullName)." | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-
-    try {
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = $wslExe
-        $wslArgsList | ForEach-Object { $processInfo.ArgumentList.Add($_) }
-        $processInfo.RedirectStandardOutput = $true
-        $processInfo.RedirectStandardError = $true
-        $processInfo.UseShellExecute = $false
-        $processInfo.CreateNoWindow = $true
-
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $processInfo
-        $process.EnableRaisingEvents = $true
-
-        $outputEventSubscription = Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action {
-            # Local variables for values from the outer scope
-            $localDebugLogPath = $using:eventDebugLogPath
-            $localOutputBuilder = $using:outputBuilder
-            $localActionDesc = $using:actionDescriptionForEvent # Use the pre-captured description
-            
-            $eventTimestamp = [DateTime]::UtcNow.ToString('o')
-            "[$eventTimestamp] OutputDataReceived Fired for '$localActionDesc'. EventArgs.Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-            
-            if ($null -eq $localOutputBuilder) {
-                "[$eventTimestamp] FATAL_EVENT_ACTION: outputBuilder IS NULL in OutputDataReceived for '$localActionDesc'" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-            } else {
-                try {
-                    if ($null -ne $EventArgs.Data) {
-                        $localOutputBuilder.AppendLine($EventArgs.Data) | Out-Null
-                        "[$eventTimestamp] Appended to outputBuilder for '$localActionDesc'. Current Length: $($localOutputBuilder.Length)" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-                    }
-                } catch {
-                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on outputBuilder for '$localActionDesc'. Data: '$($EventArgs.Data)'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-                }
-            }
-        } -ErrorAction Stop 
-
-        $errorEventSubscription = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action {
-            # Local variables for values from the outer scope
-            $localDebugLogPath = $using:eventDebugLogPath
-            $localErrorBuilder = $using:errorBuilder
-            $localActionDesc = $using:actionDescriptionForEvent
-
-            $eventTimestamp = [DateTime]::UtcNow.ToString('o')
-            "[$eventTimestamp] ErrorDataReceived Fired for '$localActionDesc'. EventArgs.Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-
-            if ($null -eq $localErrorBuilder) {
-                "[$eventTimestamp] FATAL_EVENT_ACTION: errorBuilder IS NULL in ErrorDataReceived for '$localActionDesc'" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-            } else {
-                try {
-                    if ($null -ne $EventArgs.Data) {
-                        $localErrorBuilder.AppendLine($EventArgs.Data) | Out-Null
-                        "[$eventTimestamp] Appended to errorBuilder for '$localActionDesc'. Current Length: $($localErrorBuilder.Length)" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-                    }
-                } catch {
-                    "[$eventTimestamp] ERROR_EVENT_ACTION: Error calling AppendLine on errorBuilder for '$localActionDesc'. Data: '$($EventArgs.Data)'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $localDebugLogPath -Encoding utf8
-                }
-            }
-        } -ErrorAction Stop # Keep ErrorAction Stop
-
-        Write-Log -Message "DEBUG: Event subscriptions potentially registered for '$ActionDescription'. Starting process..." -Level "DEBUG" -LogFilePath $BuildLog
-        
-        # Start the process
-        $process.Start() | Out-Null
-        Write-Log -Message "DEBUG: Process started for '$ActionDescription'." -Level "DEBUG" -LogFilePath $BuildLog
-        
-        try {
-            $process.BeginOutputReadLine()
-        } catch [System.InvalidOperationException] {
-            # ... (existing catch block for BeginOutputReadLine "Cannot mix..." error - keep this as it was if it helped before) ...
-            if ($_.Exception.Message -like "*Cannot mix synchronous and asynchronous operation*") {
-                Write-Log -Message "WARNING: BeginOutputReadLine failed for '$ActionDescription' (Cannot mix...)." -Level "WARNING" -LogFilePath $BuildLog
-                "[$([DateTime]::UtcNow.ToString('o'))] BeginOutputReadLine for '$ActionDescription' caught 'Cannot mix...'." | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-            } else { throw }
-        }
-
-        try {
-            $process.BeginErrorReadLine()
-        } catch [System.InvalidOperationException] {
-            # ... (existing catch block for BeginErrorReadLine "Cannot mix..." error) ...
-            if ($_.Exception.Message -like "*Cannot mix synchronous and asynchronous operation*") {
-                Write-Log -Message "WARNING: BeginErrorReadLine failed for '$ActionDescription' (Cannot mix...)." -Level "WARNING" -LogFilePath $BuildLog
-                "[$([DateTime]::UtcNow.ToString('o'))] BeginErrorReadLine for '$ActionDescription' caught 'Cannot mix...'." | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-            } else { throw }
-        }
-        
-        Write-Log -Message "DEBUG: Attempting to wait for exit for '$ActionDescription'." -Level "DEBUG" -LogFilePath $BuildLog
-        if (-not $process.WaitForExit(600000)) { # 10 minute timeout
-            Write-Log -Message "WARNING: Process '$ActionDescription' timed out. Attempting to kill." -Level "WARNING" -LogFilePath $BuildLog
-            try { $process.Kill($true); $sshExitCode = -1 } catch { Write-Log -Message "ERROR: Failed to kill timed-out process '$ActionDescription'. $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog; $sshExitCode = -2 }
-        } else {
-            $sshExitCode = $process.ExitCode
-        }
-        Write-Log -Message "DEBUG: Process exited for '$ActionDescription'. ExitCode: $sshExitCode" -Level "DEBUG" -LogFilePath $BuildLog
-        "[$([DateTime]::UtcNow.ToString('o'))] Process for '$ActionDescription' exited. ExitCode: $sshExitCode" | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-        
-        # Unregister events
-        try {
-            if ($outputEventSubscription) {
-                # Check if the subscription object exists
-                Unregister-Event -SubscriptionId $outputEventSubscription.Id -ErrorAction SilentlyContinue
-            }
-            if ($errorEventSubscription) {
-                # Check if the subscription object exists
-                Unregister-Event -SubscriptionId $errorEventSubscription.Id -ErrorAction SilentlyContinue
-            }
-        }
-        catch {
-            Write-Log -Message "DEBUG: Non-critical error during event unregistration in try block for '$ActionDescription'. Cleanup Error: $($_.Exception.Message)" -Level "DEBUG" -LogFilePath $BuildLog
-        }
-
-    }
-    catch {
-        $originalException = $_
-        Write-Log -Message "FATAL: Overall failure in Invoke-SshCommand for '$ActionDescription'. $($originalException.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
-        "[$([DateTime]::UtcNow.ToString('o'))] CATCH_BLOCK Invoke-SshCommand for '$actionDescriptionForEvent'. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-        
-        # Attempt to unregister events during error handling
-        try {
-            if ($outputEventSubscription) {
-                Unregister-Event -SubscriptionId $outputEventSubscription.Id -ErrorAction SilentlyContinue 
-            }
-            if ($errorEventSubscription) {
-                Unregister-Event -SubscriptionId $errorEventSubscription.Id -ErrorAction SilentlyContinue
-            }
-        }
-        catch {
-            Write-Log -Message "WARNING: Failed to unregister events during error handling for '$ActionDescription'. Cleanup Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $BuildLog
-        }
-
-        if ($IsFatal) {
-            throw "Halting due to critical error during '$ActionDescription'. Original error: $($originalException.Exception.Message)"
-        }
-        $sshExitCode = if ($sshExitCode -eq -1 -or $sshExitCode -eq 0) { 999 } else { $sshExitCode } 
-    }
-
-     "[$([DateTime]::UtcNow.ToString('o'))] End of Invoke-SshCommand for '$actionDescriptionForEvent'. outputBuilder Length: $($outputBuilder.Length), errorBuilder Length: $($errorBuilder.Length)" | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
-    $sshOutput = $outputBuilder.ToString().Trim()
-    $stdErrOutput = $errorBuilder.ToString().Trim()
-    
-    if ($sshOutput) {
-        Write-Log -Message "WSL/SSH StdOut for '$ActionDescription':`n$sshOutput" -Level "INFO" -LogFilePath $BuildLog
-    }
-    if ($stdErrOutput) {
-        $logLevel = if ($sshExitCode -ne 0) { "ERROR" } else { "INFO" }
-        Write-Log -Message "WSL/SSH StdErr for '$ActionDescription':`n$stdErrOutput" -Level $logLevel -LogFilePath $BuildLog
-    }
-
-    if ($sshExitCode -ne 0) {
-        # ENHANCED ERROR MESSAGE CONSTRUCTION
-        $errorMessage = "Failed to $ActionDescription via WSL. Exit Code: $sshExitCode."
-        
-        if ($stdErrOutput) {
-            # Take the first few lines of StdErr for the summary
-            $errLines = $stdErrOutput.Split([System.Environment]::NewLine)
-            $errSnippet = $errLines | Select-Object -First 5 # Get up to 5 lines
-            $errSnippetText = $errSnippet -join [System.Environment]::NewLine
-            if ($errLines.Count -gt 5) {
-                $errSnippetText += "`n[... StdErr truncated in this summary. See full StdErr above in logs ...]"
-            }
-            $errorMessage += "`nRemote StdErr Snippet:`n$errSnippetText"
-        }
-        elseif ($sshOutput) { 
-            # If no StdErr, but there was StdOut, include a snippet of that as it might contain a hint
-            $outLines = $sshOutput.Split([System.Environment]::NewLine)
-            $outSnippet = $outLines | Select-Object -First 3 # Get up to 3 lines
-            $outSnippetText = $outSnippet -join [System.Environment]::NewLine
-            if ($outLines.Count -gt 3) {
-                $outSnippetText += "`n[... StdOut truncated in this summary. See full StdOut above in logs ...]"
-            }
-            $errorMessage += "`nRemote StdOut Snippet (since StdErr was empty):`n$outSnippetText"
-        }
-        # END OF ENHANCED ERROR MESSAGE CONSTRUCTION
-
-        if ($FailureCleanupCommand) {
-            Write-Log -Message "Attempting cleanup command via WSL after failure: $FailureCleanupCommand" -Level "WARNING" -LogFilePath $BuildLog
-            $cleanupWslArgsList = @(
-                "-u", $DEPLOYMENT_WSL_SSH_USER, "ssh", "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH, "-o", "BatchMode=yes",
-                "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}", $FailureCleanupCommand
-            )
-            $cleanupResult = Start-Process -FilePath $wslExe -ArgumentList $cleanupWslArgsList -PassThru -Wait -NoNewWindow -ErrorAction SilentlyContinue
-            if ($cleanupResult -and $cleanupResult.ExitCode -ne 0) {
-                Write-Log -Message "WSL cleanup command also failed (Exit Code: $($cleanupResult.ExitCode))." -Level "ERROR" -LogFilePath $BuildLog
-            }
-            elseif ($cleanupResult) {
-                Write-Log -Message "WSL cleanup command executed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-            }
-            else {
-                Write-Log -Message "WSL cleanup command failed to start or returned no result." -Level "ERROR" -LogFilePath $BuildLog
-            }
-        }
-
-        if ($IsFatal) {
-            Write-Log -Message "FATAL ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Exiting." -Level "FATAL" -LogFilePath $BuildLog
-            throw "Halting due to fatal error during '$ActionDescription' (SSH Exit Code: $errorMessage)."
-        }
-        else {
-            Write-Log -Message "Warning ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Continuing." -Level "WARNING" -LogFilePath $BuildLog
-        }
-    }
-    else {
-        Write-Log -Message "$ActionDescription via WSL completed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-    }
-
-    if ($CaptureOutput) {
-        return [PSCustomObject]@{
-            StdOut   = $sshOutput
-            StdErr   = $stdErrOutput
-            ExitCode = $sshExitCode
-        }
-    }
-    return ($sshExitCode -eq 0)
-}
-#>
-<# Function Invoke-SshCommand {
-#     param(
-#         [Parameter(Mandatory = $true)]
-#         [string]$Command,
-#         [Parameter(Mandatory = $false)]
-#         [switch]$UseSudo,
-#         [Parameter(Mandatory = $true)]
-#         [string]$BuildLog,
-#         [Parameter(Mandatory = $false)]
-#         [string]$ActionDescription = "execute remote command",
-#         [Parameter(Mandatory = $false)]
-#         [switch]$CaptureOutput,
-#         [Parameter(Mandatory = $false)]
-#         [bool]$IsFatal = $true,
-#         [Parameter(Mandatory = $false)]
-#         [string]$FailureCleanupCommand = ""
-#     )
-#
-#     $remoteCommand = $Command
-#     if ($UseSudo) {
-#         $remoteCommand = "sudo $remoteCommand"
-#     }
-#     $wslExe = "wsl.exe"
-#     $wslArgsList = @(
-#         "-u", $DEPLOYMENT_WSL_SSH_USER,
-#         "ssh",
-#         "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH,
-#         "-o", "BatchMode=yes",
-#         "-o", "ConnectTimeout=30",
-#         "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}",
-#         $remoteCommand
-#     )
-#     Write-Log -Message "Executing via WSL ($ActionDescription): $wslExe $($wslArgsList -join ' ')" -Level "INFO" -LogFilePath $BuildLog
-#     $sshExitCode = -1
-#     $outputBuilder = New-Object System.Text.StringBuilder
-#     $errorBuilder = New-Object System.Text.StringBuilder 
-#     $outputEventSubscription = $null # Renamed for clarity, holds the subscription object
-#     $errorEventSubscription = $null  # Renamed for clarity
-#     try {
-#         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-#         $processInfo.FileName = $wslExe
-#         $wslArgsList | ForEach-Object { $processInfo.ArgumentList.Add($_) }
-#         $processInfo.RedirectStandardOutput = $true
-#         $processInfo.RedirectStandardError = $true
-#         $processInfo.UseShellExecute = $false
-#         $processInfo.CreateNoWindow = $true
-#
-#         $process = New-Object System.Diagnostics.Process
-#         $process.StartInfo = $processInfo
-#         $process.EnableRaisingEvents = $true
-#
-#         $outputEventSubscription = Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action {
-#             if ($null -ne $EventArgs.Data) {
-#                 $outputBuilder.AppendLine($EventArgs.Data) | Out-Null
-#             }
-#         } -ErrorAction Stop 
-#
-#         $errorEventSubscription = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action {
-#             if ($null -ne $EventArgs.Data) {
-#                 $errorBuilder.AppendLine($EventArgs.Data) | Out-Null
-#             }
-#         } -ErrorAction Stop
-        
-#         # Start the process
-#         $process.Start() | Out-Null
-        
-#         Start-Sleep -Milliseconds 100 # Introduce a very small delay - PURELY FOR DEBUGGING THIS FUNCTION
-        
-#         $process.BeginOutputReadLine()
-#         $process.BeginErrorReadLine()
-
-#         $process.WaitForExit() # Consider adding a timeout later if needed
-#         $sshExitCode = $process.ExitCode
-        
-#         # Unregister events (normal path)
-#         try {
-#             if ($outputEventSubscription) {
-#                 # Check if the subscription object exists
-#                 Unregister-Event -SubscriptionId $outputEventSubscription.Id -ErrorAction SilentlyContinue
-#             }
-#             if ($errorEventSubscription) {
-#                 # Check if the subscription object exists
-#                 Unregister-Event -SubscriptionId $errorEventSubscription.Id -ErrorAction SilentlyContinue
-#             }
-#         }
-#         catch {
-#             Write-Log -Message "DEBUG: Non-critical error during event unregistration in try block for '$ActionDescription'. Cleanup Error: $($_.Exception.Message)" -Level "DEBUG" -LogFilePath $BuildLog
-#         }
-
-#     }
-#     catch {
-#         $originalException = $_ # Store the original exception
-
-#         Write-Log -Message "FATAL: WSL/SSH command execution failed for '$ActionDescription'. Original Error was: $($originalException.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
-        
-#         # Attempt to unregister events during error handling
-#         try {
-#             if ($outputEventSubscription) {
-#                 Unregister-Event -SubscriptionId $outputEventSubscription.Id -ErrorAction SilentlyContinue 
-#             }
-#             if ($errorEventSubscription) {
-#                 Unregister-Event -SubscriptionId $errorEventSubscription.Id -ErrorAction SilentlyContinue
-#             }
-#         }
-#         catch {
-#             Write-Log -Message "WARNING: Failed to unregister events during error handling for '$ActionDescription'. Cleanup Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $BuildLog
-#         }
-
-#         if ($IsFatal) {
-#             throw "Halting due to critical error during '$ActionDescription'. Original error: $($originalException.Exception.Message)"
-#         }
-#         $sshExitCode = if ($sshExitCode -eq -1 -or $sshExitCode -eq 0) { 999 } else { $sshExitCode } 
-#     }
-
-#     $sshOutput = $outputBuilder.ToString().Trim()
-#     $stdErrOutput = $errorBuilder.ToString().Trim()
-    
-#     if ($sshOutput) {
-#         Write-Log -Message "WSL/SSH StdOut for '$ActionDescription':`n$sshOutput" -Level "INFO" -LogFilePath $BuildLog
-#     }
-#     if ($stdErrOutput) {
-#         $logLevel = if ($sshExitCode -ne 0) { "ERROR" } else { "INFO" }
-#         Write-Log -Message "WSL/SSH StdErr for '$ActionDescription':`n$stdErrOutput" -Level $logLevel -LogFilePath $BuildLog
-#     }
-
-#     if ($sshExitCode -ne 0) {
-#         # ENHANCED ERROR MESSAGE CONSTRUCTION
-#         $errorMessage = "Failed to $ActionDescription via WSL. Exit Code: $sshExitCode."
-        
-#         if ($stdErrOutput) {
-#             # Take the first few lines of StdErr for the summary
-#             $errLines = $stdErrOutput.Split([System.Environment]::NewLine)
-#             $errSnippet = $errLines | Select-Object -First 5 # Get up to 5 lines
-#             $errSnippetText = $errSnippet -join [System.Environment]::NewLine
-#             if ($errLines.Count -gt 5) {
-#                 $errSnippetText += "`n[... StdErr truncated in this summary. See full StdErr above in logs ...]"
-#             }
-#             $errorMessage += "`nRemote StdErr Snippet:`n$errSnippetText"
-#         }
-#         elseif ($sshOutput) { 
-#             # If no StdErr, but there was StdOut, include a snippet of that as it might contain a hint
-#             $outLines = $sshOutput.Split([System.Environment]::NewLine)
-#             $outSnippet = $outLines | Select-Object -First 3 # Get up to 3 lines
-#             $outSnippetText = $outSnippet -join [System.Environment]::NewLine
-#             if ($outLines.Count -gt 3) {
-#                 $outSnippetText += "`n[... StdOut truncated in this summary. See full StdOut above in logs ...]"
-#             }
-#             $errorMessage += "`nRemote StdOut Snippet (since StdErr was empty):`n$outSnippetText"
-#         }
-#         # END OF ENHANCED ERROR MESSAGE CONSTRUCTION
-
-#         if ($FailureCleanupCommand) {
-#             Write-Log -Message "Attempting cleanup command via WSL after failure: $FailureCleanupCommand" -Level "WARNING" -LogFilePath $BuildLog
-#             $cleanupWslArgsList = @(
-#                 "-u", $DEPLOYMENT_WSL_SSH_USER, "ssh", "-i", $DEPLOYMENT_WSL_SSH_KEY_PATH, "-o", "BatchMode=yes",
-#                 "${DEPLOYMENT_SERVER_USER}@${DEPLOYMENT_SERVER_IP}", $FailureCleanupCommand
-#             )
-#             $cleanupResult = Start-Process -FilePath $wslExe -ArgumentList $cleanupWslArgsList -PassThru -Wait -NoNewWindow -ErrorAction SilentlyContinue
-#             if ($cleanupResult -and $cleanupResult.ExitCode -ne 0) {
-#                 Write-Log -Message "WSL cleanup command also failed (Exit Code: $($cleanupResult.ExitCode))." -Level "ERROR" -LogFilePath $BuildLog
-#             }
-#             elseif ($cleanupResult) {
-#                 Write-Log -Message "WSL cleanup command executed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-#             }
-#             else {
-#                 Write-Log -Message "WSL cleanup command failed to start or returned no result." -Level "ERROR" -LogFilePath $BuildLog
-#             }
-#         }
-
-#         if ($IsFatal) {
-#             Write-Log -Message "FATAL ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Exiting." -Level "FATAL" -LogFilePath $BuildLog
-#             throw "Halting due to fatal error during '$ActionDescription' (SSH Exit Code: $errorMessage)."
-#         }
-#         else {
-#             Write-Log -Message "Warning ($ActionDescription): $errorMessage Check WSL/SSH output above or logs on server. Continuing." -Level "WARNING" -LogFilePath $BuildLog
-#         }
-#     }
-#     else {
-#         Write-Log -Message "$ActionDescription via WSL completed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-#     }
-
-#     if ($CaptureOutput) {
-#         return [PSCustomObject]@{
-#             StdOut   = $sshOutput
-#             StdErr   = $stdErrOutput
-#             ExitCode = $sshExitCode
-#         }
-#     }
-#     return ($sshExitCode -eq 0)
-# }
-#>
 Function Invoke-WslRsync {
     param(
         [Parameter(Mandatory = $true)]
@@ -2073,9 +1623,7 @@ Function Invoke-WslRsync {
 
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $processInfo
-        $process.Start() | Out-Null
-
-        
+        $process.Start() | Out-Null        
 
         $stdOut = $process.StandardOutput.ReadToEnd()
         $stdErr = $process.StandardError.ReadToEnd()
