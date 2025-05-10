@@ -1345,7 +1345,7 @@ Function Invoke-SshCommand {
 
         # EXTREMELY SIMPLIFIED ACTION BLOCK
         $outputEventSubscription = Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action {
-            Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
             $eventTimestamp = [DateTime]::UtcNow.ToString('o')
             # Log directly using script scope vars to see if event even fires
             "[$eventTimestamp] OutputDataReceived Fired for '$($Script:TEST_ActionDesc)'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
@@ -1372,10 +1372,10 @@ Function Invoke-SshCommand {
                 }
             }
         } -ErrorAction Stop 
-        Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+        Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
 
         $errorEventSubscription = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action {
-            Write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
             $eventTimestamp = [DateTime]::UtcNow.ToString('o')
             "[$eventTimestamp] ErrorDataReceived Fired for '$($Script:TEST_ActionDesc)'. Data: '$($EventArgs.Data)'" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
              try {
@@ -1389,18 +1389,18 @@ Function Invoke-SshCommand {
                     "[$eventTimestamp] Error in ErrorDataReceived when trying to use errorBuilder. Error: $($_.Exception.ToString())" | Out-File -Append -FilePath $Script:TEST_EventDebugLog -Encoding utf8
                 }
         } -ErrorAction Stop
-        Write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+        Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         Write-Log -Message "DEBUG: Event subscriptions potentially registered for '$ActionDescription'. Starting process..." -Level "DEBUG" -LogFilePath $BuildLog
         
         # Start the process
         $process.Start() | Out-Null
         Write-Log -Message "DEBUG: Process started for '$ActionDescription'." -Level "DEBUG" -LogFilePath $BuildLog
-        Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
-        Write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+        Write-Log -MesWrite-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+        Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         try {
             $process.BeginOutputReadLine()
-            Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
-            Write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         } catch [System.InvalidOperationException] {
             # ... (existing catch block for BeginOutputReadLine "Cannot mix..." error - keep this as it was if it helped before) ...
             if ($_.Exception.Message -like "*Cannot mix synchronous and asynchronous operation*") {
@@ -1411,8 +1411,8 @@ Function Invoke-SshCommand {
 
         try {
             $process.BeginErrorReadLine()
-            Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
-            Write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
 
         } catch [System.InvalidOperationException] {
             # ... (existing catch block for BeginErrorReadLine "Cannot mix..." error) ...
@@ -1428,8 +1428,8 @@ Function Invoke-SshCommand {
             try { $process.Kill($true); $sshExitCode = -1 } catch { Write-Log -Message "ERROR: Failed to kill timed-out process '$ActionDescription'. $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog; $sshExitCode = -2 }
         } else {
             $sshExitCode = $process.ExitCode
-            Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
-            Write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
+            Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
         }
         Write-Log -Message "DEBUG: Process exited for '$ActionDescription'. ExitCode: $sshExitCode" -Level "DEBUG" -LogFilePath $BuildLog
         "[$([DateTime]::UtcNow.ToString('o'))] Process for '$ActionDescription' exited. ExitCode: $sshExitCode" | Out-File -Append -FilePath $eventDebugLogPath -Encoding utf8
@@ -1438,13 +1438,13 @@ Function Invoke-SshCommand {
         try {
             if ($outputEventSubscription) {
                 # Check if the subscription object exists
-                Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+                Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
                 Write-Log -Message "DEBUG: Unregistering OutputEventSubscription for '$ActionDescription'." -Level "DEBUG" -LogFilePath $BuildLog
                 Unregister-Event -SubscriptionId $outputEventSubscription.Id -ErrorAction SilentlyContinue
             }
             if ($errorEventSubscription) {
                 # Check if the subscription object exists
-                write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+                Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
                 Write-Log -Message "DEBUG: Unregistering ErrorEventSubscription for '$ActionDescription'." -Level "DEBUG" -LogFilePath $BuildLog
                 Unregister-Event -SubscriptionId $errorEventSubscription.Id -ErrorAction SilentlyContinue
             }
@@ -1462,12 +1462,12 @@ Function Invoke-SshCommand {
         # Attempt to unregister events during error handling
         try {
             if ($outputEventSubscription) {
-                Write-Log -Message "DEBUG:OutputEventSubscription $($outputEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+                Write-Log -Message "DEBUG:OutputEventSubscription Status $($outputEventSubscription.status), Error: $($outputEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
                 Write-Log -Message "DEBUG: Unregistering OutputEventSubscription for '$ActionDescription' during error handling." -Level "DEBUG" -LogFilePath $BuildLog
                 Unregister-Event -SubscriptionId $outputEventSubscription.Id -ErrorAction SilentlyContinue 
             }
             if ($errorEventSubscription) {
-                Write-Log -Message "DEBUG:ErrorEventSubscription $($errorEventSubscription)" -Level "DEBUG" -LogFilePath $BuildLog
+                Write-Log -Message "DEBUG:errorEventSubscription Status $($errorEventSubscription.status), Error: $($errorEventSubscription.error)" -Level "DEBUG" -LogFilePath $BuildLog
                 Write-Log -Message "DEBUG: Unregistering ErrorEventSubscription for '$ActionDescription' during error handling." -Level "DEBUG" -LogFilePath $BuildLog
                 Unregister-Event -SubscriptionId $errorEventSubscription.Id -ErrorAction SilentlyContinue
             }
