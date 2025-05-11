@@ -1795,7 +1795,7 @@ $serverFrontendBaseDir = "$DEPLOYMENT_SERVER_BASE_DIR/satisfactory_tracker"
 $serverFrontendBuildDir = "$serverFrontendBaseDir/build"
 $backupDirFlask = "$DEPLOYMENT_BACKUP_DIR/flask_$timestamp"
 $backupDirFrontend = "$DEPLOYMENT_BACKUP_DIR/frontend_$timestamp"
-$backupDirDB = "$DEPLOYMENT_BACKUP_DIR/db_backup_$timestamp.sql"
+$backupDirDataBase = "$DEPLOYMENT_BACKUP_DIR/db_backup_$timestamp.sql"
 
 # --- Construct Server URL for Display ---
 
@@ -1848,7 +1848,7 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
             -ServerFlaskDir $serverFlaskBaseDir `
             -BackupDirFrontend $backupDirFrontend `
             -ServerFrontendBuildDir $serverFrontendBuildDir `
-            -BackupDirDB $backupDirDB `
+            -BackupDirDB $backupDirDataBase `
             -DatabaseName $DEPLOYMENT_DB_NAME `
             -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
             -BuildLog $buildLog
@@ -1919,7 +1919,7 @@ else {
         -ServerFlaskDir $serverFlaskBaseDir `
         -BackupDirFrontend $backupDirFrontend `
         -ServerFrontendBuildDir $serverFrontendBuildDir `
-        -BackupDirDB $backupDirDB `
+        -BackupDirDB $backupDirDataBase `
         -DatabaseName $DEPLOYMENT_DB_NAME `
         -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
         -BuildLog $buildLog
