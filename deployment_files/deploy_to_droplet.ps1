@@ -748,7 +748,7 @@ Function Backup-ServerState {
     Invoke-SshCommand -Command $flaskBackupCmd `
         -ActionDescription "backup Flask files to '$BackupDirFlask'" `
         -BuildLog $BuildLog `
-        -IsFatal $true # Keep original fatal behavior
+        -IsFatal $true
     
     # --- Call Cleanup for Flask Backups ---
     Remove-OldBackups  -ParentDir $DeploymentBackupDir ` # Parent directory
@@ -763,11 +763,11 @@ Function Backup-ServerState {
     Invoke-SshCommand -Command $frontendBackupCmd `
         -ActionDescription "backup React build to '$BackupDirFrontend'" `
         -BuildLog $BuildLog `
-        -IsFatal $true # Keep original fatal behavior
+        -IsFatal $true
 
     # --- Call Cleanup for Frontend Backups ---
     Remove-OldBackups  -ParentDir $DeploymentBackupDir `  # Parent directory
-    -Prefix "frontend_" `             # Prefix for frontend backups
+    -Prefix "frontend_" `
     -BuildLog $BuildLog
 
     # 3.3: Backup Database
@@ -779,12 +779,13 @@ Function Backup-ServerState {
     Invoke-SshCommand -Command $dbBackupCmd `
         -ActionDescription "backup database '$DatabaseName'" `
         -BuildLog $BuildLog `
-        -FailureCleanupCommand $dbCleanupCmd ` # Pass the cleanup command
-    -IsFatal $true # Keep original fatal behavior
+        -FailureCleanupCommand $dbCleanupCmd `
+        -IsFatal $true
+
     # --- Call Cleanup for Database Backups ---
-    Remove-OldBackups  -ParentDir $DeploymentBackupDir ` # Parent directory
-    -Prefix "db_backup_" `         # Prefix for DB backups
-    -Suffix ".sql" `               # Suffix for DB backups
+    Remove-OldBackups  -ParentDir $DeploymentBackupDir `
+    -Prefix "db_backup_" `
+    -Suffix ".sql" `
     -BuildLog $BuildLog
 
 
@@ -834,13 +835,13 @@ Function Sync-FilesToServer {
     Invoke-SshCommand -Command $flaskMkdirCmd `
         -ActionDescription "ensure Flask app destination directory exists ('$ServerFlaskAppDir')" `
         -BuildLog $BuildLog `
-        -IsFatal $true # Keep original fatal behavior
+        -IsFatal $true
     $flaskExcludes = @('__pycache__', 'logs', 'scripts', '*.pyc', '.git*', '.vscode') # Add more if needed
     # Ensure trailing slashes
     Invoke-WslRsync -SourcePath "$($WslLocalFlaskDirApp)/" `
         -DestinationPath "$($ServerFlaskAppDir)/" `
         -Purpose "Flask app files" `
-        -ExcludePatterns $flaskExcludes `
+        -ExcludePatterns $flaskExcludes
 
     # Copy the pip_requirements.txt file from the local flask_server dir to the flask base directory on the server
     $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on server
@@ -871,7 +872,7 @@ Function Update-FlaskDependencies {
     Invoke-SshCommand -Command $upgradeFlaskCmd `
         -ActionDescription "upgrade Flask dependencies from $ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" `
         -BuildLog $BuildLog `
-        -IsFatal $true # Keep original fatal behavior
+        -IsFatal $true
     
     Write-Log -Message "Flask dependencies upgraded successfully." -Level "SUCCESS" -LogFilePath $BuildLog
 
@@ -911,7 +912,7 @@ Function Invoke-DatabaseMigration {
         -ActionDescription "check for migrations directory" `
         -BuildLog $BuildLog `
         -IsFatal $false `
-        -CaptureOutput # Capture status
+        -CaptureOutput
 
     $migrationDirExists = ($checkResult.ExitCode -eq 0) # Check the exit code from the result object
 
@@ -942,7 +943,7 @@ Function Invoke-DatabaseMigration {
     $flaskDBMigrateResult = Invoke-SshCommand -Command $migrateCmd `
         -ActionDescription "generate migration script" `
         -BuildLog $BuildLog `
-        -IsFatal $true # Keep original fatal behavior
+        -IsFatal $true
     Write-Log -Message "Result $flaskDBMigrateResult. Script generated. Please review it on the server." -Level "WARNING" -LogFilePath $BuildLog
 
     # 5.2: Pause for User Review (unless AutoApproveMigration is set)
@@ -987,7 +988,7 @@ Function Invoke-DatabaseMigration {
                     Invoke-SshCommand -Command $deleteScriptCmd `
                         -ActionDescription "delete generated migration script '$latestScript'" `
                         -BuildLog $BuildLog `
-                        -IsFatal $false # Don't fail deployment if delete fails
+                        -IsFatal $false
                     # Note: Success/failure is logged by Invoke-SshCommand
                 }
                 else {
@@ -1221,7 +1222,7 @@ Function Remove-OldBackups {
     $listResult = Invoke-SshCommand -Command $listCommand `
         -ActionDescription "list backups matching '$Prefix*$Suffix' in '$ParentDir'" `
         -BuildLog $BuildLog `
-        -IsFatal $false ` # Don't stop if listing fails (e.g., dir doesn't exist yet)
+        -IsFatal $false `
     -CaptureOutput
 
     if ($listResult.ExitCode -ne 0) {
@@ -1257,7 +1258,7 @@ Function Remove-OldBackups {
             Invoke-SshCommand -Command $deleteCommand `
                 -ActionDescription "delete old backup '$itemPath'" `
                 -BuildLog $BuildLog `
-                -IsFatal $false # Log error but don't stop deployment if a single delete fails
+                -IsFatal $false
         }
         Write-Log -Message "Old backups deleted successfully." -Level "SUCCESS" -LogFilePath $BuildLog
     }
@@ -1834,16 +1835,16 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
     }
     elseif ($ForceReactBuildOnly) {
         Write-Log -Message "--- Running ONLY Step 2: Run React Build Locally ---" -Level "INFO" -LogFilePath $buildLog
-        Invoke-ReactBuild -RunBuild 'y' ` # Force build to 'y' when running this step only
-        -LocalFrontendDir $localFrontendDir `
+        Invoke-ReactBuild -RunBuild 'y' `
+            -LocalFrontendDir $localFrontendDir `
             -BuildLog $buildLog `
             -GitRepoPath $DEPLOYMENT_GIT_REPO_PATH
         Write-Log -Message "--- Finished ONLY Step 2 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceBackupOnly) {
         Write-Log -Message "--- Running ONLY Step 3: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $buildLog
-        Backup-ServerState -RunBackup 'y' ` # Force backup to 'y' when running this step only
-        -BackupDirFlask $backupDirFlask `
+        Backup-ServerState -RunBackup 'y' `
+            -BackupDirFlask $backupDirFlask `
             -ServerFlaskDir $serverFlaskBaseDir `
             -BackupDirFrontend $backupDirFrontend `
             -ServerFrontendBuildDir $serverFrontendBuildDir `
