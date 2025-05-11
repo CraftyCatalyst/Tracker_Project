@@ -175,7 +175,7 @@ param(
     [string]$runDBMigration,
 
     [Parameter(Mandatory = $false, HelpMessage = "Specify the Git tag/version to deploy (e.g., v1.3.0). Required if -BumpType is NOT used.")]
-    [ValidatePattern('^v\d+\.\d+\.\d+$', Options = 'IgnoreCase')]
+    [ValidatePattern('^v\d+\.\d+\.\d+(?:-(?:rc|dev|qas|test)\.\d+)?$', Options = 'IgnoreCase')]
     [string]$Version,
 
     [Parameter(Mandatory = $false, HelpMessage = "Specify the type of version bump to perform before deployment. If used, -Version is ignored. Valid values: major, minor, patch, rc, dev, prod or test")]
