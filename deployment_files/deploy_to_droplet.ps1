@@ -927,7 +927,8 @@ Function Invoke-DatabaseMigration {
             -ActionDescription "initialize migrations (flask db init)" `
             -BuildLog $BuildLog `
             -IsFatal $true
-        Write-Log -Message "Flask-Migrate initialized successfully. Output: $($flaskInitResult)" -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Flask DB Init Output: $($flaskInitResult.StdOut)" -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Flask DB Init Error Output: $($flaskInitResult.StdErr)" -Level "ERROR" -LogFilePath $BuildLog
         Write-Log -Message "Flask-Migrate initialized successfully." -Level "SUCCESS" -LogFilePath $BuildLog
         $migrationMessage = "Initial migration creating all tables."
     }
@@ -949,7 +950,8 @@ Function Invoke-DatabaseMigration {
         -ActionDescription "generate migration script" `
         -BuildLog $BuildLog `
         -IsFatal $true # Keep original fatal behavior
-    Write-Log -Message "Migration script generated successfully. Output: $($flaskDBMigrateResult)" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "Flask DB Migration Output: $($flaskDBMigrateResult.StdOut)" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "Flask DB Migration Error Output: $($flaskDBMigrateResult.StdErr)" -Level "ERROR" -LogFilePath $BuildLog
     Write-Log -Message "Migration script generated. Please review it on the server." -Level "WARNING" -LogFilePath $BuildLog
 
     # 5.2: Pause for User Review (unless AutoApproveMigration is set)
@@ -1029,7 +1031,8 @@ Function Invoke-DatabaseMigration {
             -ActionDescription "apply database migration (upgrade)" `
             -BuildLog $BuildLog `
             -IsFatal $true
-        Write-Log -Message "Database migration applied successfully. Output: $($flaskUpgradeResult)" -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Flask Upgrade Standard Output: $($flaskUpgradeResult.StdOut)" -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Flask Upgrade Error Output: $($flaskUpgradeResult.StdErr)" -Level "ERROR" -LogFilePath $BuildLog
         Write-Log -Message "Database migration applied successfully." -Level "SUCCESS" -LogFilePath $BuildLog
         # --- End Apply Migration ---
     }
