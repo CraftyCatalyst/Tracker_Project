@@ -878,7 +878,6 @@ Function Update-FlaskDependencies {
 }
 
 Function Invoke-DatabaseMigration {
-    # TODO: Add functionality to run sql scripts (for new static data or new database creation)
     param(
         [Parameter(Mandatory = $true)]
         [ValidateSet('y', 'n')]
@@ -918,18 +917,13 @@ Function Invoke-DatabaseMigration {
 
     if (-not $migrationDirExists) {
         Write-Log -Message "Migrations directory not found. Initializing Flask-Migrate..." -Level "INFO" -LogFilePath $BuildLog
-
-        # Append '; exit' to ensure the SSH session closes even if flask db init doesn't signal EOF correctly on first run
-        # Also redirect stdout and stderr to /dev/null to prevent potential buffer issues/deadlocks
-        # $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init > /dev/null 2>&1; exit `$?"
-        $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init 2>&1 | Out-String; exit `$?"
+        # Redirect output to prevent potential hangs
+       $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init 2>&1; exit `$?"
         $flaskInitResult = Invoke-SshCommand -Command $initCmd `
             -ActionDescription "initialize migrations (flask db init)" `
             -BuildLog $BuildLog `
             -IsFatal $true
-        Write-Log -Message "Flask DB Init Output: $($flaskInitResult.StdOut)" -Level "INFO" -LogFilePath $BuildLog
-        Write-Log -Message "Flask DB Init Error Output: $($flaskInitResult.StdErr)" -Level "ERROR" -LogFilePath $BuildLog
-        Write-Log -Message "Flask-Migrate initialized successfully." -Level "SUCCESS" -LogFilePath $BuildLog
+        Write-Log -Message "Result: $flaskInitResult. Flask-Migrate initialized successfully." -Level "SUCCESS" -LogFilePath $BuildLog
         $migrationMessage = "Initial migration creating all tables."
     }
     else {
@@ -942,17 +936,14 @@ Function Invoke-DatabaseMigration {
     # 5.1: Generate Migration Script (using the determined message)
     Write-Log -Message "Generating database migration script with message: '$migrationMessage'" -Level "INFO" -LogFilePath $BuildLog
     $escapedMigrationMessageForCmd = $migrationMessage -replace "'", "'\''"
-    # Redirect output to prevent potential hangs similar to 'flask db init'
-    # $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd' > /dev/null 2>&1; exit `$?"
-    $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd' 2>&1 | Out-String; exit `$?"
+    # Redirect output to prevent potential hangs
+    $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd' 2>&1; exit `$?"
     # Note: The command above captures both stdout and stderr, which is useful for debugging
     $flaskDBMigrateResult = Invoke-SshCommand -Command $migrateCmd `
         -ActionDescription "generate migration script" `
         -BuildLog $BuildLog `
         -IsFatal $true # Keep original fatal behavior
-    Write-Log -Message "Flask DB Migration Output: $($flaskDBMigrateResult.StdOut)" -Level "INFO" -LogFilePath $BuildLog
-    Write-Log -Message "Flask DB Migration Error Output: $($flaskDBMigrateResult.StdErr)" -Level "ERROR" -LogFilePath $BuildLog
-    Write-Log -Message "Migration script generated. Please review it on the server." -Level "WARNING" -LogFilePath $BuildLog
+    Write-Log -Message "Result $flaskDBMigrateResult. Script generated. Please review it on the server." -Level "WARNING" -LogFilePath $BuildLog
 
     # 5.2: Pause for User Review (unless AutoApproveMigration is set)
     $migrationScriptDir = "$ServerFlaskBaseDir/migrations/versions/" # This path should now exist
@@ -1025,15 +1016,12 @@ Function Invoke-DatabaseMigration {
         Write-Log -Message "Migration script review completed. Proceeding with upgrade..." -Level "INFO" -LogFilePath $BuildLog
         Write-Log -Message "Applying database migration (upgrade)..." -Level "INFO" -LogFilePath $BuildLog        
         # Redirect output and add exit to prevent potential hangs
-        # $upgradeCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db upgrade > /dev/null 2>&1; exit `$?"
-        $upgradeCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db upgrade 2>&1 | Out-String; exit `$?"
+        $upgradeCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db upgrade 2>&1; exit `$?"
         $flaskUpgradeResult = Invoke-SshCommand -Command $upgradeCmd `
             -ActionDescription "apply database migration (upgrade)" `
             -BuildLog $BuildLog `
             -IsFatal $true
-        Write-Log -Message "Flask Upgrade Standard Output: $($flaskUpgradeResult.StdOut)" -Level "INFO" -LogFilePath $BuildLog
-        Write-Log -Message "Flask Upgrade Error Output: $($flaskUpgradeResult.StdErr)" -Level "ERROR" -LogFilePath $BuildLog
-        Write-Log -Message "Database migration applied successfully." -Level "SUCCESS" -LogFilePath $BuildLog
+        Write-Log -Message "Result: $flaskUpgradeResult. Database migration applied successfully." -Level "SUCCESS" -LogFilePath $BuildLog
         # --- End Apply Migration ---
     }
 
@@ -1891,7 +1879,7 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
             -BuildLog $buildLog
         Write-Log -Message "--- Finished ONLY Step 6 ---" -Level "INFO" -LogFilePath $buildLog
     }
-    elseif ($ForceSqlReleaseScriptsOnly) {
+    elseif ($ForceSqlScriptsOnly) {
         Write-Log -Message "--- Running ONLY Step 7: Apply SQL Release Scripts ---" -Level "INFO" -LogFilePath $buildLog
         Invoke-SqlReleaseScripts -BuildLog $buildLog -ForceRerun:$ForceSqlScripts
         Write-Log -Message "--- Finished ONLY Step 7 ---" -Level "INFO" -LogFilePath $buildLog
