@@ -751,9 +751,9 @@ Function Backup-ServerState {
         -IsFatal $true
     
     # --- Call Cleanup for Flask Backups ---
-    Remove-OldBackups  -ParentDir $DeploymentBackupDir ` # Parent directory
-    -Prefix "flask_" `                # Prefix for flask backups
-    -BuildLog $BuildLog
+    Remove-OldBackups  -ParentDir $DeploymentBackupDir `
+        -Prefix "flask_" `
+        -BuildLog $BuildLog
 
     # 3.2: Copy Existing React Build to Backup Directory
     Write-Log -Message "Backing up existing React build ($ServerFrontendBuildDir) on server..." -Level "INFO" -LogFilePath $BuildLog
@@ -766,9 +766,9 @@ Function Backup-ServerState {
         -IsFatal $true
 
     # --- Call Cleanup for Frontend Backups ---
-    Remove-OldBackups  -ParentDir $DeploymentBackupDir `  # Parent directory
-    -Prefix "frontend_" `
-    -BuildLog $BuildLog
+    Remove-OldBackups  -ParentDir $DeploymentBackupDir `
+        -Prefix "frontend_" `
+        -BuildLog $BuildLog
 
     # 3.3: Backup Database
     Write-Log -Message "Backing up MySQL database '$DatabaseName' to '$BackupDirDB'..." -Level "INFO" -LogFilePath $BuildLog
@@ -784,9 +784,9 @@ Function Backup-ServerState {
 
     # --- Call Cleanup for Database Backups ---
     Remove-OldBackups  -ParentDir $DeploymentBackupDir `
-    -Prefix "db_backup_" `
-    -Suffix ".sql" `
-    -BuildLog $BuildLog
+        -Prefix "db_backup_" `
+        -Suffix ".sql" `
+        -BuildLog $BuildLog
 
 
     Write-Log -Message "Server state backed up successfully." -Level "SUCCESS" -LogFilePath $BuildLog
@@ -1223,7 +1223,7 @@ Function Remove-OldBackups {
         -ActionDescription "list backups matching '$Prefix*$Suffix' in '$ParentDir'" `
         -BuildLog $BuildLog `
         -IsFatal $false `
-    -CaptureOutput
+        -CaptureOutput
 
     if ($listResult.ExitCode -ne 0) {
         Write-Log -Message "Could not list backups in '$ParentDir'. Skipping cleanup for '$Prefix'." -Level "WARNING" -LogFilePath $BuildLog
