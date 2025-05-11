@@ -32,4 +32,4 @@ deployment_files/build_logs
 deployment_files/LaunchNPP_Monitor.ahk
 deployment_files/deploy_to_droplet release_script.ps1
 deployment_files/test_harness/.deployment_test_env
-
+deployment_files/Delete-GitTestTagRange.ps1
