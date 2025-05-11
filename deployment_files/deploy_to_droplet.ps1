@@ -774,7 +774,8 @@ Function Backup-ServerState {
     Write-Log -Message "Backing up MySQL database '$DatabaseName' to '$BackupDirDB'..." -Level "INFO" -LogFilePath $BuildLog
 
     # Ensure parent directory exists before dumping
-    $dbBackupCmd = "mkdir -p '$(dirname $BackupDirDB)' && mysqldump $DatabaseName > '$BackupDirDB'" # Assumes .my.cnf
+    $parentDirForDbBackup = Split-Path -Path $BackupDirDB -Parent
+    $dbBackupCmd = "mkdir -p '$parentDirForDbBackup' && mysqldump $DatabaseName > '$BackupDirDB'" # Assumes .my.cnf
     $dbCleanupCmd = "rm -f '$BackupDirDB'" # Cleanup command if dump fails
     Invoke-SshCommand -Command $dbBackupCmd `
         -ActionDescription "backup database '$DatabaseName'" `
