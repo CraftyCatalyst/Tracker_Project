@@ -1841,7 +1841,7 @@ def restart_service(service_name):
     if current_user.role != 'admin':
         return jsonify({"error": "Unauthorized access"}), 403
 
-    allowed_services = ['nginx', 'mysql', 'flask-app', 'flask-dev', 'flask-qas', 'flask-test']
+    allowed_services = ['nginx', 'mysql', 'flask-app', 'flask-dev', 'flask-qas', 'flask-test', 'flask-prod']
     if service_name not in allowed_services:
         return jsonify({"error": "Invalid service name"}), 400
 
