@@ -76,7 +76,6 @@ function App() {
     } else if (hostname === process.env.REACT_APP_HOSTNAME_TEST) {
       title = 'Satisfactory Tracker - Testing Environment';
     }
-    console.log("process.env.REACT_HOSTNAME_LOCAL", process.env.REACT_APP_HOSTNAME_LOCAL);
     console.log("Hostname:", hostname);
     console.log("Title:", title);
     // Set the document title

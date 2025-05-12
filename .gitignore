@@ -1,6 +1,11 @@
 # Needed for deployment
 satisfactory_tracker/node_modules
 satisfactory_tracker/.env
+satisfactory_tracker/.env_DEV
+satisfactory_tracker/.env_PROD
+satisfactory_tracker/.env_QAS
+satisfactory_tracker/.env_TEST
+satisfactory_tracker/.env_LOCAL
 deployment_files/.deployment_env
 deployment_files/.vscode/launch.json
 deployment_files/release_scripts
@@ -27,9 +32,7 @@ Compare_py_1.py
 Compare_py_2.py
 CHANGELOGS/
 USEFUL_STUFF/
-my_rsync_test/
+prototypes/
 deployment_files/build_logs
 deployment_files/LaunchNPP_Monitor.ahk
-deployment_files/deploy_to_droplet release_script.ps1
 deployment_files/test_harness/.deployment_test_env
-deployment_files/Delete-GitTestTagRange.ps1

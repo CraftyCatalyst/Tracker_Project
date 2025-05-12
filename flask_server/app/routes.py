@@ -453,7 +453,8 @@ def system_status():
         db_status = f"Error: {str(e)}"
     
     # Check Nginx Status (only if running on server)
-    if RUN_MODE in ["prod, dev, qas, test"]:
+    logging.debug(f"System Status RUN_MODE: {RUN_MODE}")
+    if RUN_MODE in ["prod", "dev", "qas", "test"]:
         try:
             #nginx_status = subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True)
             nginx_status = subprocess.run(["/bin/sudo", "/usr/bin/systemctl", "is-active", "nginx"], capture_output=True, text=True)
@@ -1805,8 +1806,13 @@ def fetch_logs(service_name):
         "nginx": ["/usr/bin/tail", "-n", "100", "/var/log/nginx/error.log"],
         "flask-app": ["/usr/bin/journalctl", "-u", "flask-app", "--no-pager", "--lines=100"],
         "flask-dev": ["/usr/bin/journalctl", "-u", "flask-dev", "--no-pager", "--lines=100"],
+        "flask-qas": ["/usr/bin/journalctl", "-u", "flask-qas", "--no-pager", "--lines=100"],
+        "flask-test": ["/usr/bin/journalctl", "-u", "flask-test", "--no-pager", "--lines=100"],
         "mysql": ["/usr/bin/sudo", "/usr/bin/journalctl", "-u", "mysql", "--no-pager", "--lines=100"],
         "applogs": ["/usr/bin/tail", "-f", "/flask-app/Tracker_Project/flask_server/app/logs/app_*.log", "|", "ccze", "-A"],
+        "applogs_DEV": ["/usr/bin/tail", "-f", "/flask-app/Tracker_Project_DEV/flask_server/app/logs/app_*.log", "|", "ccze", "-A"],
+        "applogs_QAS": ["/usr/bin/tail", "-f", "/flask-app/Tracker_Project_QAS/flask_server/app/logs/app_*.log", "|", "ccze", "-A"],
+        "applogs_TEST": ["/usr/bin/tail", "-f", "/flask-app/Tracker_Project_TEST/flask_server/app/logs/app_*.log", "|", "ccze", "-A"],
     }
 
     command = commands.get(service_name)
@@ -1835,7 +1841,7 @@ def restart_service(service_name):
     if current_user.role != 'admin':
         return jsonify({"error": "Unauthorized access"}), 403
 
-    allowed_services = ['nginx', 'mysql', 'flask-app', 'flask-dev']
+    allowed_services = ['nginx', 'mysql', 'flask-app', 'flask-dev', 'flask-qas', 'flask-test']
     if service_name not in allowed_services:
         return jsonify({"error": "Invalid service name"}), 400
 

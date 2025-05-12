@@ -776,27 +776,43 @@ const AdminDashboard = () => {
                     {/* Logs & Resources Tab */}
                     <TabPanel value="4">
                         <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
-                            <Typography variant="h6">Logs</Typography>
+                            <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>System Logs</Typography>
 
                             {/* Logs Section */}
                             <Box sx={{ mt: 2 }}>
                                 <Button variant="outlined" onClick={() => fetchLogs('applogs')}>
-                                    View Application Logs
+                                    View App Logs - PROD
+                                </Button>
+                                <Button variant="outlined" onClick={() => fetchLogs('applogs_QAS')}>
+                                    View App Logs - QAS
+                                </Button>
+                                <Button variant="outlined" onClick={() => fetchLogs('applogs_DEV')}>
+                                    View App Logs - DEV
+                                </Button>
+                                <Button variant="outlined" onClick={() => fetchLogs('applogs_TEST')}>
+                                    View App Logs - TEST
                                 </Button>
                                 <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
                                     <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('nginx')}>
                                         View Nginx Logs
                                     </Button>
-                                    <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-app')}>
-                                        View Flask-App Logs
-                                    </Button>
-                                    <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-dev')}>
-                                        View Flask-Dev Logs
-                                    </Button>
                                     <Button variant="outlined" onClick={() => fetchLogs('mysql')}>
                                         View MySQL Logs
                                     </Button>
                                 </Box>
+                                <Box sx={{ display: "flex", gap: 2, mt: 2 }}></Box>
+                                <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-app')}>
+                                    View Flask-App Logs
+                                </Button>
+                                <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-qas')}>
+                                    View Flask-QAS Logs
+                                </Button>
+                                <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-dev')}>
+                                    View Flask-DEV Logs
+                                </Button>
+                                <Button variant="contained" sx={{ mr: 1 }} onClick={() => fetchLogs('flask-test')}>
+                                    View Flask-TEST Logs
+                                </Button>
                             </Box>
                         </Box>
 
@@ -804,7 +820,7 @@ const AdminDashboard = () => {
                         <Box sx={{ padding: theme.spacing(2), mt: 2, width: "100%", border: "2px solid #ccc", borderRadius: theme.spacing(1) }}>
                             <Box sx={{ mt: 2 }}>
 
-                                <Typography variant="h6" sx={{ mt: 2 }}>Service Controls - NO PRESSY!</Typography>
+                                <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>Service Controls - NO PRESSY!</Typography>
                                 <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('nginx')}>
                                     Restart Nginx
                                 </Button>
@@ -814,8 +830,14 @@ const AdminDashboard = () => {
                                 <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-app')}>
                                     Restart Flask App
                                 </Button>
+                                <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-qas')}>
+                                    Restart Flask QAS
+                                </Button>
                                 <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-dev')}>
-                                    Restart Flask Dev
+                                    Restart Flask DEV
+                                </Button>
+                                <Button variant="contained" sx={{ mt: 1, mr: 1 }} color="warning" onClick={() => restartService('flask-test')}>
+                                    Restart Flask TEST
                                 </Button>
                             </Box>
                         </Box>
@@ -897,32 +919,37 @@ const AdminDashboard = () => {
                                     <li><a href="https://console.aws.amazon.com/ses/home" target="_blank" rel="noreferrer">AWS SES Console</a></li>
                                     <li><a href="https://console.aws.amazon.com/sns/v3/home" target="_blank" rel="noreferrer">AWS SNS Console</a></li>
                                     <li><a href="https://console.aws.amazon.com/lambda/home" target="_blank" rel="noreferrer">AWS Lambda Console</a></li>
-                                    <li><a href="https://app.mailgun.com/app/dashboard" target="_blank" rel="noreferrer">Mailgun Dashboard</a></li>
-                                    <li><a href="https://www.mail-tester.com/" target="_blank" rel="noreferrer">Mail Tester (Check deliverability)</a></li>
+                                    <li><a href="https://app.eu.mailgun.com/dashboard?tab=send" target="_blank" rel="noreferrer">Mailgun Dashboard</a></li>
                                 </ul>
 
                                 <Typography variant="h6" sx={{ mt: 3 }}>☁️ Hosting & Deployment</Typography>
                                 <ul>
-                                    <li><a href="https://cloud.digitalocean.com/" target="_blank" rel="noreferrer">DigitalOcean Control Panel</a></li>
-                                    <li><a href="https://app.ngrok.com/" target="_blank" rel="noreferrer">Ngrok Dashboard</a></li>
-                                    <li><a href="https://cockpit-project.org/" target="_blank" rel="noreferrer">Cockpit (if installed)</a></li>
+                                    <li><a href="https://account.squarespace.com/domains/managed/satisfactorytracker.com" target="_blank" rel="noreferrer">Squarespace Domain Management</a></li>
+                                    <li><a href="https://cloud.digitalocean.com/droplets/480336329/resize?i=2f8df3" target="_blank" rel="noreferrer">DigitalOcean Control Panel (GH)</a></li>
+                                    <li><a href="https://dashboard.ngrok.com/endpoints" target="_blank" rel="noreferrer">Ngrok Dashboard</a></li>
+                                    <li><a href="https://144.126.199.193:9090/system" target="_blank" rel="noreferrer">Cockpit</a></li>
+                                    <li><a href="https://console.cloud.google.com/home/dashboard?authuser=0&inv=1&invt=AbxKkA&project=tracker-project-1734191395201" target="_blank" rel="noreferrer">Google Cloud Console</a></li>
                                 </ul>
 
                                 <Typography variant="h6" sx={{ mt: 3 }}>🤖 APIs & AI</Typography>
                                 <ul>
-                                    <li><a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noreferrer">OpenAI API Keys</a></li>
-                                    <li><a href="https://platform.openai.com/usage" target="_blank" rel="noreferrer">OpenAI Usage Dashboard</a></li>
+                                    <li><a href="https://platform.openai.com/settings/proj_EZnFR0t2AQzjMHPo9cm8O5X3/api-keys" target="_blank" rel="noreferrer">OpenAI API Keys</a></li>
                                 </ul>
 
                                 <Typography variant="h6" sx={{ mt: 3 }}>🔐 Security & Identity</Typography>
                                 <ul>
-                                    <li><a href="https://www.google.com/recaptcha/admin" target="_blank" rel="noreferrer">Google reCAPTCHA Admin</a></li>
+                                    <li><a href="https://www.google.com/recaptcha/admin/site/714934706/settings" target="_blank" rel="noreferrer">Google reCAPTCHA Admin</a></li>
                                 </ul>
 
-                                <Typography variant="h6" sx={{ mt: 3 }}>📦 Source Control</Typography>
+                                <Typography variant="h6" sx={{ mt: 3 }}>🗄️ Source Control</Typography>
                                 <ul>
-                                    <li><a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a></li>
-                                    <li><a href="https://github.com/YOUR_REPO_NAME" target="_blank" rel="noreferrer">Your Repository</a></li>
+                                    <li><a href="https://github.com/CraftyCatalyst/Tracker_Project" target="_blank" rel="noreferrer">GitHub Repository</a></li>
+                                </ul>
+
+                                <Typography variant="h6" sx={{ mt: 3 }}>🧰 Other Handy Links</Typography>
+                                <ul>
+                                    <li><a href="https://www.mail-tester.com/" target="_blank" rel="noreferrer">Mail Tester (Test the Spammyness of your Emails)</a></li>
+                                    <li><a href="https://whatismyipaddress.com/ip-lookup" target="_blank" rel="noreferrer">IP Lookup</a></li>
                                 </ul>
                             </Box>
                         </Box>

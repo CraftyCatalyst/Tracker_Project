@@ -14,7 +14,7 @@ logging.debug(f"CONFIG Loading .env from: {dotenv_path}")
 load_dotenv(dotenv_path, override=True)
 
 class Config:
-    RUN_MODE = os.getenv('REACT_APP_RUN_MODE', '')
+    RUN_MODE = os.getenv('REACT_APP_RUN_MODE')
 
 RUN_MODE = Config.RUN_MODE
 logging.debug(f"Config.RUN_MODE: {Config.RUN_MODE}")

@@ -19,8 +19,10 @@
 #                                                                         #
 # 2. Ensure that the version.txt exists in the root of the repository.    #
 #    -  This must contain the current version of the code.                # 
-#    -  Once set do not change it, the deployment script will bump it.    #
-#    -  The script will also tag the git repo with the version that was   #
+#    -  Once initially set do not change it, the deployment script will   #
+#       will bump it if necessary.                                        #
+#    -  The script will also update the package.json file with the new    #
+#       version number and tag the git repo with the version that was     #
 #       deployed.                                                         #
 # 3. Also ensure that:                                                    #
 #    - The following files are in the same directory as this script:      #
@@ -53,45 +55,70 @@ Main step of the deployment script.
 .DESCRIPTION
 This script is designed to automate the deployment process for Satisfactory Tracker App's Flask server and React app to it's remote LINUX server using rsync and SSH.
 The script performs the following tasks:
+
+Initial Setup:
 - Loads environment variables from .deployment_env and .env files.
-   - The .deployment_env file contains environment-specific settings.
-   - The .env file contains local settings for the React app.    
-- Confirms the deployment environment and user confirmation.
-   - Ensures the script is running in the correct environment and prompts for confirmation before proceeding.
-- Backs up existing project files (Flask, React, and database).
-    - Uses rsync to create backups of the existing Flask and React app files on the server.
-    - Backs up the database using mysqldump and stores it in a specified backup directory.
-- Maintains specified backup retention policy.
-    - Removes old backups based on the specified retention policy (e.g., keep only the last 5 backups).
+    - The .deployment_env file contains settings specific to the deployment process.
+    - The .env file contains the application settings.
 - Get or creates the version to be deployed.
-    - If the version is not specified, it will be created based on BumpType and the current version in the version.txt file.
-    - The script uses semantic versioning (SemVer) for versioning.
-- Builds the React app locally and deploys it to the server.
-    - Gets or creates the version to be deployed.
-    - Uses npm to build the React app and rsync to transfer files to the server.
-    - The script uses WSL (Windows Subsystem for Linux) for rsync operations.
-- Deploys the Flask app to the server.
-    - Uses rsync to transfer Flask app files to the server.
-    - Excludes certain directories and files from the transfer (e.g., __pycache__, logs, scripts, etc.).
-- Installs Python dependencies on the server using pip.
-    - Uses a requirements file to install/update the necessary packages.
-    - The script uses WSL (Windows Subsystem for Linux) for pip operations.
-- Optionally runs database migrations if specified.
-    - Uses Flask-Migrate to handle database migrations.
-    - The script checks if the migration is needed based on the specified environment.
-- Runs SQL release scripts if specified.
-    - The script looks for SQL release scripts in the release_scripts directory.
+    - If BumpType is specified the version will be created based on BumpType and the current version in the version.txt file.
+    - If Version is specified, it will get that version from the git tag and deploy it.
+    - If neither is specified, the script will prompt for the version to be deployed.
+
+Deployment Process:
+Step 1: Check Environment & Confirm:
+    - Compares the target environment with the local .env variables in order to ensure that the app will be built for the correct environment.
+    - Throws an error if the target environment does not match the local .env variables.
+    - If they do match, it presents the local and target variables to the user and prompts for confirmation before proceeding as a final safety measure.
+
+Step 2: Run React build locally
+    - Uses npm to build the React app locally and create the build directory.
+
+Step 3: Backup Existing Project Files
+    - Create backups of the existing Flask and React app files on the server.
+    - Backs up the database using mysqldump and stores it in the backup directory.
+    - Removes old backups based on the specified retention policy in .deployment_env (e.g., keep only the last 5 backups).
+
+Step 4: Deploy Application Files using rsync
+    - Uses rsync to transfer the React app files to the server.
+    - Uses rsync to transfer Flask app files to the server, excludes certain directories and files from the transfer (e.g., __pycache__, logs, scripts, etc.).
+
+Step 5: Install/Upgrade Flask Dependencies
+    - Installs Python dependencies on the server using pip and the pip_requirements file to install/update the necessary packages.
+
+Step 6: Database Migration
+    - Runs database migrations if specified.
+    - New Environments:
+        - Creates the database and schema if they do not exist.
+        - Populates the database with initial data using SQL scripts.
+    - Existing Environments:
+        - Runs database migrations using Flask-Migrate.
+        - Applies SQL release scripts if specified.
+
+Step 7: Apply SQL Release Scripts
+    - Runs SQL release scripts if specified.
+    - The script looks for SQL release scripts in the release_scripts directory for the specified environment (e.g., dev, qas, prod, test).
     - It checks if the SQL scripts have already been applied to the database.
     - If the sql scripts have not been applied, it will run them.
-    - If the ForceSqlScripts switch is used, it will re-run all SQL release scripts regardless of their status.
-- Restarts the Flask service and Nginx server on the target server.
-    - Uses WSL/SSH to restart the services on the server.
+    - If the -ForceSqlScripts switch is used, it will re-run all SQL release scripts regardless of whether they have been applied or not.
+
+Step 8: Restart Services
+    - Restarts the relevant Flask service and Nginx server on the target server.
 
 - PREREQUISITES
-    - This script is designed to be run in PowerShell, and it uses WSL (Windows Subsystem for Linux) for rsync operations.
+    - This script is designed to be run in PowerShell
+    - It requires WSL (Windows Subsystem for Linux) for rsync operations.
     - It requires SSH access to the target server and passwordless authentication set up for the specified user.
-    - This script assumes .my.cnf is configured on the server for passwordless login to MySQL.
-    - It also requires the following tools to be installed on the server:
+    - This script assumes .my.cnf is configured on the server for passwordless root login to MySQL.
+    - It also assumes visudo is configured on the server for passwordless sudo access for the specified user. Specifically for the following commands:
+        - systemctl restart nginx
+        - systemctl restart flask-* (To match the DEPLOYMENT_FLASK_SERVICE_NAME_* in .deployment_env)
+    - It assumes that the target server has the directories specified in the .deployment_env file for:
+        DEPLOYMENT_BACKUP_DIR_*
+        DEPLOYMENT_SERVER_BASE_DIR_*        
+    - It also assumes that the target server has the MySQL database specified in the .deployment_env file for:
+        - DEPLOYMENT_DB_NAME_*
+    - It requires the following tools to be installed on the server:
         - rsync
         - MySQL (for database backup and migration)
         - Flask (backend)
@@ -100,18 +127,17 @@ The script performs the following tasks:
         - Nginx (for web server) including configurations for PROD domain and DEV, QAS & TEST subdomains
         - Gunicorn (for serving Flask app) including configurations for PROD domain and DEV, QAS & TEST subdomains
     - If creating a new environment, ensure that the server has the necessary configurations and dependencies installed.
-        - Ensure the target database is created and accessible.
-         - This script will create the schema and tables based on the models if they do not exist.
-         - You will need to provide sql scripts to populate the tables with data.
+        - Ensure the blank target database is created and the application database user has the necessary permissions.
+            - This script will create the schema and tables based on the models if they do not exist.
+            - You will need to provide the seed data sql scripts to populate the tables.
         - Ensure you have nginx and gunicorn configurations set up for the new environment.
             - nginx configurations are located in /etc/nginx/sites-available/ and /etc/nginx/sites-enabled/.
             - gunicorn configurations are located in /etc/systemd/system/.
-        - Ensure you have the necessary permissions to 
-            - Create directories and files on the server.
-            - Install packages and restart services on the server.
-            - Run the script on the server.
+        - Update visudoers to include the new environment for passwordless sudo access.
+
 - VERSIONING
     - Versioning uses the SemVer format (e.g., v1.3.0)
+    - It also allows for pre-release identifiers (e.g., v1.3.0-rc.1, v1.3.0-dev.2, v1.3.0-qas.3, v1.3.0-test.4)
     - See USEFUL_STUFF\Versioning_Control_Standards.md for details.
 
 .PARAMETER Environment
@@ -334,8 +360,7 @@ Function Invoke-VersionBump {
         }
         "dev" {
             if ($preType -ne "dev") { $preNum = 0 } else { $preNum++ }
-            $newVersionBase = "$major.$minor.$patch-dev.$preNum"
-        
+            $newVersionBase = "$major.$minor.$patch-dev.$preNum"        
         }
         "qas" {
             if ($preType -ne "qas") { $preNum = 0 } else { $preNum++ }
@@ -470,8 +495,7 @@ Function Initialize-DeploymentConfiguration {
         if (-not $localBaseDir) {
             throw "DEPLOYMENT_LOCAL_BASE_DIR key is missing from '$depEnvPath'."
         }
-        $localFrontendDir = Join-Path $localBaseDir "satisfactory_tracker"
-        $envPath = Join-Path $localFrontendDir ".env"
+        $envPath = $depEnvSettings['DEPLOYMENT_ENV_FILE_PATH']
 
         # Load the environment variables from the .env
         Write-Log -Message "Loading variables from '$envPath'..." -Level "INFO" -LogFilePath $BuildLog
@@ -538,7 +562,8 @@ Function Initialize-DeploymentConfiguration {
         'DEPLOYMENT_LOCAL_BASE_DIR', 
         'DEPLOYMENT_VENV_DIR',
         'DEPLOYMENT_GLOBAL_DIR',
-        'DEPLOYMENT_PIP_REQ_FILE_PATH', 
+        'DEPLOYMENT_PIP_REQ_FILE_PATH',
+        'DEPLOYMENT_ENV_FILE_PATH', 
         'DEPLOYMENT_DOMAIN',
         'DEPLOYMENT_WSL_SSH_USER',
         'DEPLOYMENT_WSL_SSH_KEY_PATH',
@@ -800,6 +825,10 @@ Function Sync-FilesToServer {
         [Parameter(Mandatory = $true)]
         [string]$ServerFrontendBuildDir, # Server path for React build destination
         [Parameter(Mandatory = $true)]
+        [string]$ServerFrontendBaseDir, # Server path for React base directory
+        [Parameter(Mandatory = $true)]
+        [string]$WslLocalFrontendBaseDir, # Local path for React base directory
+        [Parameter(Mandatory = $true)]
         [string]$WslLocalFlaskDirApp, # WSL path to local Flask app source
         [Parameter(Mandatory = $true)]
         [string]$ServerFlaskAppDir, # Server path for Flask app destination
@@ -845,12 +874,20 @@ Function Sync-FilesToServer {
         -ExcludePatterns $flaskExcludes
 
     # Copy the pip_requirements.txt file from the local flask_server dir to the flask base directory on the server
-    $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on server
     $localPipReqFilePath = "$WslLocalFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on local WSL
+    $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on server
     Write-Log -Message "Copying pip requirements file from '$localPipReqFilePath' to '$serverPipReqFilePath'..." -Level "INFO" -LogFilePath $BuildLog
     Invoke-WslRsync -SourcePath "$($localPipReqFilePath)" `
         -DestinationPath "$($serverPipReqFilePath)" `
         -Purpose "Pip requirements file"
+    
+    # Copy the .env file from the local flask_server dir to the flask base directory on the server
+    $localEnvFilePath = "$WslLocalFrontendBaseDir/$DEPLOYMENT_ENV_FILE_PATH" # Full path on local WSL
+    $serverEnvFilePath = "$ServerFrontendBaseDir/$DEPLOYMENT_ENV_FILE_PATH" # Full path on server
+    Write-Log -Message "Copying .env file from '$localEnvFilePath' to '$serverEnvFilePath'..." -Level "INFO" -LogFilePath $BuildLog
+    Invoke-WslRsync -SourcePath "$($localEnvFilePath)" `
+        -DestinationPath "$($serverEnvFilePath)" `
+        -Purpose ".env file"
 
     Write-Log -Message "Application files deployed successfully via rsync." -Level "SUCCESS" -LogFilePath $BuildLog
 }
@@ -1849,6 +1886,7 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
             -ServerFlaskDir $serverFlaskBaseDir `
             -BackupDirFrontend $backupDirFrontend `
             -ServerFrontendBuildDir $serverFrontendBuildDir `
+            -ServerFrontEndBaseDir $serverFrontendBaseDir `
             -BackupDirDB $backupDirDataBase `
             -DatabaseName $DEPLOYMENT_DB_NAME `
             -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
@@ -1859,6 +1897,8 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
         Write-Log -Message "--- Running ONLY Step 4: Deploy Application Files using rsync ---" -Level "INFO" -LogFilePath $buildLog
         Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
             -ServerFrontendBuildDir $serverFrontendBuildDir `
+            -ServerFrontendBaseDir $serverFrontendBaseDir `
+            -WslLocalFrontendBaseDir $wslLocalFrontendDir `
             -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
             -ServerFlaskAppDir $serverFlaskAppDir `
             -ServerFlaskBaseDir $serverFlaskBaseDir `
@@ -1927,12 +1967,14 @@ else {
 
     # Step 4: Deploy Application Files using rsync
     Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
-        -ServerFrontendBuildDir $serverFrontendBuildDir `
-        -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
-        -ServerFlaskAppDir $serverFlaskAppDir `
-        -ServerFlaskBaseDir $serverFlaskBaseDir `
-        -WslLocalFlaskBaseDir $wslLocalFlaskDir `
-        -BuildLog $buildLog
+            -ServerFrontendBuildDir $serverFrontendBuildDir `
+            -ServerFrontendBaseDir $serverFrontendBaseDir `
+            -WslLocalFrontendBaseDir $wslLocalFrontendDir `
+            -WslLocalFlaskDirApp $wslLocalFlaskDirApp `
+            -ServerFlaskAppDir $serverFlaskAppDir `
+            -ServerFlaskBaseDir $serverFlaskBaseDir `
+            -WslLocalFlaskBaseDir $wslLocalFlaskDir `
+            -BuildLog $buildLog
 
     # Step 5: Install/Upgrade Flask Dependencies
     Update-FlaskDependencies -VenvDir $DEPLOYMENT_VENV_DIR `
@@ -1945,7 +1987,7 @@ else {
         -ServerFlaskBaseDir $serverFlaskBaseDir `
         -BuildLog $buildLog
 
-    # Step 7: Apply SQL Release Scripts (After Migration)
+    # Step 7: Apply SQL Release Scripts
     Invoke-SqlReleaseScripts -BuildLog $buildLog -ForceRerun:$ForceSqlScripts
 
     # Step 8: Restart Services
