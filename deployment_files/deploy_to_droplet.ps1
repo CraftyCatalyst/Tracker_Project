@@ -495,7 +495,7 @@ Function Initialize-DeploymentConfiguration {
         if (-not $localBaseDir) {
             throw "DEPLOYMENT_LOCAL_BASE_DIR key is missing from '$depEnvPath'."
         }
-        $envPath = $depEnvSettings['DEPLOYMENT_ENV_FILE_PATH']
+        $envPath = $depEnvSettings['DEPLOYMENT_ENV_FILE_DIR']
 
         # Load the environment variables from the .env
         Write-Log -Message "Loading variables from '$envPath'..." -Level "INFO" -LogFilePath $BuildLog
