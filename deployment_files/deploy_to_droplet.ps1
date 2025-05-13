@@ -568,14 +568,14 @@ Function Invoke-VersionBump {
         }
         # If $LASTEXITCODE is not 0, the tag does not exist, so we can proceed to create it.
         Write-Log -Message "Tag '$newVersionTag' does not exist. Proceeding to create." -Level "INFO" -LogFilePath $BuildLog
-        git tag $newVersionTag 
+        git tag $newVersionTag | Out-Null 
         if ($LASTEXITCODE -ne 0) { throw "Git tag creation for '$newVersionTag' failed." }
         # --- End Corrected Git Tag Check ---
         
-        git push origin HEAD 
+        git push origin HEAD | Out-Null  
         if ($LASTEXITCODE -ne 0) { throw "Git push commit failed." }
         
-        git push origin $newVersionTag 
+        git push origin $newVersionTag | Out-Null  
         if ($LASTEXITCODE -ne 0) { throw "Git push tag '$newVersionTag' failed." }
 
         Write-Log -Message "✅ Version bumped, committed, tagged ($newVersionTag), and pushed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
