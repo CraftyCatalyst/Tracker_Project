@@ -1703,7 +1703,7 @@ if (-not ($PSBoundParameters.ContainsKey('Version') -or $PSBoundParameters.Conta
         $validVersion = $false
         while (-not $validVersion) {
             $Version = Read-Host "Enter existing version tag to deploy (e.g., v1.2.3)"
-            if ($Version -match '^v\d+\.\d+\.\d+$') {
+            if ($Version -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(rc|dev|qas|test)\.(\d+))?$') {
                 $validVersion = $true
             }
             else {
