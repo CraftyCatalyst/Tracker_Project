@@ -556,7 +556,7 @@ Function Invoke-VersionBump {
         git add $PackageJsonPath | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Git add failed for $PackageJsonPath." }
         
-        git commit -m "Bump version to $newVersionTag" 
+        git commit -m "Bump version to $newVersionTag" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Git commit failed." }
         
         # --- Corrected Git Tag Check ---
