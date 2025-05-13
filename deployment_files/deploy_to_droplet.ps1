@@ -442,7 +442,7 @@ Function Invoke-VersionBump {
     
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("major", "minor", "patch", "rc", "dev", "prod", "test")]
+        [ValidateSet("major", "minor", "patch", "rc", "dev", "prod", "test", "qas", "none")]
         [string]$BumpType,
 
         [Parameter(Mandatory = $false)] # MODIFIED: Made optional, will use BaseVersionOverride if provided
@@ -1882,7 +1882,7 @@ if (-not ($PSBoundParameters.ContainsKey('Version') -or $PSBoundParameters.Conta
     else {
         # $choice -eq 'b'
         $validBump = $false
-        $allowedBumpTypes = @("major", "minor", "patch", "rc", "dev", "prod", "test")
+        $allowedBumpTypes = @("major", "minor", "patch", "rc", "dev", "prod", "test", "qas", "none")
         while (-not $validBump) {
             $BumpType = Read-Host "Enter bump type ($($allowedBumpTypes -join ', '))"
             if ($allowedBumpTypes -contains $BumpType) {
