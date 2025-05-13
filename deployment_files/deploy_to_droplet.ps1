@@ -550,8 +550,11 @@ Function Invoke-VersionBump {
     Write-Log -Message "Performing Git operations in '$GitRepoPath'..." -Level "INFO" -LogFilePath $BuildLog
     try {
         Push-Location $GitRepoPath
-        git add $VersionFilePath, $PackageJsonPath # Combine add operations. Output to console is fine.
-        if ($LASTEXITCODE -ne 0) { throw "Git add failed for version or package.json file." }
+        git add $VersionFilePath | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Git add failed for $VersionFilePath." }
+        
+        git add $PackageJsonPath | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Git add failed for $PackageJsonPath." }
         
         git commit -m "Bump version to $newVersionTag" 
         if ($LASTEXITCODE -ne 0) { throw "Git commit failed." }
