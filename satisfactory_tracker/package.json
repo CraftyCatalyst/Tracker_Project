@@ -1,6 +1,10 @@
 {
   "name": "satisfactory_tracker",
+<<<<<<< HEAD
   "version": "2.2.1-test.0",
+=======
+  "version": "2.2.1-dev.0",
+>>>>>>> dev
   "private": true,
   "homepage": "/",
   "dependencies": {
