@@ -35,14 +35,13 @@
 <#
 .SYNOPSIS
 Main step of the deployment script.
-    Step 1: Check Environment & Confirm
-    Step 2: Run React Build / Git Checkout
-    Step 3: Backup Server State
-    Step 4: Sync Files (React & Flask)
-    Step 5: Update Flask Dependencies
-    Step 6: Invoke Database Migration
-    Step 7: Apply SQL Release Scripts
-    Step 8: Restart Services
+    Step 1: Run React Build / Git Checkout
+    Step 2: Backup Server State
+    Step 3: Sync Files (React & Flask)
+    Step 4: Update Flask Dependencies
+    Step 5: Invoke Database Migration
+    Step 6: Apply SQL Release Scripts
+    Step 7: Restart Services
     
 
 .DESCRIPTION
@@ -57,29 +56,28 @@ Initial Setup:
     - If BumpType is specified the version will be created based on BumpType and the current version in the version.txt file.
     - If Version is specified, it will get that version from the git tag and deploy it.
     - If neither is specified, the script will prompt for the version to be deployed.
-
-Deployment Process:
-Step 1: Check Environment & Confirm:
+Check Environment & Confirm:
     - Compares the target environment with the local .env variables in order to ensure that the app will be built for the correct environment.
     - Throws an error if the target environment does not match the local .env variables.
     - If they do match, it presents the local and target variables to the user and prompts for confirmation before proceeding as a final safety measure.
 
-Step 2: Run React build locally
+Deployment Process:
+Step 1: Run React build locally
     - Uses npm to build the React app locally and create the build directory.
 
-Step 3: Backup Existing Project Files
+Step 2: Backup Existing Project Files
     - Create backups of the existing Flask and React app files on the server.
     - Backs up the database using mysqldump and stores it in the backup directory.
     - Removes old backups based on the specified retention policy in .deployment_env (e.g., keep only the last 5 backups).
 
-Step 4: Deploy Application Files using rsync
+Step 3: Deploy Application Files using rsync
     - Uses rsync to transfer the React app files to the server.
     - Uses rsync to transfer Flask app files to the server, excludes certain directories and files from the transfer (e.g., __pycache__, logs, scripts, etc.).
 
-Step 5: Install/Upgrade Flask Dependencies
+Step 4: Install/Upgrade Flask Dependencies
     - Installs Python dependencies on the server using pip and the pip_requirements file to install/update the necessary packages.
 
-Step 6: Database Migration
+Step 5: Database Migration
     - Runs database migrations if specified.
     - New Environments:
         - Creates the database and schema if they do not exist.
@@ -88,14 +86,14 @@ Step 6: Database Migration
         - Runs database migrations using Flask-Migrate.
         - Applies SQL release scripts if specified.
 
-Step 7: Apply SQL Release Scripts
+Step 6: Apply SQL Release Scripts
     - Runs SQL release scripts if specified.
     - The script looks for SQL release scripts in the release_scripts directory for the specified environment (e.g., dev, qas, prod, test).
     - It checks if the SQL scripts have already been applied to the database.
     - If the sql scripts have not been applied, it will run them.
     - If the -ForceSqlScripts switch is used, it will re-run all SQL release scripts regardless of whether they have been applied or not.
 
-Step 8: Restart Services
+Step 7: Restart Services
     - Restarts the relevant Flask service and Nginx server on the target server.
 
 - PREREQUISITES
@@ -288,7 +286,7 @@ param(
 )
 ######################################################################################
 # -------------------------------- Global Variables ---------------------------------#
-$Script:DeployedVersion = $null
+$Script:DeploymentVersion = $null
 
 ######################################################################################
 #-------------------------------- Start of Functions --------------------------------#
@@ -493,7 +491,7 @@ Function Initialize-DeploymentConfiguration {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Initializing Deployment Configuration ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Initialising Deployment Configuration ---" -Level "INFO" -LogFilePath $BuildLog
     
     # --- Define Paths ---
     $depEnvPath = Join-Path $ScriptRoot ".deployment_env"
@@ -603,7 +601,7 @@ Function Initialize-DeploymentConfiguration {
         }
     }
 
-    Write-Log -Message "Configuration initialization complete." -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "Configuration initialisation complete." -Level "INFO" -LogFilePath $BuildLog
 
     # Return the loaded settings hashtables
     return @{
@@ -626,7 +624,7 @@ Function Confirm-DeploymentEnvironment {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Step 1: Environment Check & Confirmation ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Environment Check & Confirmation ---" -Level "INFO" -LogFilePath $BuildLog
 
     # 1.1: Check if the script is running in the correct environment
     # Note: Using .ToUpper() directly in the comparison
@@ -643,12 +641,12 @@ Function Confirm-DeploymentEnvironment {
     # Check to see if the ForceConfirmation switch is set to skip the prompt, if not then prompt the user
     if ($ForceConfirmation) {
         Write-Log -Message "Skipping user confirmation prompt due to ForceConfirmation switch." -Level "INFO" -LogFilePath $BuildLog
-        Write-Log -Message "Build version '$Script:DeployedVersion' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'." -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Build version '$Script:DeploymentVersion' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'." -Level "INFO" -LogFilePath $BuildLog
         return # Skip the confirmation prompt
     }
     
     Write-Host "`n"
-    $confirmation = Read-Host "You are about to BUILD version '$Script:DeployedVersion' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'. Proceed? (y/n)"
+    $confirmation = Read-Host "You are about to BUILD version '$Script:DeploymentVersion' for '$RunMode' and DEPLOY to '$TargetEnv' on '$DEPLOYMENT_SERVER_IP'. Proceed? (y/n)"
     # Log the prompt and the answer separately for clarity
     Write-Log -Message "User confirmation prompt displayed." -Level "INFO" -LogFilePath $BuildLog
     
@@ -681,7 +679,7 @@ Function Invoke-ReactBuild {
     }
         
     #Checkout Specified Version ---
-    Write-Log -Message "`n--- Checking out version $Script:DeployedVersion ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Checking out version $Script:DeploymentVersion ---" -Level "INFO" -LogFilePath $BuildLog
 
     try {
         Push-Location $GitRepoPath
@@ -690,21 +688,21 @@ Function Invoke-ReactBuild {
         git fetch --tags origin --force # --force helps overwrite existing tags if needed locally
         if ($LASTEXITCODE -ne 0) { throw "Git fetch failed." }
 
-        Write-Log -Message "Checking out tag '$Script:DeployedVersion'..." -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Checking out tag '$Script:DeploymentVersion'..." -Level "INFO" -LogFilePath $BuildLog
         
-        git checkout $Script:DeployedVersion
-        if ($LASTEXITCODE -ne 0) { throw "Git checkout of tag '$Script:DeployedVersion' failed. Does the tag exist locally and remotely?" }
+        git checkout $Script:DeploymentVersion
+        if ($LASTEXITCODE -ne 0) { throw "Git checkout of tag '$Script:DeploymentVersion' failed. Does the tag exist locally and remotely?" }
 
-        Write-Log -Message "Successfully checked out version $Script:DeployedVersion." -Level "SUCCESS" -LogFilePath $BuildLog
+        Write-Log -Message "Successfully checked out version $Script:DeploymentVersion." -Level "SUCCESS" -LogFilePath $BuildLog
     }
     catch {
-        Write-Log -Message "FATAL: Failed to checkout version '$Script:DeployedVersion'. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
+        Write-Log -Message "FATAL: Failed to checkout version '$Script:DeploymentVersion'. Error: $($_.Exception.Message)" -Level "ERROR" -LogFilePath $BuildLog
     }
     finally {
         Pop-Location
     }
 
-    Write-Log -Message "`n--- Step 2: Run React Build Locally ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 1: Run React Build Locally ---" -Level "INFO" -LogFilePath $BuildLog
 
     Write-Log -Message "Building React app locally in '$LocalFrontendDir'..." -Level "INFO" -LogFilePath $BuildLog
 
@@ -779,7 +777,7 @@ Function Backup-ServerState {
         Write-Log -Message "Skipping backup as per user request." -Level "WARNING" -LogFilePath $BuildLog
         return
     }
-    Write-Log -Message "`n--- Step 3: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 2: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $BuildLog
     # 3.1: Copy Existing Flask Files to Backup Directory
     Write-Log -Message "Backing up current Flask files ($ServerFlaskDir) on server..." -Level "INFO" -LogFilePath $BuildLog
 
@@ -856,7 +854,7 @@ Function Sync-FilesToServer {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Step 4: Deploy Application Files using rsync ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 3: Deploy Application Files using rsync ---" -Level "INFO" -LogFilePath $BuildLog
 
     # 4.1: Sync React build files
     Write-Log -Message "Syncing React build files ($WslLocalFrontendDirBuild --> $ServerFrontendBuildDir)..." -Level "INFO" -LogFilePath $BuildLog
@@ -919,7 +917,7 @@ Function Update-FlaskDependencies {
     )
 
     # Install/Upgrade Flask dependencies
-    Write-Log -Message "`n--- Step 5: Upgrading Flask dependencies..." -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 4: Upgrading Flask dependencies..." -Level "INFO" -LogFilePath $BuildLog
 
     $upgradeFlaskCmd = "cd '$DEPLOYMENT_GLOBAL_DIR' && source '$VenvDir/bin/activate' && pip install -r '$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH' --upgrade"
 
@@ -945,7 +943,7 @@ Function Invoke-DatabaseMigration {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Step 6: Database Migration ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 5: Database Migration ---" -Level "INFO" -LogFilePath $BuildLog
 
     if ($runDBMigration -ne 'y') {
         Write-Log -Message "Database migration not requested. Skipping..." -Level "INFO" -LogFilePath $BuildLog
@@ -954,9 +952,9 @@ Function Invoke-DatabaseMigration {
 
     Write-Log -Message "Database migration requested. Proceeding..." -Level "INFO" -LogFilePath $BuildLog
 
-    # --- Check for migrations directory and initialize if needed ---
+    # --- Check for migrations directory and initialise if needed ---
     $migrationDir = "$ServerFlaskBaseDir/migrations"
-    $migrationMessage = "" # Initialize migration message variable
+    $migrationMessage = "" # Initialise migration message variable
 
     Write-Log -Message "Checking for existing migrations directory ('$migrationDir') on server..." -Level "INFO" -LogFilePath $BuildLog
 
@@ -971,14 +969,14 @@ Function Invoke-DatabaseMigration {
     $migrationDirExists = ($checkResult.ExitCode -eq 0) # Check the exit code from the result object
 
     if (-not $migrationDirExists) {
-        Write-Log -Message "Migrations directory not found. Initializing Flask-Migrate..." -Level "INFO" -LogFilePath $BuildLog
+        Write-Log -Message "Migrations directory not found. Initialising Flask-Migrate..." -Level "INFO" -LogFilePath $BuildLog
         # Redirect output to prevent potential hangs
         $initCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db init 2>&1; exit `$?"
         $flaskInitResult = Invoke-SshCommand -Command $initCmd `
-            -ActionDescription "initialize migrations (flask db init)" `
+            -ActionDescription "initialise migrations (flask db init)" `
             -BuildLog $BuildLog `
             -IsFatal $true
-        Write-Log -Message "Result: $flaskInitResult. Flask-Migrate initialized successfully." -Level "SUCCESS" -LogFilePath $BuildLog
+        Write-Log -Message "Result: $flaskInitResult. Flask-Migrate initialised successfully." -Level "SUCCESS" -LogFilePath $BuildLog
         $migrationMessage = "Initial migration creating all tables."
     }
     else {
@@ -1033,6 +1031,7 @@ Function Invoke-DatabaseMigration {
                 -BuildLog $BuildLog `
                 -IsFatal $false `
                 -CaptureOutput
+            
             if ($findResult.ExitCode -eq 0 -and $findResult.StdOut -match '\S') {
                 $latestScript = $findResult.StdOut.Trim()
                 if ($latestScript -match '\.py$') {
@@ -1091,7 +1090,7 @@ Function Invoke-SqlReleaseScripts {
         [switch]$ForceRerun # Add switch to force re-running scripts
     )
 
-    Write-Log -Message "`n--- Step 7: Applying SQL Release Scripts ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 6: Applying SQL Release Scripts ---" -Level "INFO" -LogFilePath $BuildLog
 
     $localSqlScriptDir = Join-Path $DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_PATH $Environment.ToLower()
     $localSqlScriptCompletedBaseDir = $DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_COMPLETED_PATH
@@ -1112,8 +1111,8 @@ Function Invoke-SqlReleaseScripts {
     Write-Log -Message "Found $($sqlScripts.Count) SQL script(s) to apply for '$Environment'." -Level "INFO" -LogFilePath $BuildLog
 
     # Ensure base directories exist locally and on server for this version
-    $localSqlScriptCompletedDirVersion = Join-Path $localSqlScriptCompletedBaseDir $Environment.ToLower() $Script:DeployedVersion
-    $serverSqlScriptArchiveDirVersion = "$serverSqlScriptArchiveBaseDir/$($Environment.ToLower())/$Script:DeployedVersion"
+    $localSqlScriptCompletedDirVersion = Join-Path $localSqlScriptCompletedBaseDir $Environment.ToLower() $Script:DeploymentVersion
+    $serverSqlScriptArchiveDirVersion = "$serverSqlScriptArchiveBaseDir/$($Environment.ToLower())/$Script:DeploymentVersion"
 
     New-Item -Path $localSqlScriptCompletedDirVersion -ItemType Directory -Force -ErrorAction Stop | Out-Null
     Invoke-SshCommand -Command "mkdir -p '$serverSqlScriptArchiveDirVersion'" -ActionDescription "create server archive directory for SQL scripts" -BuildLog $BuildLog -IsFatal $true
@@ -1172,13 +1171,13 @@ Function Invoke-SqlReleaseScripts {
         if ($checkResultAgain.StdOut.Trim() -eq '0') {
             # Record doesn't exist, perform INSERT
             Write-Log -Message "Recording new application of '$scriptName' in database." -Level "INFO" -LogFilePath $BuildLog
-            $recordSql = "INSERT INTO applied_sql_scripts (script_name, app_version, created_at, updated_at) VALUES ('$scriptName', '$Script:DeployedVersion', UTC_TIMESTAMP(), UTC_TIMESTAMP());"
+            $recordSql = "INSERT INTO applied_sql_scripts (script_name, app_version, created_at, updated_at) VALUES ('$scriptName', '$Script:DeploymentVersion', UTC_TIMESTAMP(), UTC_TIMESTAMP());"
             $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$recordSql"""
         }
         elseif ($ForceRerun) { 
             # Record exists, AND force was specified, perform UPDATE
             Write-Log -Message "Updating application record for '$scriptName' in database (re-run)." -Level "INFO" -LogFilePath $BuildLog
-            $recordSql = "UPDATE applied_sql_scripts SET updated_at = UTC_TIMESTAMP(), app_version = '$Script:DeployedVersion' WHERE script_name = '$scriptName';"
+            $recordSql = "UPDATE applied_sql_scripts SET updated_at = UTC_TIMESTAMP(), app_version = '$Script:DeploymentVersion' WHERE script_name = '$scriptName';"
             $recordCmd = "mysql $DEPLOYMENT_DB_NAME -e ""$recordSql"""
         }
         else {
@@ -1220,7 +1219,7 @@ Function Restart-Services {
         [string]$BuildLog
     )
 
-    Write-Log -Message "`n--- Step 8: Restart Services ---" -Level "INFO" -LogFilePath $BuildLog
+    Write-Log -Message "`n--- Step 7: Restart Services ---" -Level "INFO" -LogFilePath $BuildLog
 
     $systemctlPath = "/bin/systemctl"
 
@@ -1690,7 +1689,243 @@ Function Write-Log {
         throw "Logging failed. Halting execution." 
     }
 }
-    
+
+Function Invoke-VersionManagement {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$InitialBumpType,
+
+        [Parameter(Mandatory = $false)]
+        [string]$InitialVersion,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$BoundParams,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BuildLog,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigGitRepoPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$LogDir,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Timestamp
+    )
+
+    # This variable will hold the version to be deployed and will be returned
+    $determinedVersion = $null
+
+    # If the bump type = none, skip the bumping process
+    if ($InitialBumpType -eq "none") {
+        Write-Log -Message "Skipping version bumping process as BumpType is set to 'none'." -Level "INFO" -LogFilePath $BuildLog
+        $determinedVersion = "test_deployment"
+    }
+    else {
+        $baseVersionForBumpOverride = $null
+        # Use InitialBumpType if it was actually passed to the script
+        $effectiveBumpTypeForFunction = if ($BoundParams.ContainsKey('BumpType')) { $InitialBumpType } else { $null }
+
+        if ($BoundParams.ContainsKey('BumpType')) {
+            $gitRepoPath = $ConfigGitRepoPath
+
+            $targetBranch = ""
+            $sourceBranchForMerge = ""
+        
+            Write-Log -Message "Version bumping process started for BumpType '$InitialBumpType'." -Level "INFO" -LogFilePath $BuildLog
+
+            Push-Location $gitRepoPath
+            $initialGitBranch = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+            Write-Log -Message "Initial Git branch: $initialGitBranch. Current directory: $PWD" -Level "INFO" -LogFilePath $BuildLog
+
+            try { 
+                switch ($InitialBumpType) {
+                    # Use $InitialBumpType as it's the one being processed
+                    "major" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
+                    "minor" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
+                    "patch" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
+                    "qas" { $targetBranch = "qas"; $sourceBranchForMerge = "dev"; break }                
+                    "dev" { $targetBranch = "dev"; break }
+                    "test" { $targetBranch = "test"; break }
+                    default { throw "Unsupported BumpType '$InitialBumpType' for branch operations." }
+                }
+
+                if ($targetBranch) {
+                    Write-Log -Message "Target branch for BumpType '$InitialBumpType' is '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
+
+                    if ($initialGitBranch -ne $targetBranch) {
+                        Write-Log -Message "Switching from '$initialGitBranch' to target branch '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
+                        git checkout $targetBranch
+                        if ($LASTEXITCODE -ne 0) { throw "Failed to checkout $targetBranch" }
+                    }
+                    Write-Log -Message "Ensuring branch '$targetBranch' is up-to-date with origin." -Level "INFO" -LogFilePath $BuildLog
+                    git pull origin $targetBranch
+                    if ($LASTEXITCODE -ne 0) { throw "Failed to pull $targetBranch" }
+
+                    $versionFilePathOnTargetBranch = Join-Path $PWD "version.txt"
+
+                    if ($InitialBumpType -eq "qas") {
+                        $mainVersionGitPath = "main:version.txt" 
+                        $mainVersionContent = git show $mainVersionGitPath 2>$null | Out-String -Stream
+                        $mainBaseVersionCore = "" 
+                        if ($LASTEXITCODE -eq 0 -and $mainVersionContent -and ($mainVersionContent.Trim() -match '^v?(\d+\.\d+\.\d+)')) {
+                            $mainBaseVersionCore = $matches[1]
+                        }
+                        else {
+                            throw "Could not determine base version (X.Y.Z) from '$mainVersionGitPath'"
+                        }
+
+                        if (Test-Path $versionFilePathOnTargetBranch) {
+                            $currentVersionOnTarget = (Get-Content $versionFilePathOnTargetBranch).Trim()
+                            if ($currentVersionOnTarget -match "^v?${mainBaseVersionCore}-${InitialBumpType}\.\d+$") {
+                                $baseVersionForBumpOverride = $currentVersionOnTarget
+                                Write-Log -Message "Using iterative base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' for $InitialBumpType bump." -Level "INFO" -LogFilePath $BuildLog
+                            }
+                            else {
+                                $baseVersionForBumpOverride = "v$mainBaseVersionCore"
+                                Write-Log -Message "Resetting $InitialBumpType base to '$baseVersionForBumpOverride' (from $mainVersionGitPath) as current '$targetBranch/version.txt' ('$currentVersionOnTarget') is for a different base or not a '$InitialBumpType' pre-release." -Level "INFO" -LogFilePath $BuildLog
+                            }
+                        }
+                        else {
+                            $baseVersionForBumpOverride = "v$mainBaseVersionCore" 
+                            Write-Log -Message "No '$versionFilePathOnTargetBranch' found on $targetBranch. Setting $InitialBumpType base to '$baseVersionForBumpOverride' (derived from $mainVersionGitPath)." -Level "INFO" -LogFilePath $BuildLog
+                        }
+                    }
+                    elseif ($InitialBumpType -eq "major" -or $InitialBumpType -eq "minor" -or $InitialBumpType -eq "patch") {
+                        if (Test-Path $versionFilePathOnTargetBranch) { 
+                            $baseVersionForBumpOverride = (Get-Content $versionFilePathOnTargetBranch).Trim()
+                            Write-Log -Message "Using base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' (pre-merge) for $InitialBumpType bump." -Level "INFO" -LogFilePath $BuildLog
+                        }
+                        else {
+                            throw "Version file '$versionFilePathOnTargetBranch' not found on $targetBranch for $InitialBumpType bump, and it's required."
+                        }
+                    }
+                    elseif ($InitialBumpType -eq "dev" -or $InitialBumpType -eq "test") {
+                        Write-Log -Message "For '$InitialBumpType' bump, BaseVersionOverride is not set; function will use '$targetBranch/version.txt'." -Level "INFO" -LogFilePath $BuildLog
+                    }
+
+                    if ($sourceBranchForMerge) {
+                        Write-Log -Message "Merging '$sourceBranchForMerge' into '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
+                        git merge --no-ff $sourceBranchForMerge -m "Merge branch '$sourceBranchForMerge' into '$targetBranch' for $InitialBumpType release prep"
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Log -Message "Merge conflict likely detected when merging '$sourceBranchForMerge' into '$targetBranch'. Attempting 'git merge --abort'." -Level "ERROR" -LogFilePath $BuildLog
+                            git merge --abort
+                            throw "Merge failed from '$sourceBranchForMerge' to '$targetBranch'. Resolve conflicts and retry."
+                        }
+                        Write-Log -Message "Merge of '$sourceBranchForMerge' into '$targetBranch' successful." -Level "INFO" -LogFilePath $BuildLog
+                    }
+                }
+            
+                $determinedVersion = Invoke-VersionBump -BumpType $effectiveBumpTypeForFunction `
+                    -VersionFilePath $versionFilePathOnTargetBranch `
+                    -PackageJsonPath (Join-Path $PWD "satisfactory_tracker/package.json") `
+                    -GitRepoPath $PWD `
+                    -BuildLog $BuildLog `
+                    -BaseVersionOverride $baseVersionForBumpOverride
+
+                # Sync dev and qas branches with main after a successful production release
+                if ($effectiveBumpTypeForFunction -in ("major", "minor", "patch")) {
+                    Write-Log -Message "`n--- Syncing Supporting Branches with Main ---" -Level "INFO" -LogFilePath $BuildLog
+                    
+                    $branchesToSyncWithMain = @("dev", "qas")
+                    $currentBranchInLoop = "main"
+
+                    foreach ($branchToSync in $branchesToSyncWithMain) {
+                        Write-Log -Message "Attempting to sync branch '$branchToSync' with $currentBranchInLoop (new version: $determinedVersion)." -Level "INFO" -LogFilePath $BuildLog
+                        try {
+                            Write-Log -Message "Checking out '$branchToSync'..." -Level "INFO" -LogFilePath $BuildLog
+                            git checkout $branchToSync
+                            if ($LASTEXITCODE -ne 0) { throw "Failed to checkout branch '$branchToSync'." }
+                            $currentBranchInLoop = $branchToSync
+
+                            Write-Log -Message "Pulling latest for '$branchToSync' from origin..." -Level "INFO" -LogFilePath $BuildLog
+                            git pull origin $branchToSync
+                            if ($LASTEXITCODE -ne 0) { throw "Failed to pull 'origin/$branchToSync'." }
+                        
+                            Write-Log -Message "Merging 'main' into '$branchToSync'..." -Level "INFO" -LogFilePath $BuildLog
+                            git merge main -m "Auto-merge main into $branchToSync after production release $determinedVersion"
+                            if ($LASTEXITCODE -ne 0) {
+                                Write-Log -Message "WARNING: Merge of 'main' into '$branchToSync' resulted in conflicts or failure. Attempting 'git merge --abort'. Manual sync required for '$branchToSync'." -Level "WARNING" -LogFilePath $BuildLog
+                                git merge --abort
+                                continue 
+                            }
+                        
+                            Write-Log -Message "Pushing updated '$branchToSync' to origin..." -Level "INFO" -LogFilePath $BuildLog
+                            git push origin $branchToSync
+                            if ($LASTEXITCODE -ne 0) { throw "Failed to push '$branchToSync' to origin after merging main." }
+                        
+                            Write-Log -Message "Branch '$branchToSync' successfully synced with 'main' and pushed." -Level "SUCCESS" -LogFilePath $BuildLog
+                        }
+                        catch {
+                            Write-Log -Message "ERROR during sync of branch '$branchToSync': $($_.Exception.Message). Manual sync will be required." -Level "ERROR" -LogFilePath $BuildLog
+                            if ((git status --porcelain | Out-String).Trim().Length -gt 0) {
+                                Write-Log -Message "Branch '$branchToSync' has uncommitted changes or is in a conflicted state after sync error. Manual cleanup needed." -Level "WARN" -LogFilePath $BuildLog
+                            }
+                        }
+                    }
+                
+                    $finalLoopBranch = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+                    if ($finalLoopBranch -ne "main") {
+                        Write-Log -Message "Switching back to 'main' branch after sync operations (current: $finalLoopBranch)." -Level "INFO" -LogFilePath $BuildLog
+                        git checkout main
+                        if ($LASTEXITCODE -ne 0) { Write-Log -Message "WARNING: Failed to checkout 'main' after branch sync loop." -Level "WARN" -LogFilePath $BuildLog }
+                    }
+                }
+            }
+            catch {
+                Write-Log -Message "FATAL: Error during version bumping process or branch synchronisation. Error: $($_.Exception.Message)" -Level "FATAL" -LogFilePath $BuildLog
+                if ($initialGitBranch -and (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim() -ne $initialGitBranch) {
+                    Write-Log -Message "Attempting to switch back to initial branch '$initialGitBranch' after error..." -Level "WARN" -LogFilePath $BuildLog
+                    git checkout $initialGitBranch 
+                }
+                throw 
+            }
+            finally {
+                $currentBranchAfterOps = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+                if ($initialGitBranch -and ($currentBranchAfterOps -ne $initialGitBranch)) {
+                    Write-Log -Message "Switching back to original script-invoking branch '$initialGitBranch' from '$currentBranchAfterOps'." -Level "INFO" -LogFilePath $BuildLog
+                    git checkout $initialGitBranch
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Log -Message "WARNING: Failed to switch back to original branch '$initialGitBranch'. You may need to manually run: git checkout $initialGitBranch" -Level "WARN" -LogFilePath $BuildLog
+                    }
+                }
+                Pop-Location 
+                Write-Log -Message "Version bumping and any post-sync operations finished. Current directory: $PWD" -Level "INFO" -LogFilePath $BuildLog
+            }
+        }
+        elseif ($BoundParams.ContainsKey('Version')) {
+            $determinedVersion = $InitialVersion
+            Write-Log -Message "Using specified pre-existing version for deployment: $determinedVersion (no bump)" -Level "INFO" -LogFilePath $BuildLog
+        }
+        else {
+            Write-Log -Message "FATAL: No version specified and no bump type selected. Cannot determine deployed version." -Level "FATAL" -LogFilePath $BuildLog
+            throw "Cannot determine deployed version. Script logic error or missing parameters."
+        }
+    }
+    # --- Rename Log File ---
+    $finalLogPathValue = $BuildLog # Default to old path in case of renaming failure
+
+    if ($determinedVersion) {
+        $finalLogName = "build_${determinedVersion}_${Timestamp}.log"
+        Write-Log -Message "Attempting to rename log file from '$BuildLog' to (new name based on version: '$finalLogName')..." -Level "INFO" -LogFilePath $BuildLog
+        try {
+            Rename-Item -Path $BuildLog -NewName $finalLogName -ErrorAction Stop
+            $finalLogPathValue = Join-Path $LogDir $finalLogName # Construct the new full path
+            # This log message is written to the file *before* its name is changed on disk by Rename-Item.
+            Write-Log -Message "Log file renamed successfully to '$finalLogPathValue'." -Level "INFO" -LogFilePath $BuildLog
+        }
+        catch {
+            Write-Log -Message "Warning: Failed to rename log file '$BuildLog' to '$finalLogName'. File might be locked. Log will continue using the temporary name '$BuildLog'. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $BuildLog
+            # $finalLogPathValue remains $BuildLog (the original path)
+        }
+    }
+    else {
+        Write-Log -Message "Skipping log rename as version was not successfully determined." -Level "WARN" -LogFilePath $BuildLog
+    }
+
+    return @{ Version = $determinedVersion; FinalLogPath = $finalLogPathValue }
+}
 ######################################################################################
 #------------------------------ Start of Main Script --------------------------------#
 
@@ -1734,11 +1969,42 @@ if (-not ($PSBoundParameters.ContainsKey('Version') -or $PSBoundParameters.Conta
     }
 }
 
-# --- Define Paths ---
+# --- Define Script Root ---
 $scriptRoot = $PSScriptRoot
 
 # --- Define Timestamp ---
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+
+# --- Define Logging ---
+$logDir = Join-Path $scriptRoot "build_logs"
+# Create the log directory if it doesn't exist
+if (-not (Test-Path $logDir)) {
+    Write-Host "Creating log directory: $logDir" # Add output
+    New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+    if (-not (Test-Path $logDir)) {
+        Write-Error "FATAL: Failed to create log directory '$logDir'. Check permissions." -ErrorAction Stop
+    }
+}
+# Create a log file name based on the version and timestamp
+# Use a temporary name until version is determined
+# Append $AppendTestRun if it's not empty
+if ($AppendTestRun) {
+    # Checks if the string is not null or empty
+    $tempLogName = "build_pending_${timestamp}_${AppendTestRun}.log"
+}
+else {
+    $tempLogName = "build_pending_$timestamp.log"
+}
+
+$buildLog = Join-Path $logDir $tempLogName
+
+# Open the log file for writing (using the temporary name initially)
+Test-Logfile -BuildLog $buildLog -ScriptRoot $scriptRoot
+
+# --- Initialise Configuration ---
+$configData = Initialize-DeploymentConfiguration -Environment $Environment `
+    -ScriptRoot $scriptRoot `
+    -BuildLog $buildLog
 
 # --- Assign Local and Target Environment Variables ---
 $localEnvSettings = $configData.LocalEnvSettings
@@ -1750,7 +2016,6 @@ $targetEnv = $DEPLOYMENT_TARGET
 $targetFlaskEnv = $DEPLOYMENT_FLASK_ENV
 
 # --- Construct Derived Variables ---
-
 # Directories for the local machine
 $localFlaskDir = Join-Path $DEPLOYMENT_LOCAL_BASE_DIR "flask_server"
 $localFrontendDir = Join-Path $DEPLOYMENT_LOCAL_BASE_DIR "satisfactory_tracker"
@@ -1781,289 +2046,59 @@ $wslLocalFrontendDir = Convert-WindowsPathToWslPath -WindowsPath $localFrontendD
 $wslLocalFlaskDirApp = "$wslLocalFlaskDir/app" # Source directory for local flask app files
 $wslLocalFrontendDirBuild = "$wslLocalFrontendDir/build" # Source directory for local build files
 
-# --- Define Logging ---
-$logDir = Join-Path $scriptRoot "build_logs"
-# Create the log directory if it doesn't exist
-if (-not (Test-Path $logDir)) {
-    Write-Host "Creating log directory: $logDir" # Add output
-    New-Item -Path $logDir -ItemType Directory -Force | Out-Null
-    if (-not (Test-Path $logDir)) {
-        Write-Error "FATAL: Failed to create log directory '$logDir'. Check permissions." -ErrorAction Stop
-    }
-}
+######################################################################################
+# --------------------- Environment Check and Version Control  --------------------- #
 
-# Create a log file name based on the version and timestamp
-# Use a temporary name until version is determined
-# Append $AppendTestRun if it's not empty
-if ($AppendTestRun) {
-    # Checks if the string is not null or empty
-    $tempLogName = "build_pending_${timestamp}_${AppendTestRun}.log"
-} else {
-    $tempLogName = "build_pending_$timestamp.log"
-}
-
-$buildLog = Join-Path $logDir $tempLogName
-
-# Open the log file for writing (using the temporary name initially)
-Test-Logfile -BuildLog $buildLog -ScriptRoot $scriptRoot
-
-# --- Initialize Configuration ---
-$configData = Initialize-DeploymentConfiguration -Environment $Environment `
-    -ScriptRoot $scriptRoot `
+# --- Check Environment & Confirm Whether to Proceed with Deployment ---
+Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
+    -RunMode $runMode `
+    -TargetFlaskEnv $targetFlaskEnv `
+    -FlaskEnv $flaskEnv `
     -BuildLog $buildLog
 
-# --- Determine Version to Deploy (Bump or Parameter) ---
-# If the bump type = none, skip the bumping process
-if ($BumpType -eq "none") {
-    Write-Log -Message "Skipping version bumping process as BumpType is set to 'none'." -Level "INFO" -LogFilePath $buildLog
-    $Script:DeployedVersion = "test_deployment"
+# --- Determine Version to Deploy & Finalise Log File Name ---
+$versionManagementResult = Invoke-VersionManagement -InitialBumpType $BumpType `
+    -InitialVersion $Version `
+    -BoundParams $PSBoundParameters `
+    -BuildLog $buildLog `
+    -ConfigGitRepoPath $DEPLOYMENT_GIT_REPO_PATH `
+    -LogDir $logDir `
+    -Timestamp $timestamp
+
+# --- Set Deployment Version and Final Log Path ---
+$Script:DeploymentVersion = $versionManagementResult.Version
+$buildLog = $versionManagementResult.FinalLogPath
+
+if (-not $Script:DeploymentVersion) {
+    Write-Log -Message "FATAL: Failed to determine deployment version from Invoke-VersionManagement." -Level "FATAL" -LogFilePath $buildLog # This log uses the potentially new $buildLog path
+    throw "Version determination failed."
 }
-else {
-   
-    $baseVersionForBumpOverride = $null
-    $effectiveBumpTypeForFunction = if ($PSBoundParameters.ContainsKey('BumpType')) { $BumpType } else { $null }
-
-    if ($PSBoundParameters.ContainsKey('BumpType')) {
-        $versionFilePath = Join-Path $DEPLOYMENT_LOCAL_BASE_DIR "version.txt" 
-        $packageJsonPath = Join-Path $DEPLOYMENT_LOCAL_BASE_DIR "satisfactory_tracker/package.json" 
-        $gitRepoPath = $DEPLOYMENT_GIT_REPO_PATH
-
-        $targetBranch = ""
-        $sourceBranchForMerge = ""
-    
-        Write-Log -Message "Version bumping process started for BumpType '$BumpType'." -Level "INFO" -LogFilePath $buildLog
-
-        Push-Location $gitRepoPath
-        $initialGitBranch = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
-        Write-Log -Message "Initial Git branch: $initialGitBranch. Current directory: $PWD" -Level "INFO" -LogFilePath $buildLog
-
-        try { 
-            switch ($BumpType) {
-                "major" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
-                "minor" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
-                "patch" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
-                "dev" { $targetBranch = "dev"; break }
-                "qas" { $targetBranch = "qas"; $sourceBranchForMerge = "dev"; break }                
-                "test" { $targetBranch = "test"; break }
-                default { throw "Unsupported BumpType '$BumpType' for branch operations." }
-            }
-
-            if ($targetBranch) {
-                Write-Log -Message "Target branch for BumpType '$BumpType' is '$targetBranch'." -Level "INFO" -LogFilePath $buildLog
-
-                if ($initialGitBranch -ne $targetBranch) {
-                    Write-Log -Message "Switching from '$initialGitBranch' to target branch '$targetBranch'." -Level "INFO" -LogFilePath $buildLog
-                    git checkout $targetBranch
-                    if ($LASTEXITCODE -ne 0) { throw "Failed to checkout $targetBranch" }
-                }
-                Write-Log -Message "Ensuring branch '$targetBranch' is up-to-date with origin." -Level "INFO" -LogFilePath $buildLog
-                git pull origin $targetBranch
-                if ($LASTEXITCODE -ne 0) { throw "Failed to pull $targetBranch" }
-
-                $versionFilePathOnTargetBranch = Join-Path $PWD "version.txt"
-
-                if ($BumpType -eq "qas") {
-                    $mainVersionGitPath = "main:version.txt" 
-                    $mainVersionContent = git show $mainVersionGitPath 2>$null | Out-String -Stream
-                    $mainBaseVersionCore = "" 
-                    if ($LASTEXITCODE -eq 0 -and $mainVersionContent -and ($mainVersionContent.Trim() -match '^v?(\d+\.\d+\.\d+)')) {
-                        $mainBaseVersionCore = $matches[1]
-                    }
-                    else {
-                        throw "Could not determine base version (X.Y.Z) from '$mainVersionGitPath'"
-                    }
-
-                    if (Test-Path $versionFilePathOnTargetBranch) {
-                        $currentVersionOnTarget = (Get-Content $versionFilePathOnTargetBranch).Trim()
-                        if ($currentVersionOnTarget -match "^v?${mainBaseVersionCore}-${BumpType}\.\d+$") {
-                            $baseVersionForBumpOverride = $currentVersionOnTarget
-                            Write-Log -Message "Using iterative base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' for $BumpType bump." -Level "INFO" -LogFilePath $buildLog
-                        }
-                        else {
-                            $baseVersionForBumpOverride = "v$mainBaseVersionCore"
-                            Write-Log -Message "Resetting $BumpType base to '$baseVersionForBumpOverride' (from $mainVersionGitPath) as current '$targetBranch/version.txt' ('$currentVersionOnTarget') is for a different base or not a '$BumpType' pre-release." -Level "INFO" -LogFilePath $buildLog
-                        }
-                    }
-                    else {
-                        $baseVersionForBumpOverride = "v$mainBaseVersionCore" 
-                        Write-Log -Message "No '$versionFilePathOnTargetBranch' found on $targetBranch. Setting $BumpType base to '$baseVersionForBumpOverride' (derived from $mainVersionGitPath)." -Level "INFO" -LogFilePath $buildLog
-                    }
-                }
-                elseif ($BumpType -eq "prod") {
-                    $sourceVersionGitPath = "$sourceBranchForMerge:version.txt"
-                    $sourceVersionContent = git show $sourceVersionGitPath 2>$null | Out-String -Stream
-                    if ($LASTEXITCODE -eq 0 -and $sourceVersionContent -and ($sourceVersionContent.Trim() -match '^v?(\d+\.\d+\.\d+(?:-(?:rc|dev|qas|test)\.\d+)?)')) {
-                        $baseVersionForBumpOverride = $sourceVersionContent.Trim()
-                        Write-Log -Message "Version to promote from '$sourceBranchForMerge' (read from Git path '$sourceVersionGitPath') for 'prod' bump is '$baseVersionForBumpOverride'." -Level "INFO" -LogFilePath $buildLog
-                    }
-                    else {
-                        throw "Could not fetch version.txt from '$sourceVersionGitPath' to promote for 'prod' BumpType."
-                    }
-                }
-                elseif ($BumpType -eq "major" -or $BumpType -eq "minor" -or $BumpType -eq "patch") {
-                    if (Test-Path $versionFilePathOnTargetBranch) { 
-                        $baseVersionForBumpOverride = (Get-Content $versionFilePathOnTargetBranch).Trim()
-                        Write-Log -Message "Using base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' (pre-merge) for $BumpType bump." -Level "INFO" -LogFilePath $buildLog
-                    }
-                    else {
-                        throw "Version file '$versionFilePathOnTargetBranch' not found on $targetBranch for $BumpType bump, and it's required."
-                    }
-                }
-                elseif ($BumpType -eq "dev" -or $BumpType -eq "test") {
-                    Write-Log -Message "For '$BumpType' bump, BaseVersionOverride is not set; function will use '$targetBranch/version.txt'." -Level "INFO" -LogFilePath $buildLog
-                }
-
-                if ($sourceBranchForMerge) {
-                    Write-Log -Message "Merging '$sourceBranchForMerge' into '$targetBranch'." -Level "INFO" -LogFilePath $buildLog
-                    git merge --no-ff $sourceBranchForMerge -m "Merge branch '$sourceBranchForMerge' into '$targetBranch' for $BumpType release prep"
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-Log -Message "Merge conflict likely detected when merging '$sourceBranchForMerge' into '$targetBranch'. Attempting 'git merge --abort'." -Level "ERROR" -LogFilePath $buildLog
-                        git merge --abort
-                        throw "Merge failed from '$sourceBranchForMerge' to '$targetBranch'. Resolve conflicts and retry."
-                    }
-                    Write-Log -Message "Merge of '$sourceBranchForMerge' into '$targetBranch' successful." -Level "INFO" -LogFilePath $buildLog
-                }
-            }
-        
-            $Script:DeployedVersion = Invoke-VersionBump -BumpType $effectiveBumpTypeForFunction `
-                -VersionFilePath $versionFilePathOnTargetBranch `
-                -PackageJsonPath (Join-Path $PWD "satisfactory_tracker/package.json") `
-                -GitRepoPath $PWD `
-                -BuildLog $buildLog `
-                -BaseVersionOverride $baseVersionForBumpOverride
-
-            # Sync branches with main after a successful production release
-            if ($effectiveBumpTypeForFunction -in ("major", "minor", "patch")) {
-                Write-Log -Message "`n--- Syncing Supporting Branches with Main ---" -Level "INFO" -LogFilePath $BuildLog
-                
-                $branchesToSyncWithMain = @("dev", "test", "qas")
-                $currentBranchInLoop = "main"
-
-                foreach ($branchToSync in $branchesToSyncWithMain) {
-                    Write-Log -Message "Attempting to sync branch '$branchToSync' with $currentBranchInLoop (new version: $Script:DeployedVersion)." -Level "INFO" -LogFilePath $BuildLog
-                    try {
-                        # Checkout the branch to be synced
-                        Write-Log -Message "Checking out '$branchToSync'..." -Level "INFO" -LogFilePath $buildLog
-                        git checkout $branchToSync
-                        if ($LASTEXITCODE -ne 0) { throw "Failed to checkout branch '$branchToSync'." }
-                        $currentBranchInLoop = $branchToSync
-
-                        # Pull latest changes for this branch from its origin
-                        Write-Log -Message "Pulling latest for '$branchToSync' from origin..." -Level "INFO" -LogFilePath $buildLog
-                        git pull origin $branchToSync
-                        if ($LASTEXITCODE -ne 0) { throw "Failed to pull 'origin/$branchToSync'." }
-                    
-                        # Merge main into it
-                        Write-Log -Message "Merging 'main' into '$branchToSync'..." -Level "INFO" -LogFilePath $buildLog
-                        git merge main -m "Auto-merge main into $branchToSync after production release $Script:DeployedVersion"
-                        if ($LASTEXITCODE -ne 0) {
-                            Write-Log -Message "WARNING: Merge of 'main' into '$branchToSync' resulted in conflicts or failure. Attempting 'git merge --abort'. Manual sync required for '$branchToSync'." -Level "WARNING" -LogFilePath $buildLog
-                            git merge --abort
-                            continue # Continue to the next branch to sync
-                        }
-                    
-                        # Push the updated branch
-                        Write-Log -Message "Pushing updated '$branchToSync' to origin..." -Level "INFO" -LogFilePath $buildLog
-                        git push origin $branchToSync
-                        if ($LASTEXITCODE -ne 0) { throw "Failed to push '$branchToSync' to origin after merging main." }
-                    
-                        Write-Log -Message "Branch '$branchToSync' successfully synced with 'main' and pushed." -Level "SUCCESS" -LogFilePath $buildLog
-                    }
-                    catch {
-                        Write-Log -Message "ERROR during sync of branch '$branchToSync': $($_.Exception.Message). Manual sync will be required." -Level "ERROR" -LogFilePath $BuildLog
-                        if ((git status --porcelain | Out-String).Trim().Length -gt 0) {
-                            Write-Log -Message "Branch '$branchToSync' has uncommitted changes or is in a conflicted state after sync error. Manual cleanup needed." -Level "WARN" -LogFilePath $buildLog
-                        }
-                    }
-                }
-            
-                $finalLoopBranch = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
-                if ($finalLoopBranch -ne "main") {
-                    Write-Log -Message "Switching back to 'main' branch after sync operations (current: $finalLoopBranch)." -Level "INFO" -LogFilePath $buildLog
-                    git checkout main
-                    if ($LASTEXITCODE -ne 0) { Write-Log -Message "WARNING: Failed to checkout 'main' after branch sync loop." -Level "WARN" -LogFilePath $BuildLog }
-                }
-            }
-
-        }
-        catch {
-            Write-Log -Message "FATAL: Error during version bumping process or branch synchronization. Error: $($_.Exception.Message)" -Level "FATAL" -LogFilePath $buildLog
-            if ($initialGitBranch -and (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim() -ne $initialGitBranch) {
-                Write-Log -Message "Attempting to switch back to initial branch '$initialGitBranch' after error..." -Level "WARN" -LogFilePath $buildLog
-                git checkout $initialGitBranch 
-            }
-            throw 
-        }
-        finally {
-            $currentBranchAfterOps = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
-            if ($initialGitBranch -and ($currentBranchAfterOps -ne $initialGitBranch)) {
-                Write-Log -Message "Switching back to original script-invoking branch '$initialGitBranch' from '$currentBranchAfterOps'." -Level "INFO" -LogFilePath $buildLog
-                git checkout $initialGitBranch
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Log -Message "WARNING: Failed to switch back to original branch '$initialGitBranch'. You may need to manually run: git checkout $initialGitBranch" -Level "WARN" -LogFilePath $BuildLog
-                }
-            }
-            Pop-Location 
-            Write-Log -Message "Version bumping and any post-sync operations finished. Current directory: $PWD" -Level "INFO" -LogFilePath $buildLog
-        }
-    }
-    elseif ($PSBoundParameters.ContainsKey('Version')) {
-        $Script:DeployedVersion = $Version
-        Write-Log -Message "Using specified pre-existing version for deployment: $Script:DeployedVersion (no bump)" -Level "INFO" -LogFilePath $buildLog
-    }
-    else {
-        Write-Log -Message "FATAL: No version specified and no bump type selected. Cannot determine deployed version." -Level "FATAL" -LogFilePath $buildLog
-        throw "Cannot determine deployed version. Script logic error or missing parameters."
-    }
-}
-# --- Rename Log File with Actual Version ---
-$finalLogName = "build_${Script:DeployedVersion}_$timestamp.log"
-$finalLogPath = Join-Path $logDir $finalLogName
-
-if ($buildLog -ne $finalLogPath) {
-    Write-Log -Message "Attempting to rename log file from '$buildLog' to '$finalLogPath'..." -Level "INFO" -LogFilePath $buildLog
-    try {
-        Rename-Item -Path $buildLog -NewName $finalLogName -ErrorAction Stop 
-        Write-Log -Message "Log file renamed successfully." -Level "INFO" -LogFilePath $buildLog
-        $buildLog = $finalLogPath    
-        Write-Log -Message "Log variable updated to new path '$buildLog'." -Level "DEBUG" -LogFilePath $buildLog
-    }
-    catch {
-        Write-Log -Message "Warning: Failed to rename log file '$buildLog' to '$finalLogName'. File might be locked. Subsequent logs will continue using the temporary name. Note: Consider manually renaming '$buildLog' to '$finalLogName' after script completion. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $buildLog 
-    }
+if (-not $buildLog) {
+    Write-Log -Message "FATAL: Failed to determine log file path from Invoke-VersionManagement." -Level "FATAL" -LogFilePath $buildLog # This log uses the potentially new $buildLog path
+    throw "Log file path determination failed."
 }
 
 # --- Open the log file in Notepad++ with monitoring on ---
 Open-Logfile -BuildLog $buildLog
 
 ######################################################################################
-#----------------------------- Start of Deployment Steps ----------------------------#
+#-------------------------------- Force ONLY Actions --------------------------------#
 
-# --- Executive Actions ---
 # Check if any key starting with 'Force' and ending with 'Only' was bound
 $forceOnlySwitchUsed = $PSBoundParameters.Keys.Where({ $_ -like 'Force*Only' -and $PSBoundParameters[$_] })
 if ($forceOnlySwitchUsed.Count -gt 0) {
     Write-Log -Message "Force*Only switch detected. Running only the specified step." -Level "WARN" -LogFilePath $buildLog
 
-    if ($ForceConfirmEnvOnly) {
-        Write-Log -Message "--- Running ONLY Step 1: Environment Check & Confirmation ---" -Level "INFO" -LogFilePath $buildLog
-        Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
-            -RunMode $runMode `
-            -TargetFlaskEnv $targetFlaskEnv `
-            -FlaskEnv $flaskEnv `
-            -BuildLog $buildLog
-        Write-Log -Message "--- Finished ONLY Step 1 ---" -Level "INFO" -LogFilePath $buildLog
-    }
-    elseif ($ForceReactBuildOnly) {
-        Write-Log -Message "--- Running ONLY Step 2: Run React Build Locally ---" -Level "INFO" -LogFilePath $buildLog
+    if ($ForceReactBuildOnly) {
+        Write-Log -Message "--- Running ONLY Step 1: Run React Build Locally ---" -Level "INFO" -LogFilePath $buildLog
         Invoke-ReactBuild -RunBuild 'y' `
             -LocalFrontendDir $localFrontendDir `
             -BuildLog $buildLog `
             -GitRepoPath $DEPLOYMENT_GIT_REPO_PATH
-        Write-Log -Message "--- Finished ONLY Step 2 ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Finished ONLY Step 1 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceBackupOnly) {
-        Write-Log -Message "--- Running ONLY Step 3: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Running ONLY Step 2: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $buildLog
         Backup-ServerState -RunBackup 'y' `
             -BackupDirFlask $backupDirFlask `
             -ServerFlaskDir $serverFlaskBaseDir `
@@ -2074,10 +2109,10 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
             -DatabaseName $DEPLOYMENT_DB_NAME `
             -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
             -BuildLog $buildLog
-        Write-Log -Message "--- Finished ONLY Step 3 ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Finished ONLY Step 2 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceSyncFilesToServerOnly) {
-        Write-Log -Message "--- Running ONLY Step 4: Deploy Application Files using rsync ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Running ONLY Step 3: Deploy Application Files using rsync ---" -Level "INFO" -LogFilePath $buildLog
         Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
             -ServerFrontendBuildDir $serverFrontendBuildDir `
             -ServerFrontendBaseDir $serverFrontendBaseDir `
@@ -2087,57 +2122,51 @@ if ($forceOnlySwitchUsed.Count -gt 0) {
             -ServerFlaskBaseDir $serverFlaskBaseDir `
             -WslLocalFlaskBaseDir $wslLocalFlaskDir `
             -BuildLog $buildLog
-        Write-Log -Message "--- Finished ONLY Step 4 ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Finished ONLY Step 3 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceFlaskUpdateOnly) {
-        Write-Log -Message "--- Running ONLY Step 5: Install/Upgrade Flask Dependencies ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Running ONLY Step 4: Install/Upgrade Flask Dependencies ---" -Level "INFO" -LogFilePath $buildLog
         Update-FlaskDependencies -VenvDir $DEPLOYMENT_VENV_DIR `
             -ServerFlaskBaseDir $serverFlaskBaseDir `
             -BuildLog $buildLog
-        Write-Log -Message "--- Finished ONLY Step 5 ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Finished ONLY Step 4 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceDBMigrationOnly) {
-        Write-Log -Message "--- Running ONLY Step 6: Database Migration ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Running ONLY Step 5: Database Migration ---" -Level "INFO" -LogFilePath $buildLog
         Invoke-DatabaseMigration -runDBMigration 'y' `
             -VenvDir $DEPLOYMENT_VENV_DIR `
             -ServerFlaskBaseDir $serverFlaskBaseDir `
             -BuildLog $buildLog
-        Write-Log -Message "--- Finished ONLY Step 6 ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Finished ONLY Step 5 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceSqlScriptsOnly) {
-        Write-Log -Message "--- Running ONLY Step 7: Apply SQL Release Scripts ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Running ONLY Step 6: Apply SQL Release Scripts ---" -Level "INFO" -LogFilePath $buildLog
         Invoke-SqlReleaseScripts -BuildLog $buildLog -ForceRerun:$ForceSqlScripts
-        Write-Log -Message "--- Finished ONLY Step 7 ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Finished ONLY Step 6 ---" -Level "INFO" -LogFilePath $buildLog
     }
     elseif ($ForceRestartServicesOnly) {
-        Write-Log -Message "--- Running ONLY Step 8: Restart Services ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Running ONLY Step 7: Restart Services ---" -Level "INFO" -LogFilePath $buildLog
         Restart-Services -FlaskServiceName $DEPLOYMENT_FLASK_SERVICE_NAME `
             -BuildLog $buildLog
-        Write-Log -Message "--- Finished ONLY Step 8 ---" -Level "INFO" -LogFilePath $buildLog
+        Write-Log -Message "--- Finished ONLY Step 7 ---" -Level "INFO" -LogFilePath $buildLog
     }
 
     Write-Log -Message "Specified single step completed. Exiting script." -Level "INFO" -LogFilePath $buildLog
     return # Exit the script after the forced step is done
 
 } 
-# --- Normal Full Deployment Flow ---
+######################################################################################
+#---------------------------- Normal Full Deployment Flow ---------------------------#
 else { 
     Write-Log -Message "No Force*Only switch detected. Running full deployment." -Level "INFO" -LogFilePath $buildLog
 
-    # Step 1: Check Environment & Confirm
-    Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
-        -RunMode $runMode `
-        -TargetFlaskEnv $targetFlaskEnv `
-        -FlaskEnv $flaskEnv `
-        -BuildLog $buildLog
-
-    # Step 2: Run React build locally
+    # Step 1: Run React build locally
     Invoke-ReactBuild -RunBuild $runBuild `
         -LocalFrontendDir $localFrontendDir `
         -BuildLog $buildLog `
         -GitRepoPath $DEPLOYMENT_GIT_REPO_PATH
 
-    # Step 3: Backup Existing Project Files
+    # Step 2: Backup Existing Project Files
     Backup-ServerState -RunBackup $runBackup `
         -BackupDirFlask $backupDirFlask `
         -ServerFlaskDir $serverFlaskBaseDir `
@@ -2148,7 +2177,7 @@ else {
         -DeploymentBackupDir $DEPLOYMENT_BACKUP_DIR `
         -BuildLog $buildLog
 
-    # Step 4: Deploy Application Files using rsync
+    # Step 3: Deploy Application Files using rsync
     Sync-FilesToServer -WslLocalFrontendDirBuild $wslLocalFrontendDirBuild `
         -ServerFrontendBuildDir $serverFrontendBuildDir `
         -ServerFrontendBaseDir $serverFrontendBaseDir `
@@ -2159,28 +2188,28 @@ else {
         -WslLocalFlaskBaseDir $wslLocalFlaskDir `
         -BuildLog $buildLog
 
-    # Step 5: Install/Upgrade Flask Dependencies
+    # Step 4: Install/Upgrade Flask Dependencies
     Update-FlaskDependencies -VenvDir $DEPLOYMENT_VENV_DIR `
         -ServerFlaskBaseDir $serverFlaskBaseDir `
         -BuildLog $buildLog
 
-    # Step 6: Database Migration (Optional)
+    # Step 5: Database Migration (Optional)
     Invoke-DatabaseMigration -runDBMigration $runDBMigration `
         -VenvDir $DEPLOYMENT_VENV_DIR `
         -ServerFlaskBaseDir $serverFlaskBaseDir `
         -BuildLog $buildLog
 
-    # Step 7: Apply SQL Release Scripts
+    # Step 6: Apply SQL Release Scripts
     Invoke-SqlReleaseScripts -BuildLog $buildLog -ForceRerun:$ForceSqlScripts
 
-    # Step 8: Restart Services
+    # Step 7: Restart Services
     Restart-Services -FlaskServiceName $DEPLOYMENT_FLASK_SERVICE_NAME `
         -BuildLog $buildLog
 
     ##################################################################################
     # -------------------------- Final Success Message ------------------------------#
 
-    Write-Log -Message "`nDeployment to $targetEnv for version $Script:DeployedVersion completed successfully!" -Level "SUCCESS" -LogFilePath $buildLog
+    Write-Log -Message "`nDeployment to $targetEnv for version $Script:DeploymentVersion completed successfully!" -Level "SUCCESS" -LogFilePath $buildLog
     Write-Log -Message "Deployment log saved to '$buildLog'." -Level "INFO" -LogFilePath $buildLog
     Write-Log -Message "Please check the application at $displayUrl" -Level "INFO" -LogFilePath $buildLog
 }
