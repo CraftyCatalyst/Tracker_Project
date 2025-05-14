@@ -225,10 +225,6 @@ param(
     [ValidateSet('PROD', 'QAS', 'DEV', 'TEST')]
     [string]$Environment,
 
-    [Parameter(Mandatory = $false, HelpMessage = "Specify if database migration should run. Valid values are: y, n")]
-    [ValidateSet('y', 'n')]
-    [string]$runDBMigration = 'y', # Default to 'y' for DB migration unless specified otherwise
-
     [Parameter(Mandatory = $false, HelpMessage = "Specify the Git tag/version to deploy (e.g., v1.3.0). Required if -BumpType is NOT used.")]
     [ValidatePattern('^v\d+\.\d+\.\d+(?:-(?:dev|qas|test)\.\d+)?$', Options = 'IgnoreCase')]
     [string]$Version,
@@ -237,52 +233,65 @@ param(
     [ValidateSet("major", "minor", "patch", "dev", "qas", "test", "none")]
     [string]$BumpType,
 
+    [Parameter(Mandatory = $false, HelpMessage = "Specify the name of the branch to use for test")]
+    [string]$TestBranch = 'test',
+
+    [Parameter(Mandatory = $false, HelpMessage = "Specify the name of the branch to use for dev")]
+    [string]$DevBranch = 'dev',
+
+    [Parameter(Mandatory = $false, HelpMessage = "Specify the name of the branch to use for qas")]
+    [string]$QasBranch = 'qas',
+    
+    [Parameter(Mandatory = $false, HelpMessage = "Specify the name of the branch to use for prod")]
+    [string]$ProdBranch = 'main',
+    
+    [Parameter(Mandatory = $false, HelpMessage = "Specify if database migration should run. Valid values are: y, n")]
+    [ValidateSet('y', 'n')]
+    [string]$runDBMigration = 'y',
+
     [Parameter(Mandatory = $false, HelpMessage = "Set to 'n' for new environment creation. Valid values are: y, n")]
     [ValidateSet('y', 'n')]
-    [string]$runBackup = 'y', # Default to 'y' for backup unless specified otherwise
+    [string]$runBackup = 'y',
 
     [Parameter(Mandatory = $false, HelpMessage = "Set to 'n' if you've already run npm build and just want to deploy. Valid values are: y, n")]
     [ValidateSet('y', 'n')]
-    [string]$runBuild = 'y', # Default to 'y' for build unless specified otherwise
+    [string]$runBuild = 'y',
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to force re-running of all SQL release scripts, even if previously applied.")]
     [switch]$ForceSqlScripts,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set the switch to ONLY Confirm the deployment environment and not run the script.")]
-    [switch]$ForceConfirmEnvOnly, # Added to allow for Environment check without running the script
+    [switch]$ForceConfirmEnvOnly,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the React build and not run the script.")]
-    [switch]$ForceReactBuildOnly, # Added to allow for React build without running the script
+    [switch]$ForceReactBuildOnly,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the backup and not run the script.")]
-    [switch]$ForceBackupOnly, # Added to allow for backup without running the script
+    [switch]$ForceBackupOnly,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the Flask deployment and not run the script.")]
-    [switch]$ForceSyncFilesToServerOnly, # Added to allow for Flask deployment without running the script
+    [switch]$ForceSyncFilesToServerOnly,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the Flask dependency update and not run the script.")]
-    [switch]$ForceFlaskUpdateOnly, # Added to allow for Flask dependency update without running the script
+    [switch]$ForceFlaskUpdateOnly,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the database migration and not run the script.")]
-    [switch]$ForceDBMigrationOnly, # Added to allow for database migration without running the script
+    [switch]$ForceDBMigrationOnly,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY run the SQL release scripts and not run the script.")]
-    [switch]$ForceSqlScriptsOnly, # Added to allow for SQL release scripts without running the script
+    [switch]$ForceSqlScriptsOnly,
 
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to ONLY restart the services and not run the script.")]
-    [switch]$ForceRestartServicesOnly, # Added to allow for restarting services without running the script
+    [switch]$ForceRestartServicesOnly,
 
-    # -ForceConfirmation: Skips the "Proceed? (y/n)" prompt.
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to skip the confirmation prompt.")]
-    [switch]$ForceConfirmation, # Added to allow for skipping confirmation prompt when using the test harness
+    [switch]$ForceConfirmation,
 
-    # -AutoApproveMigration: Skips the "Have you reviewed..." prompt for DB migration, assuming 'y'. (Alternatively, test the 'n' path separately).
     [Parameter(Mandatory = $false, HelpMessage = "Set this switch to skip the DB migration review prompt.")]
-    [switch]$AutoApproveMigration, # Added to allow for skipping DB migration review prompt when using the test harness
+    [switch]$AutoApproveMigration,
 
-    # -AppendTestRun: accepts a string to append to the log file name for test runs.
     [Parameter(Mandatory = $false, HelpMessage = "Append a string to the log file name for test runs.")]
-    [string]$AppendTestRun = '' # Default to empty string for no appending
+    [string]$AppendTestRun = ''
 )
 ######################################################################################
 # -------------------------------- Global Variables ---------------------------------#
@@ -707,7 +716,7 @@ Function Invoke-ReactBuild {
     Write-Log -Message "Building React app locally in '$LocalFrontendDir'..." -Level "INFO" -LogFilePath $BuildLog
 
     # Define the specific log file for npm build errors within this step
-    $npmErrorLog = Join-Path (Split-Path $BuildLog -Parent) "npm_build_errors${Script:DeployedVersion}_$timestamp.log" # Use timestamp for uniqueness
+    $npmLog = Join-Path (Split-Path $BuildLog -Parent) "npm_build_errors${Script:DeployedVersion}_$timestamp.log" # Use timestamp for uniqueness
 
     # Change to the frontend directory to run the build command
     try {
@@ -721,18 +730,13 @@ Function Invoke-ReactBuild {
         # Capture all combined StdOut and StdErr streams
         Write-Log -Message "Capturing npm build output..." -Level DEBUG -LogFilePath $BuildLog 
         $npmOutput = (npm run build 2>&1 | Out-String) 
-
-        # Log full captured output to file(s) without spamming console
-        Write-Log -Message "--- NPM Build Output Start ---" -LogFilePath $buildLog -NoConsole 
-        Write-Log -Message $npmOutput -LogFilePath $buildLog -NoConsole 
-        Write-Log -Message "--- NPM Build Output End ---" -LogFilePath $buildLog -NoConsole 
-
-        Write-Log -Message "--- NPM Build Output Start ---" -LogFilePath $npmErrorLog -NoConsole # Log to specific npm error log too
-        Write-Log -Message $npmOutput -LogFilePath $npmErrorLog -NoConsole 
-        Write-Log -Message "--- NPM Build Output End ---" -LogFilePath $npmErrorLog -NoConsole         
+        
+        Write-Log -Message "--- NPM Build Output Start ---" -LogFilePath $npmLog -NoConsole
+        Write-Log -Message $npmOutput -LogFilePath $npmLog -NoConsole 
+        Write-Log -Message "--- NPM Build Output captured in $npmLog ---" -LogFilePath $npmLog -NoConsole         
 
         if ($LASTEXITCODE -ne 0) {
-            Write-Log -Message "FATAL: React build failed! Check output above and details in '$npmErrorLog'. Exiting." -Level "ERROR" -LogFilePath $BuildLog
+            Write-Log -Message "FATAL: React build failed! Check output above and details in '$npmLog'. Exiting." -Level "ERROR" -LogFilePath $BuildLog
             throw "React build failed."
         }
         else {
@@ -777,7 +781,7 @@ Function Backup-ServerState {
         return
     }
     Write-Log -Message "`n--- Step 2: Backup Existing Project Files ---" -Level "INFO" -LogFilePath $BuildLog
-    # 3.1: Copy Existing Flask Files to Backup Directory
+    # Copy Existing Flask Files to Backup Directory
     Write-Log -Message "Backing up current Flask files ($ServerFlaskDir) on server..." -Level "INFO" -LogFilePath $BuildLog
 
     
@@ -813,8 +817,8 @@ Function Backup-ServerState {
 
     # Ensure parent directory exists before dumping
     $parentDirForDbBackup = $DeploymentBackupDir
-    $dbBackupCmd = "mkdir -p '$parentDirForDbBackup' && mysqldump $DatabaseName > '$BackupDirDB'" # Assumes .my.cnf
-    $dbCleanupCmd = "rm -f '$BackupDirDB'" # Cleanup command if dump fails
+    $dbBackupCmd = "mkdir -p '$parentDirForDbBackup' && mysqldump $DatabaseName > '$BackupDirDB'"
+    $dbCleanupCmd = "rm -f '$BackupDirDB'"
     Invoke-SshCommand -Command $dbBackupCmd `
         -ActionDescription "backup database '$DatabaseName'" `
         -BuildLog $BuildLog `
@@ -834,21 +838,21 @@ Function Backup-ServerState {
 Function Sync-FilesToServer {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$WslLocalFrontendDirBuild, # WSL path to local React build
+        [string]$WslLocalFrontendDirBuild,
         [Parameter(Mandatory = $true)]
-        [string]$ServerFrontendBuildDir, # Server path for React build destination
+        [string]$ServerFrontendBuildDir,
         [Parameter(Mandatory = $true)]
-        [string]$ServerFrontendBaseDir, # Server path for React base directory
+        [string]$ServerFrontendBaseDir,
         [Parameter(Mandatory = $true)]
-        [string]$WslLocalFrontendBaseDir, # Local path for React base directory
+        [string]$WslLocalFrontendBaseDir,
         [Parameter(Mandatory = $true)]
-        [string]$WslLocalFlaskDirApp, # WSL path to local Flask app source
+        [string]$WslLocalFlaskDirApp,
         [Parameter(Mandatory = $true)]
-        [string]$ServerFlaskAppDir, # Server path for Flask app destination
+        [string]$ServerFlaskAppDir,
         [Parameter(Mandatory = $true)]
-        [string]$ServerFlaskBaseDir, # Server path for Flask base directory
+        [string]$ServerFlaskBaseDir,
         [Parameter(Mandatory = $true)]
-        [string]$WslLocalFlaskBaseDir, # Local path for Flask base directory
+        [string]$WslLocalFlaskBaseDir,
         [Parameter(Mandatory = $true)]
         [string]$BuildLog
     )
@@ -859,12 +863,11 @@ Function Sync-FilesToServer {
     Write-Log -Message "Syncing React build files ($WslLocalFrontendDirBuild --> $ServerFrontendBuildDir)..." -Level "INFO" -LogFilePath $BuildLog
 
     # --- Refactored Call 1 ---
-    $reactMkdirCmd = "mkdir -p '$ServerFrontendBuildDir'" # Use quotes for safety
+    $reactMkdirCmd = "mkdir -p '$ServerFrontendBuildDir'"
     Invoke-SshCommand -Command $reactMkdirCmd `
         -ActionDescription "ensure React build destination directory exists ('$ServerFrontendBuildDir')" `
         -BuildLog $BuildLog `
-        -IsFatal $true # Keep original fatal behavior
-    # Ensure trailing slashes to copy *contents* into the destination
+        -IsFatal $true
     Invoke-WslRsync -SourcePath "$($WslLocalFrontendDirBuild)/" `
         -DestinationPath "$($ServerFrontendBuildDir)/" `
         -Purpose "React build files" `
@@ -887,16 +890,16 @@ Function Sync-FilesToServer {
         -ExcludePatterns $flaskExcludes
 
     # Copy the pip_requirements.txt file from the local flask_server dir to the flask base directory on the server
-    $localPipReqFilePath = "$WslLocalFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on local WSL
-    $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH" # Full path on server
+    $localPipReqFilePath = "$WslLocalFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH"
+    $serverPipReqFilePath = "$ServerFlaskBaseDir/$DEPLOYMENT_PIP_REQ_FILE_PATH"
     Write-Log -Message "Copying pip requirements file from '$localPipReqFilePath' to '$serverPipReqFilePath'..." -Level "INFO" -LogFilePath $BuildLog
     Invoke-WslRsync -SourcePath "$($localPipReqFilePath)" `
         -DestinationPath "$($serverPipReqFilePath)" `
         -Purpose "Pip requirements file"
     
     # Copy the .env file from the local flask_server dir to the flask base directory on the server
-    $localEnvFilePath = "$WslLocalFrontendBaseDir/$DEPLOYMENT_ENV_FILE_PATH" # Full path on local WSL
-    $serverEnvFilePath = "$ServerFrontendBaseDir/$DEPLOYMENT_ENV_FILE_PATH" # Full path on server
+    $localEnvFilePath = "$WslLocalFrontendBaseDir/$DEPLOYMENT_ENV_FILE_PATH"
+    $serverEnvFilePath = "$ServerFrontendBaseDir/$DEPLOYMENT_ENV_FILE_PATH"
     Write-Log -Message "Copying .env file from '$localEnvFilePath' to '$serverEnvFilePath'..." -Level "INFO" -LogFilePath $BuildLog
     Invoke-WslRsync -SourcePath "$($localEnvFilePath)" `
         -DestinationPath "$($serverEnvFilePath)" `
@@ -908,9 +911,9 @@ Function Sync-FilesToServer {
 Function Update-FlaskDependencies {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$VenvDir, # Path to virtual env directory on server
+        [string]$VenvDir,
         [Parameter(Mandatory = $true)]
-        [string]$ServerFlaskBaseDir, # Path to Flask project base on server
+        [string]$ServerFlaskBaseDir,
         [Parameter(Mandatory = $true)]
         [string]$BuildLog
     )
@@ -935,9 +938,9 @@ Function Invoke-DatabaseMigration {
         [ValidateSet('y', 'n')]
         [string]$runDBMigration,
         [Parameter(Mandatory = $true)]
-        [string]$VenvDir, # Path to virtual env directory on server
+        [string]$VenvDir,
         [Parameter(Mandatory = $true)]
-        [string]$ServerFlaskBaseDir, # Path to Flask project base on server
+        [string]$ServerFlaskBaseDir,
         [Parameter(Mandatory = $true)]
         [string]$BuildLog
     )
@@ -946,14 +949,14 @@ Function Invoke-DatabaseMigration {
 
     if ($runDBMigration -ne 'y') {
         Write-Log -Message "Database migration not requested. Skipping..." -Level "INFO" -LogFilePath $BuildLog
-        return # Exit the function early
+        return
     }
 
     Write-Log -Message "Database migration requested. Proceeding..." -Level "INFO" -LogFilePath $BuildLog
 
     # --- Check for migrations directory and initialise if needed ---
     $migrationDir = "$ServerFlaskBaseDir/migrations"
-    $migrationMessage = "" # Initialise migration message variable
+    $migrationMessage = ""
 
     Write-Log -Message "Checking for existing migrations directory ('$migrationDir') on server..." -Level "INFO" -LogFilePath $BuildLog
 
@@ -982,23 +985,21 @@ Function Invoke-DatabaseMigration {
         Write-Log -Message "Migrations directory found. Proceeding with standard migration." -Level "INFO" -LogFilePath $BuildLog
         $migrationMessage = "Auto-migration after deployment $(Get-Date -Format 'yyyyMMdd_HHmmss')"
     }
-    # --- End Check ---
 
-
-    # 5.1: Generate Migration Script (using the determined message)
+    # Generate Migration Script (using the determined message)
     Write-Log -Message "Generating database migration script with message: '$migrationMessage'" -Level "INFO" -LogFilePath $BuildLog
     $escapedMigrationMessageForCmd = $migrationMessage -replace "'", "'\''"
+    
     # Redirect output to prevent potential hangs
     $migrateCmd = "cd '$ServerFlaskBaseDir' && source '$VenvDir/bin/activate' && flask db migrate -m '$escapedMigrationMessageForCmd' 2>&1; exit `$?"
-    # Note: The command above captures both stdout and stderr, which is useful for debugging
     $flaskDBMigrateResult = Invoke-SshCommand -Command $migrateCmd `
         -ActionDescription "generate migration script" `
         -BuildLog $BuildLog `
         -IsFatal $true
     Write-Log -Message "Result $flaskDBMigrateResult. Script generated. Please review it on the server." -Level "WARNING" -LogFilePath $BuildLog
 
-    # 5.2: Pause for User Review (unless AutoApproveMigration is set)
-    $migrationScriptDir = "$ServerFlaskBaseDir/migrations/versions/" # This path should now exist
+    # Pause for User Review (unless AutoApproveMigration is set)
+    $migrationScriptDir = "$ServerFlaskBaseDir/migrations/versions/"
     Write-Log -Message "The migration script has been generated in '$migrationScriptDir' on the server." -Level "WARNING" -LogFilePath $BuildLog
 
     $reviewConfirmation = ''
@@ -1058,10 +1059,8 @@ Function Invoke-DatabaseMigration {
         }
     
         # --- Halt the script since the user cancelled the upgrade ---
-        Write-Log -Message "Deployment halted by user during migration review." -Level "ERROR" -LogFilePath $BuildLog
-    
-        # --- End Handle Cancellation ---
-    
+        Write-Log -Message "Flask upgrade cancelled by user during migration review." -Level "ERROR" -LogFilePath $BuildLog
+        $flaskDbMigrationCancelled = $true
     }
     else {
         # $reviewConfirmation was 'y'
@@ -1075,11 +1074,12 @@ Function Invoke-DatabaseMigration {
             -BuildLog $BuildLog `
             -IsFatal $true
         Write-Log -Message "Result: $flaskUpgradeResult. Database migration applied successfully." -Level "SUCCESS" -LogFilePath $BuildLog
-        # --- End Apply Migration ---
     }
 
-    Write-Log -Message "Database migration process completed." -Level "SUCCESS" -LogFilePath $BuildLog
-}
+    if (-not $flaskDbMigrationCancelled) {
+        Write-Log -Message "Database migration process completed successfully." -Level "SUCCESS" -LogFilePath $BuildLog
+    }
+} 
 
 Function Invoke-SqlReleaseScripts {
     param(
@@ -1698,6 +1698,18 @@ Function Invoke-VersionManagement {
         [string]$InitialVersion,
 
         [Parameter(Mandatory = $true)]
+        [string]$BranchProd,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchQas,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchDev,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchTest,
+
+        [Parameter(Mandatory = $true)]
         [hashtable]$BoundParams,
 
         [Parameter(Mandatory = $true)]
@@ -1741,12 +1753,12 @@ Function Invoke-VersionManagement {
             try { 
                 switch ($InitialBumpType) {
                     # Use $InitialBumpType as it's the one being processed
-                    "major" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
-                    "minor" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
-                    "patch" { $targetBranch = "main"; $sourceBranchForMerge = "qas"; break }
-                    "qas" { $targetBranch = "qas"; $sourceBranchForMerge = "dev"; break }                
-                    "dev" { $targetBranch = "dev"; break }
-                    "test" { $targetBranch = "test"; break }
+                    "major" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
+                    "minor" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
+                    "patch" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
+                    "qas" { $targetBranch = $BranchQas; $sourceBranchForMerge = $BranchDev; break }                
+                    "dev" { $targetBranch = $BranchDev; break }
+                    "test" { $targetBranch = $BranchTest; break }
                     default { throw "Unsupported BumpType '$InitialBumpType' for branch operations." }
                 }
 
@@ -2058,6 +2070,10 @@ Confirm-DeploymentEnvironment -TargetEnv $targetEnv `
 # --- Determine Version to Deploy & Finalise Log File Name ---
 $versionManagementResult = Invoke-VersionManagement -InitialBumpType $BumpType `
     -InitialVersion $Version `
+    -BranchProd $ProdBranch `
+    -BranchQas $QasBranch `
+    -BranchDev $DevBranch `
+    -BranchTest $TestBranch `
     -BoundParams $PSBoundParameters `
     -BuildLog $buildLog `
     -ConfigGitRepoPath $DEPLOYMENT_GIT_REPO_PATH `
