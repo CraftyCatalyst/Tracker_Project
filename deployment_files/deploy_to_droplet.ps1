@@ -1692,26 +1692,26 @@ Function Write-Log {
 
 Function Invoke-VersionManagement {
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$InitialBumpType, # Corresponds to the script's $BumpType parameter
+        [Parameter(Mandatory = $false)]
+        [string]$InitialBumpType,
+
+        [Parameter(Mandatory = $false)]
+        [string]$InitialVersion,
 
         [Parameter(Mandatory = $true)]
-        [string]$InitialVersion, # Corresponds to the script's $Version parameter
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]$BoundParams, # The $PSBoundParameters from the main script
+        [hashtable]$BoundParams,
 
         [Parameter(Mandatory = $true)]
         [string]$BuildLog,
 
         [Parameter(Mandatory = $true)]
-        [string]$ConfigGitRepoPath, # DEPLOYMENT_GIT_REPO_PATH
+        [string]$ConfigGitRepoPath,
 
         [Parameter(Mandatory = $true)]
-        [string]$LogDir, # Directory for log files
+        [string]$LogDir,
 
         [Parameter(Mandatory = $true)]
-        [string]$Timestamp # Timestamp for log file naming
+        [string]$Timestamp
     )
 
     # This variable will hold the version to be deployed and will be returned
@@ -1824,7 +1824,7 @@ Function Invoke-VersionManagement {
                     -BuildLog $BuildLog `
                     -BaseVersionOverride $baseVersionForBumpOverride
 
-                # Sync branches with main after a successful production release
+                # Sync dev and qas branches with main after a successful production release
                 if ($effectiveBumpTypeForFunction -in ("major", "minor", "patch")) {
                     Write-Log -Message "`n--- Syncing Supporting Branches with Main ---" -Level "INFO" -LogFilePath $BuildLog
                     
@@ -1908,10 +1908,6 @@ Function Invoke-VersionManagement {
 
     if ($determinedVersion) {
         $finalLogName = "build_${determinedVersion}_${Timestamp}.log"
-        # $BuildLog is the full path to the initial log file (e.g., ...\build_logs\build_pending_timestamp.log)
-        # $LogDir is the directory (e.g., ...\build_logs)
-        # Rename-Item -Path <full_old_path> -NewName <just_new_filename.ext>
-        
         Write-Log -Message "Attempting to rename log file from '$BuildLog' to (new name based on version: '$finalLogName')..." -Level "INFO" -LogFilePath $BuildLog
         try {
             Rename-Item -Path $BuildLog -NewName $finalLogName -ErrorAction Stop
