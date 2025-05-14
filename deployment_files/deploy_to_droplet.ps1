@@ -718,7 +718,6 @@ Function Invoke-ReactBuild {
     }
 
     try {
-        # Execute npm build, redirecting stderr (2) to stdout (1) and teeing to both the main log and a specific npm error log
         # Capture all combined StdOut and StdErr streams
         Write-Log -Message "Capturing npm build output..." -Level DEBUG -LogFilePath $BuildLog 
         $npmOutput = (npm run build 2>&1 | Out-String) 
@@ -783,7 +782,7 @@ Function Backup-ServerState {
 
     
     # Ensure backup dir exists, copy if source exists, then remove source if copy succeeded
-    $flaskBackupCmd = "mkdir -p '$(Split-Path -Path $BackupDirFlask -Parent)' && if [ -d '$ServerFlaskDir' ]; then cp -a '$ServerFlaskDir' '$BackupDirFlask/'; else echo 'Warning: Source Flask directory $ServerFlaskDir not found, skipping copy.'; fi"
+    $flaskBackupCmd = "mkdir -p '$BackupDirFlask' && if [ -d '$ServerFlaskDir' ]; then cp -a '$ServerFlaskDir' '$BackupDirFlask/'; else echo 'Warning: Source Flask directory $ServerFlaskDir not found, skipping copy.'; fi"
     Invoke-SshCommand -Command $flaskBackupCmd `
         -ActionDescription "backup Flask files to '$BackupDirFlask'" `
         -BuildLog $BuildLog `
@@ -813,7 +812,7 @@ Function Backup-ServerState {
     Write-Log -Message "Backing up MySQL database '$DatabaseName' to '$BackupDirDB'..." -Level "INFO" -LogFilePath $BuildLog
 
     # Ensure parent directory exists before dumping
-    $parentDirForDbBackup = Split-Path -Path $BackupDirDB -Parent
+    $parentDirForDbBackup = $DeploymentBackupDir
     $dbBackupCmd = "mkdir -p '$parentDirForDbBackup' && mysqldump $DatabaseName > '$BackupDirDB'" # Assumes .my.cnf
     $dbCleanupCmd = "rm -f '$BackupDirDB'" # Cleanup command if dump fails
     Invoke-SshCommand -Command $dbBackupCmd `
