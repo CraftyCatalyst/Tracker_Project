@@ -783,7 +783,7 @@ Function Backup-ServerState {
 
     
     # Ensure backup dir exists, copy if source exists, then remove source if copy succeeded
-    $flaskBackupCmd = "mkdir -p '$(Split-Path -Path $BackupDirFlask -Parent)' && if [ -d '$ServerFlaskDir' ]; then cp -a '$ServerFlaskDir' '$BackupDirFlask/'; else echo 'Warning: Source Flask directory $ServerFlaskDir not found, skipping copy.'; fi"
+    $flaskBackupCmd = "mkdir -p '$BackupDirFlask' && if [ -d '$ServerFlaskDir' ]; then cp -a '$ServerFlaskDir' '$BackupDirFlask/'; else echo 'Warning: Source Flask directory $ServerFlaskDir not found, skipping copy.'; fi"
     Invoke-SshCommand -Command $flaskBackupCmd `
         -ActionDescription "backup Flask files to '$BackupDirFlask'" `
         -BuildLog $BuildLog `
