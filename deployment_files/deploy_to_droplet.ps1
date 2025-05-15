@@ -2216,7 +2216,7 @@ Function Invoke-VersionManagement {
                 }
             }
             catch {
-                Write-Log -Message "FATAL_ERR_VMGMT: $($_.Exception.Message) `n$(Resolve-Error)" -Level "FATAL" -LogFilePath $BuildLog
+                Write-Log -Message "FATAL_ERR_VMGMT: $($_.Exception.Message)" -Level "FATAL" -LogFilePath $BuildLog
                 throw 
             }
             finally {
