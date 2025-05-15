@@ -52,14 +52,14 @@ Initial Setup:
 - Loads environment variables from .deployment_env and .env files.
     - The .deployment_env file contains settings specific to the deployment process.
     - The .env file contains the application settings.
-- Get or creates the version to be deployed.
-    - If BumpType is specified the version will be created based on BumpType and the current version in the version.txt file.
-    - If Version is specified, it will get that version from the git tag and deploy it.
-    - If neither is specified, the script will prompt for the version to be deployed.
-Check Environment & Confirm:
+- Checks the source & target Environment & gets confirmation to proceed.
     - Compares the target environment with the local .env variables in order to ensure that the app will be built for the correct environment.
     - Throws an error if the target environment does not match the local .env variables.
     - If they do match, it presents the local and target variables to the user and prompts for confirmation before proceeding as a final safety measure.
+- Gets or creates the version to be deployed.
+    - If BumpType is specified the version will be created based on BumpType and the current version in the version.txt file.
+    - If Version is specified, it will get that version from the git tag and deploy it.
+    - If neither is specified, the script will prompt for the version to be deployed.
 
 Deployment Process:
 Step 1: Run React build locally
@@ -91,7 +91,7 @@ Step 6: Apply SQL Release Scripts
     - The script looks for SQL release scripts in the release_scripts directory for the specified environment (e.g., dev, qas, prod, test).
     - It checks if the SQL scripts have already been applied to the database.
     - If the sql scripts have not been applied, it will run them.
-    - If the -ForceSqlScripts switch is used, it will re-run all SQL release scripts regardless of whether they have been applied or not.
+    - If the -ForceSqlScripts switch used, it will re-run all SQL release scripts regardless of whether they have been applied or not.
 
 Step 7: Restart Services
     - Restarts the relevant Flask service and Nginx server on the target server.
@@ -138,83 +138,92 @@ Step 7: Restart Services
         - BumpType: dev -> target branch: dev (this is not merged with any other branch during deployment)    
         - BumpType: qas -> target branch: qas -> source branch: dev
         - BumpType: major, minor, patch -> target branch: prod -> source branch: qas
-        - BumpType: test -> target branch: test (this is used by the test harness and is not merged with any other branch)
+        - BumpType: test -> target branch: test (this used by the test harness and is not merged with any other branch)
     - After a successful production deployment, the script will sync all other branches with the main branch.
 
 .PARAMETER Environment
-The target environment (PROD, QAS, DEV, TEST). Mandatory. 
-    - This is used to specify the target environment for deployment.
-.PARAMETER runDBMigration
-Run Flask database migration (y/n). Optional. Default is 'y'. 
-    - This is used to determine if the database migration and any release scripts should be run as part of the deployment.
-.PARAMETER Version
-The Git tag/version to deploy (e.g., v1.3.0). Optional.
-    - This is used to specify an existing version of code to be deployed.
-    - If neither this parameter nor the -BumpType parameter is specified, the script will prompt for this value.
+    The target environment (PROD, QAS, DEV, TEST). Mandatory. 
+        - This used to specify the target environment for deployment.
 .PARAMETER BumpType
-Bump type for version bumping (major, minor, patch, dev, qas, test, none). Optional.
-    - This is used to specify the type of version bump to perform.
-    - If this parameter is used, the -Version parameter is ignored.
+    Bump type for version bumping (major, minor, patch, dev, qas, test, none). Optional.
+        - This used to specify the type of version bump to perform.
+        - If this parameter used, the -Version parameter is ignored.
+.PARAMETER Version
+    The Git tag/version to deploy (e.g., v1.3.0). Optional.
+        - This used to specify an existing version of code to be deployed.
+        - If neither this parameter nor the -BumpType parameter is specified, the script will prompt for this value.
+.PARAMETER TestBranch
+    Used to specify a custom name for the test branch. Optional. Default is 'test'.
+.PARAMETER DevBranch
+    Used to specify a custom name for the dev branch. Optional. Default is 'dev'.
+.PARAMETER QasBranch
+    Used to specify a custom name for the qas branch. Optional. Default is 'qas'.
+.PARAMETER ProdBranch
+    Used to specify a custom name for the prod branch. Optional. Default is 'main'.
+.PARAMETER runDBMigration
+    Run Flask database migration (y/n). Optional. Default is 'y'. 
+        - This used to determine if the database migration and any release scripts should be run as part of the deployment.
 .PARAMETER runBackup
-Backup server folders and database before deployment (y/n). Optional. Default is 'y'.
-    - This is used to determine if the backup should be taken before deployment.
-    - If you are deploying to a new environment, set this to 'n' as there won't be any existing files to back up.
+    Backup server folders and database before deployment (y/n). Optional. Default is 'y'.
+        - This used to determine if the backup should be taken before deployment.
+        - If you are deploying to a new environment, set this to 'n' as there won't be any existing files to back up.
 .PARAMETER runBuild
-Run the npm build process (y/n). Optional. Default is 'y'.
-    - This is used to determine if a new build of the React app should be created before deployment.
-    - If you have already built the React app and just want to deploy the build files, set this to 'n'.
+    Run the npm build process (y/n). Optional. Default is 'y'.
+        - This used to determine if a new build of the React app should be created before deployment.
+        - If you have already built the React app and just want to deploy the build files, set this to 'n'.
 .PARAMETER ForceSqlScripts
-This switch is used to force the script to run all SQL release scripts, even if they have already been applied to the database. Optional.
-    - This is useful if data has become corrupted and/or you need to re-run the scripts to restore the data to a known state.    
+    Switch used to force the script to run all SQL release scripts, even if they have already been applied to the database. Optional.
+    - Useful if data has become corrupted and/or you accidentally delete everything from the wrong schema (What? It happens!) and need to re-run the scripts to restore the data.
 .PARAMETER ForceConfirmEnvOnly
-This switch is used to force the script to only check the source and target environments . Optional.
+    Switch used to force the script to only check the source and target environments . Optional.
 .PARAMETER ForceReactBuildOnly
-This switch is used to force the script to only run the React build locally. Optional.
+    Switch used to force the script to only run the React build locally. Optional.
 .PARAMETER ForceBackupOnly
-This switch is used to force the script to only run the backup process. Optional.
+    Switch used to force the script to only run the backup process. Optional.
 .PARAMETER ForceSyncFilesToServerOnly
-This switch is used to force the script to only sync the React build and Flask app files to the server. Optional.
+    Switch used to force the script to only sync the React build and Flask app files to the server. Optional.
 .PARAMETER ForceFlaskUpdateOnly
-This switch is used to force the script to only run the Flask dependency update. Optional.
+    Switch used to force the script to only run the Flask dependency update. Optional.
 .PARAMETER ForceDBMigrationOnly
-This switch is used to force the script to only run the Flask database migration. Optional.
+    Switch used to force the script to only run the Flask database migration. Optional.
 .PARAMETER ForceSqlScriptsOnly
-This switch is used to force the script to only run the SQL release scripts. Optional.
+    Switch used to force the script to only run the SQL release scripts. Optional.
 .PARAMETER ForceRestartServicesOnly
-This switch is used to force the script to only restart the services. Optional.
+    Switch used to force the script to only restart the services. Optional.
 .PARAMETER ForceConfirmation
-This switch is used by the test harness to skip the confirmation prompt. Optional.
+    Switch used by the test harness to skip the confirmation prompt. Optional.
 .PARAMETER AutoApproveMigration
-This switch is used by the test harness to skip the DB migration review prompt. Optional.
+    Switch used by the test harness to skip the DB migration review prompt. Optional.
 .PARAMETER AppendTestRun
-This switch is used by the test harness to append a string to the log file name for test runs. Optional.
+    Used by the test harness to append the test run number and timestamp to the build log file name. Optional.
 
 .EXAMPLE
-In PowerShell, to run the script with the PROD environment and default parameters, you can use the following command:
-    C:/repos/Tracker_Project/deploy_to_droplet.ps1 -Environment PROD
-or, if you're in the same directory as the script:
-    ./deploy_to_droplet.ps1 -Environment PROD
+    # Basic deployment to PROD, bumping the major version (prompts for confirmation):
+    .\deploy_to_droplet.ps1 -Environment PROD -BumpType major
 
-To set the runBackup and runBuild parameters to 'n', you can use the following command:
-    ./deploy_to_droplet.ps1 -Environment PROD -runBackup n -runBuild n
+.EXAMPLE
+    # Deploy a specific existing version to QAS:
+    .\deploy_to_droplet.ps1 -Environment QAS -Version v1.2.3
 
-To release a new version to the QAS environment, you can use the following command:
-    ./deploy_to_droplet.ps1 -Environment QAS -BumpType qas
+.EXAMPLE
+    # Deploy to DEV, bumping the dev pre-release version, and skip the backup and build steps:
+    .\deploy_to_droplet.ps1 -Environment DEV -BumpType dev -runBackup n -runBuild n
 
-To release an existing version to the QAS environment, you can use the following command:
-    ./deploy_to_droplet.ps1 -Environment QAS -Version v1.2.3
+.EXAMPLE
+    # Run only specific steps for a TEST deployment (useful for testing script stages):
+    # This example runs only the SQL script application and service restart steps.
+    .\deploy_to_droplet.ps1 -Environment TEST -BumpType none -ForceSqlScriptsOnly -ForceRestartServicesOnly
 
-To use the Force*Only switches, you can use the following command as an example, use in conjunction with BumpType = none for testing:
-    ./deploy_to_droplet.ps1 -Environment TEST -BumpType none -ForceSqlScriptsOnly -ForceRestartServicesOnly
+.EXAMPLE
+    # Force re-running all SQL scripts for the TEST environment:
+    .\deploy_to_droplet.ps1 -Environment TEST -BumpType none -ForceSqlScriptsOnly -ForceSqlScripts
 
-If you don't specify any parameters, you will be prompted as follows:
-    (prompt)    - Supply values for the following parameters:
-                - Environment: PROD
-                - Deploy existing [V]ersion or [B]ump version? (v/b)
-                    - (v) - Enter existing version tag to deploy (e.g., v1.2.3)
-                    - (b) - Enter bump type (major, minor, patch, rc, dev, qas, prod or test)
-
-
+.EXAMPLE
+    # If run without -Version or -BumpType, the script will prompt interactively:
+    .\deploy_to_droplet.ps1 -Environment PROD
+    # Output:
+    #   Deployment Version:
+    #   Deploy existing [V]ersion or [B]ump version? (v/b) : _
 #>
 
 ######################################################################################
@@ -595,7 +604,9 @@ Function Initialize-DeploymentConfiguration {
         'DEPLOYMENT_GIT_REPO_PATH',
         'DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_PATH',
         'DEPLOYMENT_LOCAL_RELEASE_SCRIPTS_COMPLETED_PATH',
-        'DEPLOYMENT_SERVER_RELEASE_SCRIPTS_DIR')
+        'DEPLOYMENT_SERVER_RELEASE_SCRIPTS_DIR',
+        'DEPLOYMENT_VERSION_FILE_PATH',
+        'DEPLOYMENT_PACKAGE_JSON_FILE_PATH')
     foreach ($key in $commonKeys) {
         if ($depEnvSettings.ContainsKey($key)) {
             $value = $depEnvSettings[$key]
@@ -1689,6 +1700,7 @@ Function Write-Log {
     }
 }
 
+<#
 Function Invoke-VersionManagement {
     param(
         [Parameter(Mandatory = $false)]
@@ -1937,6 +1949,322 @@ Function Invoke-VersionManagement {
 
     return @{ Version = $determinedVersion; FinalLogPath = $finalLogPathValue }
 }
+#>
+
+Function Invoke-VersionManagement {
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$InitialBumpType,
+
+        [Parameter(Mandatory = $false)]
+        [string]$InitialVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchProd,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchQas,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchDev,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchTest,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$BoundParams,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BuildLog,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigGitRepoPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$LogDir,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Timestamp
+    )
+
+    $determinedVersion = $null
+
+    # If the bump type = none, skip the bumping process
+    if ($InitialBumpType -eq "none") {
+        Write-Log -Message "Skipping version bumping process as BumpType is set to 'none'." -Level "INFO" -LogFilePath $BuildLog
+        $determinedVersion = "test_deployment"
+    }
+    else {
+        $baseVersionForBumpOverride = $null
+        $effectiveBumpTypeForFunction = if ($BoundParams.ContainsKey('BumpType')) { $InitialBumpType } else { $null }
+
+        if ($BoundParams.ContainsKey('BumpType')) {
+            
+            Write-Log -Message "Version bumping process started for BumpType '$InitialBumpType'." -Level "INFO" -LogFilePath $BuildLog
+
+            Push-Location $ConfigGitRepoPath
+            $scriptLaunchBranch = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+            Write-Log -Message "Invoke-VersionManagement: Initial Git branch is '$scriptLaunchBranch'. Current directory: $PWD" -Level "INFO" -LogFilePath $BuildLog
+
+            try {
+                # --- Pre-synchronization step specifically for QAS releases FROM DEV ---
+                if ($InitialBumpType -eq "qas") {
+                    $branchForQasPresyncCurrently = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+                    Write-Log -Message "Executing QAS pre-sync: Ensuring '$BranchDev' has changes from '$BranchQas'." -Level "INFO" -LogFilePath $BuildLog
+                    
+                    # 1. Ensure we are on $BranchDev
+                    if ($branchForQasPresyncCurrently -ne $BranchDev) {
+                        Write-Log -Message "Switching from '$branchForQasPresyncCurrently' to '$BranchDev' for pre-sync." -Level "INFO" -LogFilePath $BuildLog
+                        git checkout $BranchDev
+                        if ($LASTEXITCODE -ne 0) { throw "PRESYNC_ERR: Failed to checkout '$BranchDev'." }
+                    }
+                    
+                    # 2. Pull latest for $BranchDev
+                    Write-Log -Message "Pulling latest 'origin/$BranchDev'." -Level "INFO" -LogFilePath $BuildLog
+                    git pull origin $BranchDev
+                    if ($LASTEXITCODE -ne 0) { throw "PRESYNC_ERR: Failed to pull 'origin/$BranchDev'." }
+                    
+                    # 3. Fetch latest state of $BranchQas from origin
+                    Write-Log -Message "Fetching latest 'origin/$BranchQas' to merge into '$BranchDev'." -Level "INFO" -LogFilePath $BuildLog
+                    git fetch origin $BranchQas
+                    if ($LASTEXITCODE -ne 0) {
+                        # This might not be fatal if a local $BranchQas ref is acceptably up-to-date, but it's a warning.
+                        Write-Log -Message "WARN: Failed to fetch 'origin/$BranchQas'. Will attempt to merge local '$BranchQas' if it represents desired state." -Level "WARNING" -LogFilePath $BuildLog
+                    }
+
+                    # 4. Merge origin/$BranchQas into current branch ($BranchDev)
+                    # Using --no-edit to accept the default Git merge message without an editor.
+                    Write-Log -Message "Merging 'origin/$BranchQas' into current branch '$BranchDev'." -Level "INFO" -LogFilePath $BuildLog
+                    git merge origin/$BranchQas --no-edit -m "Auto-sync: Merge origin/$BranchQas into $BranchDev pre-QAS release" 
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Log -Message "Merge of 'origin/$BranchQas' into '$BranchDev' (pre-sync) failed. Attempting 'git merge --abort'." -Level "ERROR" -LogFilePath $BuildLog
+                        git merge --abort
+                        # If we switched to $BranchDev for this, switch back before throwing
+                        if ($branchForQasPresyncCurrently -ne $BranchDev) {
+                            git checkout $branchForQasPresyncCurrently
+                            if ($LASTEXITCODE -ne 0) { Write-Log -Message "WARN: Failed to checkout back to '$branchForQasPresyncCurrently' after failed presync merge." }
+                        }
+                        throw "PRESYNC_ERR: Merge of 'origin/$BranchQas' into '$BranchDev' failed. Resolve conflicts on '$BranchDev' then retry deployment."
+                    }
+                    
+                    # 5. Push updated $BranchDev
+                    Write-Log -Message "Pushing updated '$BranchDev' to origin after merging 'origin/$BranchQas'." -Level "INFO" -LogFilePath $BuildLog
+                    git push origin $BranchDev
+                    if ($LASTEXITCODE -ne 0) { 
+                        # If we switched to $BranchDev for this, switch back before throwing
+                        if ($branchForQasPresyncCurrently -ne $BranchDev) {
+                            git checkout $branchForQasPresyncCurrently
+                            if ($LASTEXITCODE -ne 0) { Write-Log -Message "WARN: Failed to checkout back to '$branchForQasPresyncCurrently' after failed presync push." }
+                        }
+                        throw "PRESYNC_ERR: Failed to push '$BranchDev' after merging 'origin/$BranchQas'." 
+                    }
+                    Write-Log -Message "Pre-sync of '$BranchDev' with 'origin/$BranchQas' history successful." -Level "INFO" -LogFilePath $BuildLog
+
+                    # 6. If we switched to $BranchDev specifically for this pre-sync, switch back to the original branch
+                    #    This ensures the rest of the script operates from the intended initial context if $scriptLaunchBranch wasn't $BranchDev.
+                    if ($branchForQasPresyncCurrently -ne $BranchDev) {
+                        Write-Log -Message "Switching back to '$branchForQasPresyncCurrently' from '$BranchDev' after QAS pre-sync." -Level "INFO" -LogFilePath $BuildLog
+                        git checkout $branchForQasPresyncCurrently
+                        if ($LASTEXITCODE -ne 0) { throw "PRESYNC_ERR: Failed to switch back to '$branchForQasPresyncCurrently' after QAS pre-sync." }
+                    }
+                    Write-Log -Message "QAS Pre-sync actions complete. Current branch for main ops: $((git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim())" -Level "INFO" -LogFilePath $BuildLog
+                } # End of QAS pre-sync logic
+
+                # --- Main bumping and merge logic continues below ---
+                $targetBranch = ""
+                $sourceBranchForMerge = ""
+            
+                switch ($InitialBumpType) {
+                    # Use $InitialBumpType as it's the one being processed
+                    "major" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
+                    "minor" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
+                    "patch" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
+                    "qas" { $targetBranch = $BranchQas; $sourceBranchForMerge = $BranchDev; break }
+                    "dev" { $targetBranch = $BranchDev; break }
+                    "test" { $targetBranch = $BranchTest; break }
+                    default { throw "Unsupported BumpType '$InitialBumpType' for branch operations." }
+                }
+
+                $currentBranchForMainOps = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+                Write-Log -Message "Proceeding with main version operations. Current branch: '$currentBranchForMainOps'" -Level "INFO" -LogFilePath $BuildLog
+
+                if ($targetBranch) {
+                    if ($currentBranchForMainOps -ne $targetBranch) {
+                        Write-Log -Message "Switching from '$currentBranchForMainOps' to target branch '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
+                        git checkout $targetBranch
+                        if ($LASTEXITCODE -ne 0) { throw "Failed to checkout $targetBranch" }
+                    }
+                    Write-Log -Message "Ensuring branch '$targetBranch' is up-to-date with origin before operations." -Level "INFO" -LogFilePath $BuildLog
+                    git pull origin $targetBranch
+                    if ($LASTEXITCODE -ne 0) { throw "Failed to pull $targetBranch" }
+
+                    $versionFilePathOnTargetBranch = Join-Path $PWD "version.txt"
+
+                    if ($InitialBumpType -eq "qas") {
+                        $mainVersionGitPath = "${BranchProd}:version.txt"
+                        $mainVersionContent = git show $mainVersionGitPath 2>$null | Out-String -Stream
+                        $mainBaseVersionCore = "" 
+                        if ($LASTEXITCODE -eq 0 -and $mainVersionContent -and ($mainVersionContent.Trim() -match '^v?(\d+\.\d+\.\d+)')) {
+                            $mainBaseVersionCore = $matches[1]
+                        }
+                        else {
+                            throw "Could not determine base version (X.Y.Z) from '$mainVersionGitPath' (path to prod branch version file)"
+                        }
+
+                        if (Test-Path $versionFilePathOnTargetBranch) {
+                            $currentVersionOnTarget = (Get-Content $versionFilePathOnTargetBranch).Trim()
+                            if ($currentVersionOnTarget -match "^v?${mainBaseVersionCore}-${InitialBumpType}\.\d+$") {
+                                $baseVersionForBumpOverride = $currentVersionOnTarget
+                                Write-Log -Message "Using iterative base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' for $InitialBumpType bump." -Level "INFO" -LogFilePath $BuildLog
+                            }
+                            else {
+                                $baseVersionForBumpOverride = "v$mainBaseVersionCore"
+                                Write-Log -Message "Resetting $InitialBumpType base to '$baseVersionForBumpOverride' (from prod version '$mainVersionGitPath') as current '$targetBranch/version.txt' ('$currentVersionOnTarget') is for a different base or not a '$InitialBumpType' pre-release." -Level "INFO" -LogFilePath $BuildLog
+                            }
+                        }
+                        else {
+                            $baseVersionForBumpOverride = "v$mainBaseVersionCore" 
+                            Write-Log -Message "No '$versionFilePathOnTargetBranch' found on $targetBranch. Setting $InitialBumpType base to '$baseVersionForBumpOverride' (derived from prod version '$mainVersionGitPath')." -Level "INFO" -LogFilePath $BuildLog
+                        }
+                        # The target $BranchPROD
+                        elseif ($InitialBumpType -eq "major" -or $InitialBumpType -eq "minor" -or $InitialBumpType -eq "patch") {
+                            if (Test-Path $versionFilePathOnTargetBranch) { 
+                                $baseVersionForBumpOverride = (Get-Content $versionFilePathOnTargetBranch).Trim()
+                                Write-Log -Message "Using base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' (pre-merge) for $InitialBumpType bump." -Level "INFO" -LogFilePath $BuildLog
+                            }
+                            else {
+                                throw "Version file '$versionFilePathOnTargetBranch' not found on $targetBranch for $InitialBumpType bump, and it's required."
+                            }
+                        } elseif ($InitialBumpType -eq "dev" -or $InitialBumpType -eq "test") {
+                            Write-Log -Message "For '$InitialBumpType' bump, BaseVersionOverride is not set; function will use '$targetBranch/version.txt'." -Level "INFO" -LogFilePath $BuildLog
+                        }
+
+                        if ($sourceBranchForMerge) {
+                            Write-Log -Message "Merging '$sourceBranchForMerge' into '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
+                            git merge --no-ff $sourceBranchForMerge -m "Merge branch '$sourceBranchForMerge' into '$targetBranch' for $InitialBumpType release prep"
+                            if ($LASTEXITCODE -ne 0) {
+                                Write-Log -Message "Merge conflict likely detected when merging '$sourceBranchForMerge' into '$targetBranch'. Attempting 'git merge --abort'." -Level "ERROR" -LogFilePath $BuildLog
+                                git merge --abort
+                                throw "Merge failed from '$sourceBranchForMerge' to '$targetBranch'. Resolve conflicts on $targetBranch (e.g. by running 'git merge $sourceBranchForMerge' manually) and retry."
+                            }
+                            Write-Log -Message "Merge of '$sourceBranchForMerge' into '$targetBranch' successful." -Level "INFO" -LogFilePath $BuildLog
+                        }
+                    }
+                    $finalVersionFilePath = if ($targetBranch) { $versionFilePathOnTargetBranch } else { Join-Path $PWD $DEPLOYMENT_VERSION_FILE_PATH }
+                    $finalPackageJsonPath = Join-Path $PWD $DEPLOYMENT_PACKAGE_JSON_PATH
+            
+                    $determinedVersion = Invoke-VersionBump -BumpType $effectiveBumpTypeForFunction `
+                        -VersionFilePath $finalVersionFilePath `
+                        -PackageJsonPath $finalPackageJsonPath `
+                        -GitRepoPath $PWD `
+                        -BuildLog $BuildLog `
+                        -BaseVersionOverride $baseVersionForBumpOverride
+
+                    # --- Post-production release sync (sync supporting branches with main) ---
+                    if ($effectiveBumpTypeForFunction -in ("major", "minor", "patch")) {
+                        Write-Log -Message "`n--- Syncing Supporting Branches with Main ($BranchProd) ---" -Level "INFO" -LogFilePath $BuildLog
+                    
+                        # Branches to sync FROM $BranchProd.
+                        $branchesToSyncWithMain = @($BranchDev, $BranchQas) 
+                        $currentBranchDuringPostSync = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+
+                        foreach ($branchToSync in $branchesToSyncWithMain) {
+                            if ($branchToSync -eq $BranchProd) { continue }
+
+                            Write-Log -Message "Attempting to sync branch '$branchToSync' with '$BranchProd' (new prod version: $determinedVersion)." -Level "INFO" -LogFilePath $BuildLog
+                            try {
+                                # Current branch should be $BranchProd. Checkout $branchToSync
+                                $currentBranchDuringPostSync = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+                                if ($currentBranchDuringPostSync -ne $branchToSync) {
+                                    git checkout $branchToSync
+                                    if ($LASTEXITCODE -ne 0) { throw "POSTSYNC_ERR: Failed to checkout branch '$branchToSync'." }
+                                }
+
+                                Write-Log -Message "Pulling latest for '$branchToSync' from origin..." -Level "INFO" -LogFilePath $BuildLog
+                                git pull origin $branchToSync
+                                if ($LASTEXITCODE -ne 0) { throw "POSTSYNC_ERR: Failed to pull 'origin/$branchToSync'." }
+                        
+                                Write-Log -Message "Merging '$BranchProd' into '$branchToSync'..." -Level "INFO" -LogFilePath $BuildLog
+                                git merge $BranchProd --no-edit -m "Auto-sync: Merge $BranchProd into $branchToSync after production release $determinedVersion"
+                                if ($LASTEXITCODE -ne 0) {
+                                    Write-Log -Message "WARNING: Merge of '$BranchProd' into '$branchToSync' resulted in conflicts/failure. Aborting merge. Manual sync required for '$branchToSync'." -Level "WARNING" -LogFilePath $BuildLog
+                                    git merge --abort
+                                    continue 
+                                }
+                        
+                                Write-Log -Message "Pushing updated '$branchToSync' to origin..." -Level "INFO" -LogFilePath $BuildLog
+                                git push origin $branchToSync
+                                if ($LASTEXITCODE -ne 0) { throw "POSTSYNC_ERR: Failed to push '$branchToSync' after merging '$BranchProd'." }
+                        
+                                Write-Log -Message "Branch '$branchToSync' successfully synced with '$BranchProd' and pushed." -Level "SUCCESS" -LogFilePath $BuildLog
+                            }
+                            catch {
+                                Write-Log -Message "ERROR during post-sync of branch '$branchToSync': $($_.Exception.Message). Manual sync required." -Level "ERROR" -LogFilePath $BuildLog
+                                if ((git status --porcelain | Out-String).Trim().Length -gt 0) {
+                                    Write-Log -Message "Branch '$branchToSync' may be in a conflicted/uncommitted state. Manual cleanup needed." -Level "WARN" -LogFilePath $BuildLog
+                                }
+                            }
+                        }
+                
+                        $branchAfterLoop = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+                        if ($branchAfterLoop -ne $BranchProd) {
+                            Write-Log -Message "Switching back to '$BranchProd' branch after sync operations (current: $branchAfterLoop)." -Level "INFO" -LogFilePath $BuildLog
+                            git checkout $BranchProd
+                            if ($LASTEXITCODE -ne 0) { Write-Log -Message "WARNING: Failed to checkout '$BranchProd' after branch sync loop." -Level "WARN" -LogFilePath $BuildLog }
+                        }
+                    }
+                }
+            }
+            catch {
+                Write-Log -Message "FATAL_ERR_VMGMT: $($_.Exception.Message) `n$(Resolve-Error)" -Level "FATAL" -LogFilePath $BuildLog
+                throw 
+            }
+            finally {
+                $currentBranchAtExit = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
+                if ($scriptLaunchBranch -and ($scriptLaunchBranch -ne $currentBranchAtExit)) {
+                    Write-Log -Message "Attempting to switch back to initial script launch branch '$scriptLaunchBranch' (from '$currentBranchAtExit')." -Level "INFO" -LogFilePath $BuildLog
+                    git checkout $scriptLaunchBranch
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Log -Message "WARNING: Failed to switch back to launch branch '$scriptLaunchBranch'. Current branch: '$currentBranchAtExit'. Manual checkout may be needed." -Level "WARN" -LogFilePath $BuildLog
+                    }
+                }
+                Pop-Location 
+                Write-Log -Message "Invoke-VersionManagement finished. Current directory: $PWD" -Level "INFO" -LogFilePath $BuildLog
+            }
+        }
+        elseif ($BoundParams.ContainsKey('Version')) {
+            $determinedVersion = $InitialVersion
+            Write-Log -Message "Using specified pre-existing version for deployment: $determinedVersion (no bump)" -Level "INFO" -LogFilePath $BuildLog
+        }
+        else {
+            Write-Log -Message "FATAL: No version specified and no bump type selected. Cannot determine deployed version." -Level "FATAL" -LogFilePath $BuildLog
+            throw "Cannot determine deployed version. Script logic error or missing parameters."
+        }
+    }
+
+    # --- Rename Log File ---
+    $finalLogPathValue = $BuildLog # Default to old path in case of renaming fails
+
+    if ($determinedVersion) {
+        $finalLogName = "build_${determinedVersion}_${Timestamp}.log"
+        Write-Log -Message "Attempting to rename log file from '$BuildLog' to (new name based on version: '$finalLogName')..." -Level "INFO" -LogFilePath $BuildLog
+        try {
+            Rename-Item -Path $BuildLog -NewName $finalLogName -ErrorAction Stop
+            $finalLogPathValue = Join-Path $LogDir $finalLogName
+            Write-Log -Message "Log file renamed successfully to '$finalLogPathValue'." -Level "INFO" -LogFilePath $BuildLog
+        }
+        catch {
+            Write-Log -Message "Warning: Failed to rename log file '$BuildLog' to '$finalLogName'. File might be locked. Log will continue using the temporary name '$BuildLog'. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $BuildLog
+            # $finalLogPathValue remains $BuildLog (the original path)
+        }
+    }
+    else {
+        Write-Log -Message "Skipping log rename as version was not successfully determined." -Level "WARN" -LogFilePath $BuildLog
+    }
+
+    return @{ Version = $determinedVersion; FinalLogPath = $finalLogPathValue }
+}
+
 ######################################################################################
 #------------------------------ Start of Main Script --------------------------------#
 
