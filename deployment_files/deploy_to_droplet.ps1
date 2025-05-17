@@ -52,7 +52,7 @@ Initial Setup:
 - Loads environment variables from .deployment_env and .env files.
     - The .deployment_env file contains settings specific to the deployment process.
     - The .env file contains the application settings.
-- Checks the source & target Environment & gets confirmation to proceed.
+- Checks the source & target environment & prompts for confirmation to proceed.
     - Compares the target environment with the local .env variables in order to ensure that the app will be built for the correct environment.
     - Throws an error if the target environment does not match the local .env variables.
     - If they do match, it presents the local and target variables to the user and prompts for confirmation before proceeding as a final safety measure.
@@ -78,10 +78,10 @@ Step 4: Install/Upgrade Flask Dependencies
     - Installs Python dependencies on the server using pip and the pip_requirements file to install/update the necessary packages.
 
 Step 5: Database Migration
-    - Runs database migrations if specified.
+    - Runs the Flask database migrations if specified.
     - New Environments:
         - Creates the database and schema if they do not exist.
-        - Populates the database with initial data using SQL scripts.
+        - If the seed data is provided it populates the database with initial data.
     - Existing Environments:
         - Runs database migrations using Flask-Migrate.
         - Applies SQL release scripts if specified.
@@ -727,7 +727,7 @@ Function Invoke-ReactBuild {
     Write-Log -Message "Building React app locally in '$LocalFrontendDir'..." -Level "INFO" -LogFilePath $BuildLog
 
     # Define the specific log file for npm build errors within this step
-    $npmLog = Join-Path (Split-Path $BuildLog -Parent) "npm_build_errors${Script:DeployedVersion}_$timestamp.log" # Use timestamp for uniqueness
+    $npmLog = Join-Path (Split-Path $BuildLog -Parent) "npm_build_errors${Script:DeploymentVersion}_$timestamp.log" # Use timestamp for uniqueness
 
     # Change to the frontend directory to run the build command
     try {
@@ -1167,7 +1167,7 @@ Function Invoke-SqlReleaseScripts {
 
         # 4. If execution succeeded log and archive/move the script
         $baseName = $scriptFile.BaseName # Name without extension
-        $newScriptName = "${baseName}_${Environment.ToLower()}_${Script:DeployedVersion}.sql"
+        $newScriptName = "${baseName}_${Environment.ToLower()}_${Script:DeploymentVersion}.sql"
         $serverArchivePath = "$serverSqlScriptArchiveDirVersion/$newScriptName"
         $localCompletedPath = Join-Path $localSqlScriptCompletedDirVersion $newScriptName
 
@@ -1700,257 +1700,6 @@ Function Write-Log {
     }
 }
 
-<#
-Function Invoke-VersionManagement {
-    param(
-        [Parameter(Mandatory = $false)]
-        [string]$InitialBumpType,
-
-        [Parameter(Mandatory = $false)]
-        [string]$InitialVersion,
-
-        [Parameter(Mandatory = $true)]
-        [string]$BranchProd,
-
-        [Parameter(Mandatory = $true)]
-        [string]$BranchQas,
-
-        [Parameter(Mandatory = $true)]
-        [string]$BranchDev,
-
-        [Parameter(Mandatory = $true)]
-        [string]$BranchTest,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]$BoundParams,
-
-        [Parameter(Mandatory = $true)]
-        [string]$BuildLog,
-
-        [Parameter(Mandatory = $true)]
-        [string]$ConfigGitRepoPath,
-
-        [Parameter(Mandatory = $true)]
-        [string]$LogDir,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Timestamp
-    )
-
-    # This variable will hold the version to be deployed and will be returned
-    $determinedVersion = $null
-
-    # If the bump type = none, skip the bumping process
-    if ($InitialBumpType -eq "none") {
-        Write-Log -Message "Skipping version bumping process as BumpType is set to 'none'." -Level "INFO" -LogFilePath $BuildLog
-        $determinedVersion = "test_deployment"
-    }
-    else {
-        $baseVersionForBumpOverride = $null
-        # Use InitialBumpType if it was actually passed to the script
-        $effectiveBumpTypeForFunction = if ($BoundParams.ContainsKey('BumpType')) { $InitialBumpType } else { $null }
-
-        if ($BoundParams.ContainsKey('BumpType')) {
-            $gitRepoPath = $ConfigGitRepoPath
-
-            $targetBranch = ""
-            $sourceBranchForMerge = ""
-        
-            Write-Log -Message "Version bumping process started for BumpType '$InitialBumpType'." -Level "INFO" -LogFilePath $BuildLog
-
-            Push-Location $gitRepoPath
-            $initialGitBranch = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
-            Write-Log -Message "Initial Git branch: $initialGitBranch. Current directory: $PWD" -Level "INFO" -LogFilePath $BuildLog
-
-            try { 
-                switch ($InitialBumpType) {
-                    # Use $InitialBumpType as it's the one being processed
-                    "major" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
-                    "minor" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
-                    "patch" { $targetBranch = $BranchProd; $sourceBranchForMerge = $BranchQas; break }
-                    "qas" { $targetBranch = $BranchQas; $sourceBranchForMerge = $BranchDev; break }                
-                    "dev" { $targetBranch = $BranchDev; break }
-                    "test" { $targetBranch = $BranchTest; break }
-                    default { throw "Unsupported BumpType '$InitialBumpType' for branch operations." }
-                }
-
-                if ($targetBranch) {
-                    Write-Log -Message "Target branch for BumpType '$InitialBumpType' is '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
-
-                    if ($initialGitBranch -ne $targetBranch) {
-                        Write-Log -Message "Switching from '$initialGitBranch' to target branch '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
-                        git checkout $targetBranch
-                        if ($LASTEXITCODE -ne 0) { throw "Failed to checkout $targetBranch" }
-                    }
-                    Write-Log -Message "Ensuring branch '$targetBranch' is up-to-date with origin." -Level "INFO" -LogFilePath $BuildLog
-                    git pull origin $targetBranch
-                    if ($LASTEXITCODE -ne 0) { throw "Failed to pull $targetBranch" }
-
-                    $versionFilePathOnTargetBranch = Join-Path $PWD "version.txt"
-
-                    if ($InitialBumpType -eq "qas") {
-                        $mainVersionGitPath = "main:version.txt" 
-                        $mainVersionContent = git show $mainVersionGitPath 2>$null | Out-String -Stream
-                        $mainBaseVersionCore = "" 
-                        if ($LASTEXITCODE -eq 0 -and $mainVersionContent -and ($mainVersionContent.Trim() -match '^v?(\d+\.\d+\.\d+)')) {
-                            $mainBaseVersionCore = $matches[1]
-                        }
-                        else {
-                            throw "Could not determine base version (X.Y.Z) from '$mainVersionGitPath'"
-                        }
-
-                        if (Test-Path $versionFilePathOnTargetBranch) {
-                            $currentVersionOnTarget = (Get-Content $versionFilePathOnTargetBranch).Trim()
-                            if ($currentVersionOnTarget -match "^v?${mainBaseVersionCore}-${InitialBumpType}\.\d+$") {
-                                $baseVersionForBumpOverride = $currentVersionOnTarget
-                                Write-Log -Message "Using iterative base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' for $InitialBumpType bump." -Level "INFO" -LogFilePath $BuildLog
-                            }
-                            else {
-                                $baseVersionForBumpOverride = "v$mainBaseVersionCore"
-                                Write-Log -Message "Resetting $InitialBumpType base to '$baseVersionForBumpOverride' (from $mainVersionGitPath) as current '$targetBranch/version.txt' ('$currentVersionOnTarget') is for a different base or not a '$InitialBumpType' pre-release." -Level "INFO" -LogFilePath $BuildLog
-                            }
-                        }
-                        else {
-                            $baseVersionForBumpOverride = "v$mainBaseVersionCore" 
-                            Write-Log -Message "No '$versionFilePathOnTargetBranch' found on $targetBranch. Setting $InitialBumpType base to '$baseVersionForBumpOverride' (derived from $mainVersionGitPath)." -Level "INFO" -LogFilePath $BuildLog
-                        }
-                    }
-                    elseif ($InitialBumpType -eq "major" -or $InitialBumpType -eq "minor" -or $InitialBumpType -eq "patch") {
-                        if (Test-Path $versionFilePathOnTargetBranch) { 
-                            $baseVersionForBumpOverride = (Get-Content $versionFilePathOnTargetBranch).Trim()
-                            Write-Log -Message "Using base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' (pre-merge) for $InitialBumpType bump." -Level "INFO" -LogFilePath $BuildLog
-                        }
-                        else {
-                            throw "Version file '$versionFilePathOnTargetBranch' not found on $targetBranch for $InitialBumpType bump, and it's required."
-                        }
-                    }
-                    elseif ($InitialBumpType -eq "dev" -or $InitialBumpType -eq "test") {
-                        Write-Log -Message "For '$InitialBumpType' bump, BaseVersionOverride is not set; function will use '$targetBranch/version.txt'." -Level "INFO" -LogFilePath $BuildLog
-                    }
-
-                    if ($sourceBranchForMerge) {
-                        Write-Log -Message "Merging '$sourceBranchForMerge' into '$targetBranch'." -Level "INFO" -LogFilePath $BuildLog
-                        git merge --no-ff $sourceBranchForMerge -m "Merge branch '$sourceBranchForMerge' into '$targetBranch' for $InitialBumpType release prep"
-                        if ($LASTEXITCODE -ne 0) {
-                            Write-Log -Message "Merge conflict likely detected when merging '$sourceBranchForMerge' into '$targetBranch'. Attempting 'git merge --abort'." -Level "ERROR" -LogFilePath $BuildLog
-                            git merge --abort
-                            throw "Merge failed from '$sourceBranchForMerge' to '$targetBranch'. Resolve conflicts and retry."
-                        }
-                        Write-Log -Message "Merge of '$sourceBranchForMerge' into '$targetBranch' successful." -Level "INFO" -LogFilePath $BuildLog
-                    }
-                }
-            
-                $determinedVersion = Invoke-VersionBump -BumpType $effectiveBumpTypeForFunction `
-                    -VersionFilePath $versionFilePathOnTargetBranch `
-                    -PackageJsonPath (Join-Path $PWD "satisfactory_tracker/package.json") `
-                    -GitRepoPath $PWD `
-                    -BuildLog $BuildLog `
-                    -BaseVersionOverride $baseVersionForBumpOverride
-
-                # Sync dev and qas branches with main after a successful production release
-                if ($effectiveBumpTypeForFunction -in ("major", "minor", "patch")) {
-                    Write-Log -Message "`n--- Syncing Supporting Branches with Main ---" -Level "INFO" -LogFilePath $BuildLog
-                    
-                    $branchesToSyncWithMain = @("dev", "qas")
-                    $currentBranchInLoop = "main"
-
-                    foreach ($branchToSync in $branchesToSyncWithMain) {
-                        Write-Log -Message "Attempting to sync branch '$branchToSync' with $currentBranchInLoop (new version: $determinedVersion)." -Level "INFO" -LogFilePath $BuildLog
-                        try {
-                            Write-Log -Message "Checking out '$branchToSync'..." -Level "INFO" -LogFilePath $BuildLog
-                            git checkout $branchToSync
-                            if ($LASTEXITCODE -ne 0) { throw "Failed to checkout branch '$branchToSync'." }
-                            $currentBranchInLoop = $branchToSync
-
-                            Write-Log -Message "Pulling latest for '$branchToSync' from origin..." -Level "INFO" -LogFilePath $BuildLog
-                            git pull origin $branchToSync
-                            if ($LASTEXITCODE -ne 0) { throw "Failed to pull 'origin/$branchToSync'." }
-                        
-                            Write-Log -Message "Merging 'main' into '$branchToSync'..." -Level "INFO" -LogFilePath $BuildLog
-                            git merge main -m "Auto-merge main into $branchToSync after production release $determinedVersion"
-                            if ($LASTEXITCODE -ne 0) {
-                                Write-Log -Message "WARNING: Merge of 'main' into '$branchToSync' resulted in conflicts or failure. Attempting 'git merge --abort'. Manual sync required for '$branchToSync'." -Level "WARNING" -LogFilePath $BuildLog
-                                git merge --abort
-                                continue 
-                            }
-                        
-                            Write-Log -Message "Pushing updated '$branchToSync' to origin..." -Level "INFO" -LogFilePath $BuildLog
-                            git push origin $branchToSync
-                            if ($LASTEXITCODE -ne 0) { throw "Failed to push '$branchToSync' to origin after merging main." }
-                        
-                            Write-Log -Message "Branch '$branchToSync' successfully synced with 'main' and pushed." -Level "SUCCESS" -LogFilePath $BuildLog
-                        }
-                        catch {
-                            Write-Log -Message "ERROR during sync of branch '$branchToSync': $($_.Exception.Message). Manual sync will be required." -Level "ERROR" -LogFilePath $BuildLog
-                            if ((git status --porcelain | Out-String).Trim().Length -gt 0) {
-                                Write-Log -Message "Branch '$branchToSync' has uncommitted changes or is in a conflicted state after sync error. Manual cleanup needed." -Level "WARN" -LogFilePath $BuildLog
-                            }
-                        }
-                    }
-                
-                    $finalLoopBranch = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
-                    if ($finalLoopBranch -ne "main") {
-                        Write-Log -Message "Switching back to 'main' branch after sync operations (current: $finalLoopBranch)." -Level "INFO" -LogFilePath $BuildLog
-                        git checkout main
-                        if ($LASTEXITCODE -ne 0) { Write-Log -Message "WARNING: Failed to checkout 'main' after branch sync loop." -Level "WARN" -LogFilePath $BuildLog }
-                    }
-                }
-            }
-            catch {
-                Write-Log -Message "FATAL: Error during version bumping process or branch synchronisation. Error: $($_.Exception.Message)" -Level "FATAL" -LogFilePath $BuildLog
-                if ($initialGitBranch -and (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim() -ne $initialGitBranch) {
-                    Write-Log -Message "Attempting to switch back to initial branch '$initialGitBranch' after error..." -Level "WARN" -LogFilePath $BuildLog
-                    git checkout $initialGitBranch 
-                }
-                throw 
-            }
-            finally {
-                $currentBranchAfterOps = (git rev-parse --abbrev-ref HEAD | Out-String -Stream).Trim()
-                if ($initialGitBranch -and ($currentBranchAfterOps -ne $initialGitBranch)) {
-                    Write-Log -Message "Switching back to original script-invoking branch '$initialGitBranch' from '$currentBranchAfterOps'." -Level "INFO" -LogFilePath $BuildLog
-                    git checkout $initialGitBranch
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-Log -Message "WARNING: Failed to switch back to original branch '$initialGitBranch'. You may need to manually run: git checkout $initialGitBranch" -Level "WARN" -LogFilePath $BuildLog
-                    }
-                }
-                Pop-Location 
-                Write-Log -Message "Version bumping and any post-sync operations finished. Current directory: $PWD" -Level "INFO" -LogFilePath $BuildLog
-            }
-        }
-        elseif ($BoundParams.ContainsKey('Version')) {
-            $determinedVersion = $InitialVersion
-            Write-Log -Message "Using specified pre-existing version for deployment: $determinedVersion (no bump)" -Level "INFO" -LogFilePath $BuildLog
-        }
-        else {
-            Write-Log -Message "FATAL: No version specified and no bump type selected. Cannot determine deployed version." -Level "FATAL" -LogFilePath $BuildLog
-            throw "Cannot determine deployed version. Script logic error or missing parameters."
-        }
-    }
-    # --- Rename Log File ---
-    $finalLogPathValue = $BuildLog # Default to old path in case of renaming failure
-
-    if ($determinedVersion) {
-        $finalLogName = "build_${determinedVersion}_${Timestamp}.log"
-        Write-Log -Message "Attempting to rename log file from '$BuildLog' to (new name based on version: '$finalLogName')..." -Level "INFO" -LogFilePath $BuildLog
-        try {
-            Rename-Item -Path $BuildLog -NewName $finalLogName -ErrorAction Stop
-            $finalLogPathValue = Join-Path $LogDir $finalLogName # Construct the new full path
-            # This log message is written to the file *before* its name is changed on disk by Rename-Item.
-            Write-Log -Message "Log file renamed successfully to '$finalLogPathValue'." -Level "INFO" -LogFilePath $BuildLog
-        }
-        catch {
-            Write-Log -Message "Warning: Failed to rename log file '$BuildLog' to '$finalLogName'. File might be locked. Log will continue using the temporary name '$BuildLog'. Error: $($_.Exception.Message)" -Level "WARNING" -LogFilePath $BuildLog
-            # $finalLogPathValue remains $BuildLog (the original path)
-        }
-    }
-    else {
-        Write-Log -Message "Skipping log rename as version was not successfully determined." -Level "WARN" -LogFilePath $BuildLog
-    }
-
-    return @{ Version = $determinedVersion; FinalLogPath = $finalLogPathValue }
-}
-#>
-
 Function Invoke-VersionManagement {
     param(
         [Parameter(Mandatory = $false)]
@@ -2127,7 +1876,7 @@ Function Invoke-VersionManagement {
                             Write-Log -Message "No '$versionFilePathOnTargetBranch' found on $targetBranch. Setting $InitialBumpType base to '$baseVersionForBumpOverride' (derived from prod version '$mainVersionGitPath')." -Level "INFO" -LogFilePath $BuildLog
                         }
                         # The target $BranchPROD
-                        elseif ($InitialBumpType -eq "major" -or $InitialBumpType -eq "minor" -or $InitialBumpType -eq "patch") {
+                        if ($InitialBumpType -eq "major" -or $InitialBumpType -eq "minor" -or $InitialBumpType -eq "patch") {
                             if (Test-Path $versionFilePathOnTargetBranch) { 
                                 $baseVersionForBumpOverride = (Get-Content $versionFilePathOnTargetBranch).Trim()
                                 Write-Log -Message "Using base '$baseVersionForBumpOverride' from '$targetBranch/version.txt' (pre-merge) for $InitialBumpType bump." -Level "INFO" -LogFilePath $BuildLog
@@ -2135,7 +1884,8 @@ Function Invoke-VersionManagement {
                             else {
                                 throw "Version file '$versionFilePathOnTargetBranch' not found on $targetBranch for $InitialBumpType bump, and it's required."
                             }
-                        } elseif ($InitialBumpType -eq "dev" -or $InitialBumpType -eq "test") {
+                        }
+                        elseif ($InitialBumpType -eq "dev" -or $InitialBumpType -eq "test") {
                             Write-Log -Message "For '$InitialBumpType' bump, BaseVersionOverride is not set; function will use '$targetBranch/version.txt'." -Level "INFO" -LogFilePath $BuildLog
                         }
 

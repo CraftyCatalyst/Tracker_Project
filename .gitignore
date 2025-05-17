@@ -9,6 +9,7 @@ satisfactory_tracker/.env_LOCAL
 deployment_files/.deployment_env
 deployment_files/.vscode/launch.json
 deployment_files/release_scripts
+deploy/
 Droplet_Files/
 venv/
 
@@ -36,3 +37,6 @@ prototypes/
 deployment_files/build_logs
 deployment_files/LaunchNPP_Monitor.ahk
 deployment_files/test_harness/.deployment_test_env
+deployment_files/README-deploy.md
+deployment_files/file_list.txt
+z_Project_Review_Plan.md
